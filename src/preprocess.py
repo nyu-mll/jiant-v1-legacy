@@ -29,12 +29,12 @@ from .tasks import SingleClassificationTask, PairClassificationTask, \
     CoLATask, MRPCTask, MultiNLITask, MultiNLIFictionTask, \
     MultiNLISlateTask, MultiNLIGovernmentTask, MultiNLITravelTask, \
     MultiNLITelephoneTask, QQPTask, QQPAltTask, RTETask, \
-    QNLITask, SNLITask, SSTTask, STSBTask, WNLITask, \
+    QNLITask, QNLIAltTask, SNLITask, SSTTask, STSBTask, WNLITask, \
     LanguageModelingTask, PDTBTask, \
     WikiText2LMTask, WikiText103LMTask, DisSentBWBSingleTask, \
     DisSentWikiSingleTask, DisSentWikiFullTask, \
     JOCITask, PairOrdinalRegressionTask, WeakGroundedTask, \
-    GroundedTask, MTTask, BWBLMTask, WikiInsertionsTask, \
+    GroundedTask, MTTask, MTAltTask, BWBLMTask, WikiInsertionsTask, \
     NLITypeProbingTask, MultiNLIAltTask, VAETask, \
     RecastKGTask, RecastLexicosynTask, RecastWinogenderTask, \
     RecastFactualityTask, RecastSentimentTask, RecastVerbcornerTask, \
@@ -60,6 +60,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'mnli-telephone': (MultiNLITelephoneTask, 'MNLI/'),
              'mnli-travel': (MultiNLITravelTask, 'MNLI/'),
              'qnli': (QNLITask, 'QNLI/'),
+             'qnli-alt': (QNLIAltTask, 'QNLI/')
              'rte': (RTETask, 'RTE/'),
              'snli': (SNLITask, 'SNLI/'),
              'wnli': (WNLITask, 'WNLI/'),
@@ -69,6 +70,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'bwb': (BWBLMTask, 'BWB/'),
              'pdtb': (PDTBTask, 'PDTB/'),
              'wmt14_en_de': (MTTask, 'wmt14_en_de'),
+             'wmt14_en_de-alt': (MTAltTask, 'wmt14_en_de-alt'),
              'wikiins': (WikiInsertionsTask, 'wiki-insertions'),
              'dissentbwb': (DisSentBWBSingleTask, 'DisSent/bwb/'),
              'dissentwiki': (DisSentWikiSingleTask, 'DisSent/wikitext/'),

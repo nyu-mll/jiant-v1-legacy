@@ -481,7 +481,7 @@ class QQPAltTask(QQPTask):
 
     def __init__(self, path, max_seq_len, name="qqp-alt"):
         '''QQP'''
-        super(QQPTask, self).__init__(path, max_seq_len, name)
+        super(QQPAltTask, self).__init__(path, max_seq_len, name)
 
 class MultiNLISingleGenreTask(PairClassificationTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''
@@ -828,6 +828,14 @@ class QNLITask(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading QNLI.")
 
+class QNLIAltTask(QNLITask):
+    ''' Task class for SQuAD NLI
+    Identical to SQuAD NLI class, but it can be handy to have two when controlling model settings.
+    '''
+
+    def __init__(self, path, max_seq_len, name="squad"):
+        '''QNLI'''
+        super(QNLIAltTask, self).__init__(path, max_seq_len, name)
 
 class WNLITask(PairClassificationTask):
     '''Class for Winograd NLI task'''
@@ -943,6 +951,14 @@ class MTTask(SequenceGenerationTask):
         #  return list(instances)
         return instances  # lazy iterator
 
+class MTAltTask(MTTask):
+    ''' Task class for Machine Translation Task 
+    Identical to MTTask class, but it can be handy to have two when controlling model settings.
+    '''
+
+    def __init__(self, path, max_seq_len, name="MTTask"):
+        '''MT'''
+        super(MTAltTask, self).__init__(path, max_seq_len, name)
 
 class WikiInsertionsTask(MTTask):
     '''Task which predicts a span to insert at a given index'''
