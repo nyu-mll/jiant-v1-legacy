@@ -60,7 +60,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'mnli-telephone': (MultiNLITelephoneTask, 'MNLI/'),
              'mnli-travel': (MultiNLITravelTask, 'MNLI/'),
              'qnli': (QNLITask, 'QNLI/'),
-             'qnli-alt': (QNLIAltTask, 'QNLI/')
+             'qnli-alt': (QNLIAltTask, 'QNLI/'),
              'rte': (RTETask, 'RTE/'),
              'snli': (SNLITask, 'SNLI/'),
              'wnli': (WNLITask, 'WNLI/'),
