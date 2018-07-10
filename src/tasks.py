@@ -473,6 +473,15 @@ class QQPTask(PairClassificationTask):
         return {'acc_f1': (acc + f1) / 2, 'accuracy': acc, 'f1': f1,
                 'precision': pcs, 'recall': rcl}
 
+class QQPAltTask(QQPTask):
+    ''' Task class for Quora Question Pairs. 
+
+    Identical to QQPTask class, but it can be handy to have two when controlling model settings.
+    '''
+
+    def __init__(self, path, max_seq_len, name="qqp-alt"):
+        '''QQP'''
+        super(QQPTask, self).__init__(path, max_seq_len, name)
 
 class MultiNLISingleGenreTask(PairClassificationTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''

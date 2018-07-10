@@ -28,7 +28,7 @@ from .tasks import SingleClassificationTask, PairClassificationTask, \
     PairRegressionTask, SequenceGenerationTask, RankingTask, \
     CoLATask, MRPCTask, MultiNLITask, MultiNLIFictionTask, \
     MultiNLISlateTask, MultiNLIGovernmentTask, MultiNLITravelTask, \
-    MultiNLITelephoneTask, QQPTask, RTETask, \
+    MultiNLITelephoneTask, QQPTask, QQPAltTask, RTETask, \
     QNLITask, SNLITask, SSTTask, STSBTask, WNLITask, \
     LanguageModelingTask, PDTBTask, \
     WikiText2LMTask, WikiText103LMTask, DisSentBWBSingleTask, \
@@ -50,6 +50,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'cola': (CoLATask, 'CoLA/'),
              'mrpc': (MRPCTask, 'MRPC/'),
              'qqp': (QQPTask, 'QQP'),
+             'qqp-alt': (QQPAltTask, 'QQP'),
              'sts-b': (STSBTask, 'STS-B/'),
              'mnli': (MultiNLITask, 'MNLI/'),
              'mnli-alt': (MultiNLIAltTask, 'MNLI/'),
