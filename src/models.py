@@ -234,12 +234,15 @@ def build_module(task, model, d_sent, vocab, embedder, args):
         hid2tag = build_tagger(task, d_sent, task.num_tags)
         setattr(model, '%s_mdl' % task.name, hid2tag)
     elif isinstance(task, MTTask):
+        task_attn = "none"
+        log.info("USING {} AS ATTENTION!!!!!".format(task_attn))
+        print("USING {} AS ATTENTION!!!!!".format(task_attn))
         decoder = Seq2SeqDecoder.from_params(vocab,
                                              Params({'input_dim': d_sent,
                                                      'target_embedding_dim': 300,
                                                      'max_decoding_steps': 200,
                                                      'target_namespace': 'tokens',
-                                                     'attention': 'bilinear',
+                                                     'attention': task_attn,
                                                      'dropout': args.dropout,
                                                      'scheduled_sampling_ratio': 0.0}))
         setattr(model, '%s_decoder' % task.name, decoder)
