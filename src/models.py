@@ -239,7 +239,7 @@ def build_module(task, model, d_sent, vocab, embedder, args):
                                                      'target_embedding_dim': 300,
                                                      'max_decoding_steps': 200,
                                                      'target_namespace': 'tokens',
-                                                     'attention': 'bilinear',
+                                                     'attention': None,#'bilinear',
                                                      'dropout': args.dropout,
                                                      'scheduled_sampling_ratio': 0.0}))
         setattr(model, '%s_decoder' % task.name, decoder)
