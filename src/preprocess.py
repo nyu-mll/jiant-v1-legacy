@@ -29,7 +29,7 @@ from .tasks import \
     QNLITask, SNLITask, SSTTask, STSBTask, WNLITask, \
     PDTBTask, \
     WikiText2LMTask, WikiText103LMTask, DisSentBWBSingleTask, \
-    DisSentWikiSingleTask, DisSentWikiFullTask, \
+    DisSentWikiSingleTask, DisSentWikiFullTask, DisSentWikiLargeTask, DisSentBigTask, DisSentHugeTask, \
     JOCITask, PairOrdinalRegressionTask, WeakGroundedTask, \
     GroundedTask, MTTask, BWBLMTask, WikiInsertionsTask, \
     NLITypeProbingTask, MultiNLIAltTask, VAETask, \
@@ -73,6 +73,9 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'dissentbwb': (DisSentBWBSingleTask, 'DisSent/bwb/'),
              'dissentwiki': (DisSentWikiSingleTask, 'DisSent/wikitext/'),
              'dissentwikifull': (DisSentWikiFullTask, 'DisSent/wikitext/'),
+             'dissentwikibigfull': (DisSentWikiLargeTask, 'DisSent/wikitext/'),
+             'dissentbig': (DisSentBigTask, 'DisSent/wikitext/'),
+             'dissenthuge': (DisSentHugeTask, 'DisSent/wikitext/'),
              'weakgrounded': (WeakGroundedTask, 'mscoco/weakgrounded/'),
              'grounded': (GroundedTask, 'mscoco/grounded/'),
              'reddit': (RedditTask, 'reddit_comments_replies/'),

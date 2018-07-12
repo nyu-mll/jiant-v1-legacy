@@ -1044,6 +1044,54 @@ class DisSentBWBSingleTask(PairClassificationTask):
         log.info("\tFinished loading DisSent data.")
 
 
+class DisSentHugeTask(PairClassificationTask):
+    ''' Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
+
+    def __init__(self, path, max_seq_len, name="dissenthuge"):
+        super().__init__(name, 8)  # 8 classes, for 8 discource markers
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.train_data_text[1] + \
+            self.val_data_text[0] + self.val_data_text[1]
+
+    def load_data(self, path, max_seq_len):
+        '''Process the dataset located at data_file.'''
+        tr_data = load_tsv(os.path.join(path, "huge.train"), max_seq_len,
+                           s1_idx=0, s2_idx=1, targ_idx=2)
+        val_data = load_tsv(os.path.join(path, "huge.valid"), max_seq_len,
+                            s1_idx=0, s2_idx=1, targ_idx=2)
+        te_data = load_tsv(os.path.join(path, 'huge.test'), max_seq_len,
+                           s1_idx=0, s2_idx=1, targ_idx=2)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading DisSent data.")
+
+
+
+class DisSentBigTask(PairClassificationTask):
+    ''' Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
+
+    def __init__(self, path, max_seq_len, name="dissentbig"):
+        super().__init__(name, 8)  # 8 classes, for 8 discource markers
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.train_data_text[1] + \
+            self.val_data_text[0] + self.val_data_text[1]
+
+    def load_data(self, path, max_seq_len):
+        '''Process the dataset located at data_file.'''
+        tr_data = load_tsv(os.path.join(path, "big.dissent.train"), max_seq_len,
+                           s1_idx=0, s2_idx=1, targ_idx=2)
+        val_data = load_tsv(os.path.join(path, "big.dissent.valid"), max_seq_len,
+                            s1_idx=0, s2_idx=1, targ_idx=2)
+        te_data = load_tsv(os.path.join(path, 'big.dissent.test'), max_seq_len,
+                           s1_idx=0, s2_idx=1, targ_idx=2)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading DisSent data.")
+
+
+
 class DisSentWikiSingleTask(PairClassificationTask):
     ''' Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
 
@@ -1065,6 +1113,29 @@ class DisSentWikiSingleTask(PairClassificationTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info("\tFinished loading DisSent data.")
+
+class DisSentWikiLargeTask(PairClassificationTask):
+    ''' Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
+
+    def __init__(self, path, max_seq_len, name="dissentwikifullbig"):
+        super().__init__(name, 8)  # 8 classes, for 8 discource markers
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.train_data_text[1] + \
+            self.val_data_text[0] + self.val_data_text[1]
+
+    def load_data(self, path, max_seq_len):
+        '''Process the dataset located at data_file.'''
+        tr_data = load_tsv(os.path.join(path, "wikitext.dissent.big.train"), max_seq_len,
+                           s1_idx=0, s2_idx=1, targ_idx=2)
+        val_data = load_tsv(os.path.join(path, "wikitext.dissent.big.valid"), max_seq_len,
+                            s1_idx=0, s2_idx=1, targ_idx=2)
+        te_data = load_tsv(os.path.join(path, 'wikitext.dissent.big.test'), max_seq_len,
+                           s1_idx=0, s2_idx=1, targ_idx=2)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading DisSent data.")
+
 
 
 class DisSentWikiFullTask(PairClassificationTask):
