@@ -35,7 +35,7 @@ from .tasks import STSBTask, CoLATask, SSTTask, \
     PairOrdinalRegressionTask, JOCITask, WeakGroundedTask, \
     GroundedTask, MTTask, RedditTask
 
-from .tasks import STSBTask, CoLATask, \
+from .tasks import STSBTask, CoLATask, VNTask, \
     ClassificationTask, PairClassificationTask, SingleClassificationTask, \
     RegressionTask, PairRegressionTask, RankingTask, \
     SequenceGenerationTask, LanguageModelingTask, MTTask, \
@@ -487,7 +487,7 @@ class MultiTaskModel(nn.Module):
         if 'labels' in batch: # means we should compute loss
             labels = batch['labels'].squeeze(-1)
             out['loss'] = F.cross_entropy(logits, labels)
-            if isinstance(task, CoLATask):
+            if (isinstance(task, CoLATask)) or (isinstance(task, VNTask)):
                 task.scorer2(logits, labels)
                 _, preds = logits.max(dim=1)
                 task.scorer1(labels, preds)
