@@ -3,7 +3,9 @@
 - As much as possible, following the existing task hierarchy structure.
 - When inheriting, be sure to write and call load_data.
 - Set all text data as an attribute, task.sentences (List[List[str]])
-- Each task's val_metric should be name_metric, where metric is returned by get_metrics()
+- Each task's val_metric should be name_metric, where metric is returned by
+get_metrics(): e.g. if task.val_metric = task_name + "_accuracy", then
+task.get_metrics() should return {"accuracy": accuracy_val, ... }
 '''
 import copy
 import collections
@@ -14,19 +16,42 @@ import math
 import logging as log
 import json
 import numpy as np
-from typing import Iterable, Sequence, Any, Type
+from typing import Iterable, Sequence, List, Dict, Any, Type
 
-from allennlp.training.metrics import CategoricalAccuracy, F1Measure, Average
+from allennlp.training.metrics import CategoricalAccuracy, \
+        BooleanAccuracy, F1Measure, Average
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from .allennlp_mods.correlation import Correlation
 
 # Fields for instance processing
 from allennlp.data import Instance, Token
-from allennlp.data.fields import TextField, LabelField
+from allennlp.data.fields import TextField, LabelField, SpanField, ListField
 from .allennlp_mods.numeric_field import NumericField
 
 from . import serialize
+from . import utils
 from .utils import load_tsv, process_sentence, truncate
+
+REGISTRY = {}  # Do not edit manually!
+def register_task(name, rel_path, **kw):
+    '''Decorator to register a task.
+
+    Use this instead of adding to NAME2INFO in preprocess.py
+
+    If kw is not None, this will be passed as additional args when the Task is
+    constructed in preprocess.py.
+
+    Usage:
+    @register_task('mytask', 'my-task/data', **extra_kw)
+    class MyTask(SingleClassificationTask):
+        ...
+    '''
+    def _wrap(cls):
+        entry = (cls, rel_path, kw) if kw else (cls, rel_path)
+        REGISTRY[name] = entry
+        return cls
+    return _wrap
+
 
 def _sentence_to_text_field(sent: Sequence[str], indexers: Any):
     return TextField(list(map(Token, sent)), token_indexers=indexers)
@@ -97,6 +122,22 @@ class Task():
         ''' Yield sentences, used to compute vocabulary. '''
         yield from self.sentences
 
+    def count_examples(self, splits=['train', 'val', 'test']):
+        ''' Count examples in the dataset. '''
+        self.example_counts = {}
+        for split in splits:
+            st = self.get_split_text(split)
+            count = self.get_num_examples(st)
+            self.example_counts[split] = count
+
+    @property
+    def n_train_examples(self):
+        return self.example_counts['train']
+
+    @property
+    def n_val_examples(self):
+        return self.example_counts['val']
+
     def get_split_text(self, split: str):
         ''' Get split text, typically as list of columns.
 
@@ -104,12 +145,19 @@ class Task():
         '''
         return getattr(self, '%s_data_text' % split)
 
+    def get_num_examples(self, split_text):
+        ''' Return number of examples in the result of get_split_text.
+
+        Subclass can override this if data is not stored in column format.
+        '''
+        return len(split_text[0])
+
     def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
         ''' Process split text into a list of AllenNLP Instances. '''
         raise NotImplementedError
 
-    def get_metrics(self, reset=False):
-        '''Get metrics specific to the task'''
+    def get_metrics(self, reset: bool=False) -> Dict:
+        ''' Get metrics specific to the task. '''
         raise NotImplementedError
 
 
@@ -180,6 +228,7 @@ class NLIProbingTask(PairClassificationTask):
 
     def __init__(self, name, n_classes):
         super().__init__(name)
+        self.use_classifier = 'mnli'
 
 
 class PairRegressionTask(RegressionTask):
@@ -263,6 +312,11 @@ class LanguageModelingTask(SequenceGenerationTask):
         self.scorer2 = None
         self.val_metric = "%s_perplexity" % self.name
         self.val_metric_decreases = True
+
+    def get_num_examples(self, split_text):
+        ''' Return number of examples in the result of get_split_text. '''
+        # Special case for LM: split_text is a single list.
+        return len(split_text)
 
     def get_metrics(self, reset=False):
         '''Get metrics specific to the task'''
@@ -728,6 +782,7 @@ class MultiNLITask(PairClassificationTask):
                                        skip_rows=1)
         val_data = [m + mm for m, mm in zip(val_matched_data, val_mismatched_data)]
         val_data = tuple(val_data)
+        val_data = val_matched_data
 
         te_matched_data = load_tsv(os.path.join(path, 'test_matched.tsv'), max_seq_len,
                                    s1_idx=8, s2_idx=9, targ_idx=None, idx_idx=0, skip_rows=1)
@@ -747,17 +802,18 @@ class MultiNLITask(PairClassificationTask):
 class NLITypeProbingTask(PairClassificationTask):
     ''' Task class for Probing Task (NLI-type)'''
 
-    def __init__(self, path, max_seq_len, name="nli-prob"):
+    def __init__(self, path, max_seq_len, name="nli-prob", probe_path="probe_dummy.tsv"):
         super(NLITypeProbingTask, self).__init__(name, 3)
-        self.load_data(path, max_seq_len)
+        self.load_data(path, max_seq_len, probe_path)
+        self.use_classifier = 'mnli'
         self.sentences = self.train_data_text[0] + self.train_data_text[1] + \
             self.val_data_text[0] + self.val_data_text[1]
 
-    def load_data(self, path, max_seq_len):
+    def load_data(self, path, max_seq_len, probe_path):
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
         tr_data = load_tsv(os.path.join(path, 'train_dummy.tsv'), max_seq_len,
                         s1_idx=1, s2_idx=2, targ_idx=None, targ_map=targ_map, skip_rows=0)
-        val_data = load_tsv(os.path.join(path, 'dat_cv/with.cvcv.mnli'), max_seq_len,
+        val_data = load_tsv(os.path.join(path, probe_path), max_seq_len,
                         s1_idx=0, s2_idx=1, targ_idx=2, targ_map=targ_map, skip_rows=0)
         te_data = load_tsv(os.path.join(path, 'test_dummy.tsv'), max_seq_len,
                         s1_idx=1, s2_idx=2, targ_idx=None, targ_map=targ_map, skip_rows=0)
@@ -918,8 +974,21 @@ class MTTask(SequenceGenerationTask):
         self.val_metric = "%s_perplexity" % self.name
         self.val_metric_decreases = True
         self.load_data(path, max_seq_len)
-        self.sentences = self.train_data_text[0] + self.val_data_text[0] + \
-            self.train_data_text[2] + self.val_data_text[2]
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+        self.target_sentences = self.train_data_text[2] + self.val_data_text[2]
+        self.target_indexer = {"words": SingleIdTokenIndexer(namespace="targets")} # TODO namespace
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        ''' Process a machine translation split '''
+        def _make_instance(input, target):
+             d = {}
+             d["inputs"] = _sentence_to_text_field(input, indexers)
+             d["targs"] = _sentence_to_text_field(target, self.target_indexer)  # this line changed
+             return Instance(d)
+        # Map over columns: inputs, targs
+        instances = map(_make_instance, split[0], split[2])
+        #  return list(instances)
+        return instances  # lazy iterator
 
     def load_data(self, path, max_seq_len):
         self.train_data_text = load_tsv(os.path.join(path, 'train.txt'), max_seq_len,
@@ -938,18 +1007,6 @@ class MTTask(SequenceGenerationTask):
         '''Get metrics specific to the task'''
         ppl = self.scorer1.get_metric(reset)
         return {'perplexity': ppl}
-
-    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
-        ''' Process a machine translation split '''
-        def _make_instance(input, target):
-            d = {}
-            d["inputs"] = _sentence_to_text_field(input, indexers)
-            d["targs"] = _sentence_to_text_field(target, indexers)
-            return Instance(d)
-        # Map over columns: inputs, targs
-        instances = map(_make_instance, split[0], split[2])
-        #  return list(instances)
-        return instances  # lazy iterator
 
 class MTAltTask(MTTask):
     ''' Task class for Machine Translation Task 
@@ -989,7 +1046,6 @@ class WikiInsertionsTask(MTTask):
         '''Get metrics specific to the task'''
         ppl = self.scorer1.get_metric(reset)
         return {'perplexity': ppl}
-
 
 class DisSentBWBSingleTask(PairClassificationTask):
     ''' Task class for DisSent with the Billion Word Benchmark'''
@@ -1128,7 +1184,7 @@ class GroundedTask(Task):
             metric = 0
 
         return metric
-        
+
     def get_metrics(self, reset=False):
         '''Get metrics specific to the task'''
         metric = self.scorer1.get_metric(reset)
@@ -1163,7 +1219,7 @@ class GroundedTask(Task):
 
         # changed for temp
         train, val, test = ([], [], []), ([], [], []), ([], [], [])
-        
+
         train_ids = [item for item in os.listdir(os.path.join(path, "train")) if '.DS' not in item]
         val_ids = [item for item in os.listdir(os.path.join(path, "val")) if '.DS' not in item]
         test_ids = [item for item in os.listdir(os.path.join(path, "test")) if '.DS' not in item]
@@ -1203,7 +1259,7 @@ class GroundedTask(Task):
 
         ''' Shapeworld data '''
 
-        
+
         f = open("/nfs/jsalt/home/roma/shapeworld/train.tsv", 'r')
         for line in f:
             items = line.strip().split('\t')
@@ -1225,13 +1281,13 @@ class GroundedTask(Task):
             test[1].append(int(items[1]))
             test[2].append(int(items[2]))
 
-            
+
         r = 5
         train_ids = list(repeat(train_ids, r)); test_ids = list(repeat(test_ids, r)); val_ids = list(repeat(val_ids, r));
         train_ids = [item for sublist in train_ids for item in sublist]
         test_ids = [item for sublist in test_ids for item in sublist]
         val_ids = [item for sublist in val_ids for item in sublist]
-        
+
         for img_id in train_ids:
             rand_id = img_id
             while (rand_id == img_id):
@@ -1247,7 +1303,7 @@ class GroundedTask(Task):
                 rand_id = np.random.randint(len(val_ids), size=(1,1))[0][0]
             caption_id = np.random.randint(5, size=(1,1))[0][0]
             captions = val_dict[val_ids[rand_id]]['captions']; caption_ids = list(captions.keys())
-            caption = captions[caption_ids[caption_id]]            
+            caption = captions[caption_ids[caption_id]]
             val[0].append(caption); val[1].append(0); val[2].append(int(img_id))
 
         for img_id in test_ids:
@@ -1258,13 +1314,13 @@ class GroundedTask(Task):
             captions = te_dict[test_ids[rand_id]]['captions']; caption_ids = list(captions.keys())
             caption = captions[caption_ids[caption_id]]
             test[0].append(caption); test[1].append(0); test[2].append(int(img_id))
-        
 
-        
+
+
 
 
         #np.random.shuffle(train); np.random.shuffle(test); np.random.shuffle(val)
-        
+
         log.info("All train samples: " + str(len(train[0])))
 
         self.tr_data = train
@@ -1380,8 +1436,6 @@ class RecastKGTask(RecastNLITask):
     def __init__(self, path, max_seq_len, name="recast-kg"):
         super(RecastKGTask, self).__init__(path, max_seq_len, name)
 
-
-
 class TaggingTask(Task):
     ''' Generic tagging, one tag per word '''
 
@@ -1460,12 +1514,3 @@ class CCGTaggingTask(TaggingTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info("\tFinished loading CCGTagging data.")
-
-
-
-
-
-
-
-
-
