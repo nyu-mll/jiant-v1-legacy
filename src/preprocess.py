@@ -24,13 +24,10 @@ from . import serialize
 from . import utils
 from . import tasks as tasks_module
 
-from .tasks import SingleClassificationTask, PairClassificationTask, \
-    PairRegressionTask, SequenceGenerationTask, RankingTask, \
-    CoLATask, MRPCTask, MultiNLITask, MultiNLIFictionTask, \
-    MultiNLISlateTask, MultiNLIGovernmentTask, MultiNLITravelTask, \
-    MultiNLITelephoneTask, QQPTask, QQPAltTask, RTETask, \
+from .tasks import  \
+    CoLATask, MRPCTask, MultiNLITask, QQPTask, QQPAltTask, RTETask, \
     QNLITask, QNLIAltTask, SNLITask, SSTTask, STSBTask, WNLITask, \
-    LanguageModelingTask, PDTBTask, \
+    PDTBTask, \
     WikiText2LMTask, WikiText103LMTask, DisSentBWBSingleTask, \
     DisSentWikiSingleTask, DisSentWikiFullTask, \
     JOCITask, PairOrdinalRegressionTask, WeakGroundedTask, \
