@@ -540,10 +540,9 @@ class SamplingMultiTaskTrainer():
                 log.info("  qvalue: " + np.array_str(self.bandit.Q,precision =4))
                 #for taskname, Qvalue in zip([task.name for task in tasks], self.bandit.Q):
                 #    log.info("  %s qvalue: %.4f", taskname, Qvalue)
-                if self.bandit.explore_method == 'gradient':
-                    nparray_exp = np.exp(self.bandit.Q/self.bandit.temp)
-                    action_prob = nparray_exp/sum(nparray_exp)
-                    log.info("  action_prob: " + np.array_str(action_prob,precision =4))
+
+                action_prob =self.bandit.prob
+                log.info("  action_prob: " + np.array_str(action_prob,precision =4))
 
             # TODO (Shuning):
             # Once you're done, call this to turn training mode back on:

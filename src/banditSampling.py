@@ -27,6 +27,7 @@ class Bandit():
 
         self.explore_method = explore_method
         self.temp = None; self.epsilon = None
+
         # boltzmann exploration: softmax temp
         if explore_method == 'boltzmann':
             self.temp = temp
@@ -39,7 +40,9 @@ class Bandit():
             self.time = 0
             self.baseline = baseline
 
+
         # keep trace
+        self.prob = [1/self.k] * self.k
         self.action = None
         self.reward = None
 
@@ -54,6 +57,7 @@ class Bandit():
     def chooseAction_boltzmann(self):
         action_prob = softmax(self.temp,self.Q)
         self.action = random.choices(self.indices,action_prob,k=1)[0]
+        self.prob = action_prob
 
     def chooseAction_epsilonGreedy(self):
         # optimal_index = np.argmax(self.Q)
@@ -62,6 +66,7 @@ class Bandit():
         action_prob = [self.epsilon/(self.k-1)] * self.k
         action_prob [optimal_index] = 1-self.epsilon
         self.action = random.choices(self.indices,action_prob,k=1)[0]
+        self.prob = action_prob
 
     def update_actionValue(self, reward):
         self.reward = reward
