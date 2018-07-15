@@ -81,11 +81,14 @@ class Bandit():
                 self.time +=1
                 self.rewardAvg = (self.rewardAvg*(self.time-1)+reward)/self.time
                 baseline = self.rewardAvg
-            self.Q[index] += stepSize * (reward- baseline) *(1-self.prob[index])
+            self.Q[index] += self.stepSize * (reward- baseline) *(1-self.prob[index])
             for i in self.indices:
                 if i == index: pass
-                self.Q[i] -= stepSize * (reward- baseline) *(self.prob[i])
+                self.Q[i] -= self.stepSize * (reward- baseline) *(self.prob[i])
 
+
+
+##########################
     @classmethod
     def from_params(cls,actions,params):
         ''' Generator trainer from parameters.  '''

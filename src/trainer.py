@@ -233,7 +233,7 @@ class SamplingMultiTaskTrainer():
         actions = [task.name for task in tasks]
         self.bandit = Bandit(actions, stepSize,initialQ,explore_method,temp, epsilon)
         '''
-
+        self.bandit.baseline = 'average'
         '''
         print ('debug')
         print (self.bandit.mapping,self.bandit.stepSize,self.bandit.Q,self.bandit.explore_method,
