@@ -13,7 +13,7 @@ class Bandit():
                  stepSize = 0.3, initialQ=0.0,
                  explore_method=None, #'epsilon','boltzmann', 'gradient'
                  temp=1.0,
-                 epsilon=0.2,baseline = 0):
+                 epsilon=0.2,baseline = 'average'):
 
         self.mapping = dict(enumerate(actions))
         self.k = len(actions)
@@ -24,8 +24,8 @@ class Bandit():
         self.stepSize = stepSize
         # intialize action value: optimistic if large value
         self.Q = np.array([float(initialQ)] * self.k)
-
         self.explore_method = explore_method
+
         self.temp = None; self.epsilon = None
 
         # boltzmann exploration: softmax temp
@@ -39,7 +39,9 @@ class Bandit():
             self.rewardAvg = 0
             self.time = 0
             self.baseline = baseline
-
+        elif explore_method == 'boltzmann_epsilon_weight':
+            self.temp = temp
+            self.epsilon = epsilon
 
         # keep trace
         self.prob = [1/self.k] * self.k
@@ -51,6 +53,10 @@ class Bandit():
             self.chooseAction_boltzmann()
         elif self.explore_method == 'epsilon':
             self.chooseAction_epsilonGreedy()
+        elif self.explore_method == 'exp3s':
+            self.chooseAction_exp3s()
+        elif self.explore_method == 'boltzmann_epsilon_weight':
+            self.chooseAction_boltzmann_epsilon_weight()
         else: sys.exit(1)
 
 
@@ -68,11 +74,24 @@ class Bandit():
         self.action = random.choices(self.indices,action_prob,k=1)[0]
         self.prob = action_prob
 
+    # need extra param: self.weight (np.array)
+    def chooseAction_boltzmann_epsilon_weight(self):
+        action_prob = (1-epsilon)*softmax(self.temp,self.Q)+ epsilon* self.weight
+        self.action = random.choices(self.indices,action_prob,k=1)[0]
+        self.prob = action_prob
+
+
+    def chooseAction_exp3s(self):
+        action_prob = (1-self.epsilon)*softmax(self.temp,self.Q) + self.epsilon/self.k
+        self.action = random.choices(self.indices,action_prob,k=1)[0]
+        self.prob = action_prob
+
+
     def update_actionValue(self, reward):
         self.reward = reward
         index = self.action
 
-        if self.explore_method in ['boltzmann','epsilon'] :
+        if self.explore_method in ['boltzmann','epsilon','boltzmann_epsilon_weight'] :
             self.Q[index] += self.stepSize * (reward - self.Q[index])
 
         elif self.explore_method == 'gradient':
@@ -83,9 +102,16 @@ class Bandit():
                 baseline = self.rewardAvg
             self.Q[index] += self.stepSize * (reward- baseline) *(1-self.prob[index])
             for i in self.indices:
-                if i == index: pass
+                if i == index: continue
                 self.Q[i] -= self.stepSize * (reward- baseline) *(self.prob[i])
 
+        ''' To be continued
+        elif self.explore_method == 'exp3s':
+            reward = reward/ self.prob[index]
+            self.reward = reward
+            alpha = 1/self.time
+            self.time +=1
+        '''
 
 
 ##########################

@@ -233,7 +233,11 @@ class SamplingMultiTaskTrainer():
         actions = [task.name for task in tasks]
         self.bandit = Bandit(actions, stepSize,initialQ,explore_method,temp, epsilon)
         '''
-        self.bandit.baseline = 'average'
+        #self.bandit.baseline = 'average'
+        #log.info('Gradient baseline: ' + str(self.bandit.baseline))
+        proportional_weights = [task_infos[task.name]['n_tr_batches'] for task in tasks]
+        weights = proportional_weights
+        self.weight = [i/sum(weights) for i in weights]
         '''
         print ('debug')
         print (self.bandit.mapping,self.bandit.stepSize,self.bandit.Q,self.bandit.explore_method,
