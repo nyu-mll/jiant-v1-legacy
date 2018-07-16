@@ -237,7 +237,7 @@ class SamplingMultiTaskTrainer():
         #log.info('Gradient baseline: ' + str(self.bandit.baseline))
         proportional_weights = [task.n_train_examples for task in tasks]
         weights = proportional_weights
-        self.weight = np.array([i/sum(weights) for i in weights])
+        self.bandit.weight = np.array([i/sum(weights) for i in weights])
         '''
         print ('debug')
         print (self.bandit.mapping,self.bandit.stepSize,self.bandit.Q,self.bandit.explore_method,
