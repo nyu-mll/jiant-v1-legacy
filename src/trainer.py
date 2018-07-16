@@ -431,7 +431,7 @@ class SamplingMultiTaskTrainer():
             # randomly select a task
             # TODO (Shuning): Sample a task here.
             if weighting_method == 'bandit':
-                action_prob =self.bandit.prob
+                action_prob =np.array(self.bandit.prob)
                 log.info("  action_prob: " + np.array_str(action_prob,precision =4))
                 self.bandit.chooseAction()
                 task = tasks[self.bandit.action]
