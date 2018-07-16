@@ -235,7 +235,7 @@ class SamplingMultiTaskTrainer():
         '''
         #self.bandit.baseline = 'average'
         #log.info('Gradient baseline: ' + str(self.bandit.baseline))
-        proportional_weights = [task_infos[task.name]['n_tr_batches'] for task in tasks]
+        proportional_weights = [task.n_train_examples for task in tasks]
         weights = proportional_weights
         self.weight = [i/sum(weights) for i in weights]
         '''
