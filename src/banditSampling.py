@@ -76,7 +76,7 @@ class Bandit():
 
     # need extra param: self.weight (np.array)
     def chooseAction_boltzmann_epsilon_weight(self):
-        action_prob = (1-epsilon)*softmax(self.temp,self.Q)+ epsilon* self.weight
+        action_prob = (1-self.epsilon)*softmax(self.temp,self.Q)+ self.epsilon* self.weight
         self.action = random.choices(self.indices,action_prob,k=1)[0]
         self.prob = action_prob
 
