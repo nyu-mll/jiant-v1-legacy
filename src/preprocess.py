@@ -29,19 +29,19 @@ from .tasks import  \
     QNLITask, QNLIAltTask, SNLITask, SSTTask, STSBTask, WNLITask, \
     PDTBTask, \
     WikiText2LMTask, WikiText103LMTask, DisSentBWBSingleTask, \
-    DisSentWikiSingleTask, DisSentWikiFullTask, \
+    DisSentWikiSingleTask, DisSentWikiFullTask, DisSentWikiBigTask, \
+    DisSentWikiHugeTask, DisSentWikiBigFullTask, \
     JOCITask, PairOrdinalRegressionTask, WeakGroundedTask, \
     GroundedTask, MTTask, MTAltTask, BWBLMTask, WikiInsertionsTask, \
     NLITypeProbingTask, MultiNLIAltTask, VAETask, \
-    RedditTask
+    RedditTask, Reddit_MTTask
 from .tasks import \
     RecastKGTask, RecastLexicosynTask, RecastWinogenderTask, \
     RecastFactualityTask, RecastSentimentTask, RecastVerbcornerTask, \
-    RecastVerbnetTask, RecastNERTask, RecastPunTask
-from .tasks import MultiNLIFictionTask, \
-    MultiNLISlateTask, MultiNLIGovernmentTask, MultiNLITravelTask, \
-    MultiNLITelephoneTask
-from .tasks import POSTaggingTask, CCGTaggingTask
+    RecastVerbnetTask, RecastNERTask, RecastPunTask, TaggingTask, \
+    MultiNLIFictionTask, MultiNLISlateTask, MultiNLIGovernmentTask, \
+    MultiNLITravelTask, MultiNLITelephoneTask 
+from .tasks import POSTaggingTask, CCGTaggingTask 
 
 ALL_GLUE_TASKS = ['sst', 'cola', 'mrpc', 'qqp', 'sts-b',
                   'mnli', 'qnli', 'rte', 'wnli']
@@ -76,9 +76,13 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'dissentbwb': (DisSentBWBSingleTask, 'DisSent/bwb/'),
              'dissentwiki': (DisSentWikiSingleTask, 'DisSent/wikitext/'),
              'dissentwikifull': (DisSentWikiFullTask, 'DisSent/wikitext/'),
+             'dissentwikifullbig': (DisSentWikiBigFullTask, 'DisSent/wikitext/'),
+             'dissentbig': (DisSentWikiBigTask, 'DisSent/wikitext/'),
+             'dissenthuge': (DisSentWikiHugeTask, 'DisSent/wikitext/'),
              'weakgrounded': (WeakGroundedTask, 'mscoco/weakgrounded/'),
              'grounded': (GroundedTask, 'mscoco/grounded/'),
              'reddit': (RedditTask, 'reddit_comments_replies/'),
+             'reddit_MTtask': (Reddit_MTTask, 'reddit_comments_replies_MT/'),
              'pos': (POSTaggingTask, 'POS/'),
              'ccg': (CCGTaggingTask, 'CCG/'),
              'nli-prob': (NLITypeProbingTask, 'NLI-Prob/'),
@@ -274,7 +278,7 @@ def build_tasks(args):
     prepreproc_dir = os.path.join(args.exp_dir, "prepreproc")
     utils.maybe_make_dir(prepreproc_dir)
     tasks, train_task_names, eval_task_names = \
-        get_tasks(args.train_tasks, args.eval_tasks, args.max_seq_len,
+        get_tasks(parse_task_list_arg(args.train_tasks), parse_task_list_arg(args.eval_tasks), args.max_seq_len,
                   path=args.data_dir, scratch_path=args.exp_dir,
                   load_pkl=bool(not args.reload_tasks),
                   nli_prob_probe_path=args['nli-prob'].probe_path)
@@ -315,7 +319,7 @@ def build_tasks(args):
     # 4) Index tasks using vocab (if preprocessed copy not available).
     preproc_dir = os.path.join(args.exp_dir, "preproc")
     utils.maybe_make_dir(preproc_dir)
-    reindex_tasks = _parse_task_list_arg(args.reindex_tasks)
+    reindex_tasks = parse_task_list_arg(args.reindex_tasks)
     for task in tasks:
         force_reindex = (args.reload_indexing and task.name in reindex_tasks)
         for split in ALL_SPLITS:
@@ -366,7 +370,7 @@ def build_tasks(args):
     return train_tasks, eval_tasks, vocab, word_embs
 
 
-def _parse_task_list_arg(task_list):
+def parse_task_list_arg(task_list):
     '''Parse task list argument into a list of task names.'''
     task_names = []
     for task_name in task_list.split(','):
@@ -378,14 +382,10 @@ def _parse_task_list_arg(task_list):
             task_names.append(task_name)
     return task_names
 
-
-def get_tasks(train_tasks, eval_tasks, max_seq_len, path=None,
+def get_tasks(train_task_names, eval_task_names, max_seq_len, path=None,
               scratch_path=None, load_pkl=1, nli_prob_probe_path=None):
     ''' Load tasks '''
-    train_task_names = _parse_task_list_arg(train_tasks)
-    eval_task_names = _parse_task_list_arg(eval_tasks)
     task_names = sorted(set(train_task_names + eval_task_names))
-
     assert path is not None
     scratch_path = (scratch_path or path)
     log.info("Writing pre-preprocessed tasks to %s", scratch_path)
