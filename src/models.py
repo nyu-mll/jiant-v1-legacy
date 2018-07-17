@@ -585,18 +585,26 @@ class MultiTaskModel(nn.Module):
         cos_simi = torch.mm(sent1_rep, sent2_rep.transpose(0,1))
         labels = torch.eye(len(cos_simi))
 
-        # balancing pairs: #positive_pairs = batch_size, #negative_pairs = batch_size-1
+        # balancing pairs: #positive_pairs = batch_size, #negative_pairs = batch_size or batch_size-1
         cos_simi_pos = torch.diag(cos_simi)
-        cos_simi_neg = torch.diag(cos_simi, diagonal=1)
-        cos_simi = torch.cat([cos_simi_pos, cos_simi_neg], dim=0)
-        labels_pos = torch.diag(labels)
-        labels_neg = torch.diag(labels, diagonal=1)
+        if self.training:
+            #picking hard negative samples during training
+            mask = torch.eye(len(cos_simi)).cuda()
+            cos_simi_mod = (1-mask)*cos_simi - 100*mask  # subtracting large positive number from diagonal
+            cos_simi_neg = torch.max(cos_simi_mod, dim=1)[0]
+        else:   
+            # picking random negative samples during validation
+            cos_simi_neg = torch.diag(cos_simi, diagonal=1)
+        #import ipdb as pdb; pdb.set_trace()
+        cos_simi = torch.cat([cos_simi_pos, cos_simi_neg], dim=0).cuda()
+        
+        labels_pos = torch.ones(len(cos_simi_pos))
+        labels_neg = torch.zeros(len(cos_simi_neg))
         labels = torch.cat([labels_pos, labels_neg], dim=0)
         labels = labels.cuda()
-        #total_loss = torch.nn.BCEWithLogitsLoss(weight=weights)(cos_simi, labels)
         total_loss = torch.nn.BCEWithLogitsLoss()(cos_simi, labels)
         out['loss'] = total_loss
-
+        
         pred = F.sigmoid(cos_simi).round()
         total_correct = torch.sum(pred == labels)
         batch_acc = total_correct.item()/len(labels)
