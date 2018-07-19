@@ -516,12 +516,12 @@ def get_embeddings(vocab, vec_file, d_word):
     '''Get embeddings for the words in vocab'''
     word_v_size, unk_idx = vocab.get_vocab_size('tokens'), vocab.get_token_index(vocab._oov_token)
     embeddings = np.random.randn(word_v_size, d_word)
-    with io.open(vec_file, 'r', encoding='utf-8', newline='\n', errors='ignore') as vec_fh:
-        for line in vec_fh:
-            word, vec = line.split(' ', 1)
-            idx = vocab.get_token_index(word)
-            if idx != unk_idx:
-                embeddings[idx] = np.array(list(map(float, vec.split())))
+    #with io.open(vec_file, 'r', encoding='utf-8', newline='\n', errors='ignore') as vec_fh:
+    #    for line in vec_fh:
+    #        word, vec = line.split(' ', 1)
+    #        idx = vocab.get_token_index(word)
+    #        if idx != unk_idx:
+    #            embeddings[idx] = np.array(list(map(float, vec.split())))
     embeddings[vocab.get_token_index(vocab._padding_token)] = 0.
     embeddings = torch.FloatTensor(embeddings)
     log.info("\tFinished loading embeddings")

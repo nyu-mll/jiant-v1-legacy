@@ -178,13 +178,14 @@ def build_embeddings(args, vocab, tasks, pretrained_embs=None):
             log.info("\tUsing word embeddings from %s", args.word_embs_file)
             word_embs = pretrained_embs
             d_word = pretrained_embs.size()[-1]
+            trainable = False
         else:
             log.info("\tLearning word embeddings from scratch!")
             word_embs = None
             d_word = args.d_word
-
+            trainable = True
         embeddings = Embedding(vocab.get_vocab_size('tokens'), d_word,
-                               weight=word_embs, trainable=False,
+                               weight=word_embs, trainable=trainable,
                                padding_index=vocab.get_token_index('@@PADDING@@'))
         token_embedder["words"] = embeddings
         d_emb += d_word
@@ -270,6 +271,7 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
     elif isinstance(task, LanguageModelingTask):
         d_sent = args.d_hid + (args.skip_embs * d_emb)
         hid2voc = build_lm(task, d_sent, args)
+        hid2voc.weight = embedder.token_embedder_words.weight
         setattr(model, '%s_hid2voc' % task.name, hid2voc)
     elif isinstance(task, TaggingTask):
         hid2tag = build_tagger(task, d_sent, task.num_tags)
