@@ -6,14 +6,10 @@ import math
 import numpy as np
 import sys
 
-print("Warning -- this is a preliminary version of BLEU scoring, it has not been verified!")
-
 
 def bleu_stats(hypothesis, reference):
     """Compute statistics for BLEU."""
     stats = []
-    # handle masking, sorry
-    reference = [x for x in reference if x != 0]
     stats.append(len(hypothesis))
     stats.append(len(reference))
     for n in range(1, 5):
