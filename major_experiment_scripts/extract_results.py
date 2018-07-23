@@ -71,7 +71,7 @@ for path in sys.argv[1:]:
       metric, value = mv.split(':')
       cols[metric.strip()] = '%.02f'%(100*float(value.strip()))
 
-    print('\t'.join([cols[c] for c in col_order]))
+    print(' '.join([cols[c] for c in col_order]))
   except BaseException as e:
     print("Error:", e, path)
 

@@ -36,7 +36,7 @@ from .tasks import STSBTask, CoLATask, SSTTask, \
     PairRegressionTask, RankingTask, \
     SequenceGenerationTask, LanguageModelingTask, \
     PairOrdinalRegressionTask, JOCITask, WeakGroundedTask, \
-    GroundedTask, MTTask, RedditTask, Reddit_MTTask
+    GroundedTask, MTTask, RedditTask, Reddit_MTTask, RecastingMTL_Task
 
 from .tasks import STSBTask, CoLATask, \
     ClassificationTask, PairClassificationTask, SingleClassificationTask, \
@@ -279,9 +279,15 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
         setattr(model, '%s_mdl' % task.name, module)
     elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                            PairOrdinalRegressionTask)):
-        module = build_pair_sentence_module(task, d_sent, model, vocab,
-                                            task_params)
-        setattr(model, '%s_mdl' % task.name, module)
+        if task.name == 'recast_mtl':
+            pooler, proj_layer = build_pair_sentence_module_RecatingMTL(task, d_sent, model, vocab,
+                                                    task_params)
+            setattr(model, '%s_mdl' % task.name, pooler) 
+            setattr(model, '%s_proj' % task.name, proj_layer)
+        else:
+            module = build_pair_sentence_module(task, d_sent, model, vocab,
+                                                task_params)
+            setattr(model, '%s_mdl' % task.name, module)
     elif isinstance(task, LanguageModelingTask):
         d_sent = args.d_hid + (args.skip_embs * d_emb)
         hid2voc = build_lm(task, d_sent, args)
@@ -385,6 +391,47 @@ def build_single_sentence_module(task, d_inp, params):
     return SingleClassifier(pooler, classifier)
 
 
+def build_pair_sentence_module_RecatingMTL(task, d_inp, model, vocab, params):
+    ''' Build a pair classifier, shared if necessary '''
+
+    def build_pair_attn(d_in, use_attn, d_hid_attn):
+        ''' Build the pair model '''
+        if not use_attn:
+            pair_attn = None
+        else:
+            d_inp_model = 2 * d_in
+            modeling_layer = s2s_e.by_name('lstm').from_params(
+                Params({'input_size': d_inp_model, 'hidden_size': d_hid_attn,
+                        'num_layers': 1, 'bidirectional': True}))
+            pair_attn = AttnPairEncoder(vocab, modeling_layer,
+                                        dropout=params["dropout"])
+        return pair_attn
+
+    if params["attn"]:
+        pooler = Pooler.from_params(params["d_hid_attn"], params["d_hid_attn"], project=False)
+        d_out = params["d_hid_attn"] * 2
+    else:
+        pooler = Pooler.from_params(d_inp, params["d_proj"], project=True)
+        d_out = params["d_proj"]
+
+    if params["shared_pair_attn"]:
+        if not hasattr(model, "pair_attn"):
+            pair_attn = build_pair_attn(d_inp, params["attn"], params["d_hid_attn"])
+            model.pair_attn = pair_attn
+        else:
+            pair_attn = model.pair_attn
+    else:
+        pair_attn = build_pair_attn(d_inp, params["attn"], params["d_hid_attn"])
+
+    #instead of classifying here, I just project to lower dim and then classify
+    proj_dim = 100
+    proj_layer = Classifier.from_params(4 * d_out, proj_dim, params) 
+    module = PairClassifier(pooler, proj_layer, pair_attn)
+    n_classes = 2
+    linear_classifier = nn.Sequential(nn.Linear(4 * proj_dim, n_classes))
+    return module, linear_classifier
+
+
 def build_pair_sentence_module(task, d_inp, model, vocab, params):
     ''' Build a pair classifier, shared if necessary '''
 
@@ -417,9 +464,15 @@ def build_pair_sentence_module(task, d_inp, model, vocab, params):
     else:
         pair_attn = build_pair_attn(d_inp, params["attn"], params["d_hid_attn"])
 
-    n_classes = task.n_classes if hasattr(task, 'n_classes') else 1
-    classifier = Classifier.from_params(4 * d_out, n_classes, params)
-    module = PairClassifier(pooler, classifier, pair_attn)
+    if task.name == 'recast-mtl':
+        #instead of classifying here, I just project to lower dim and then classify
+        proj_dim = 100
+        proj_layer = Classifier.from_params(4 * d_out, proj_dim, params) 
+        module = PairClassifier(pooler, proj_layer, pair_attn)
+    else:
+        n_classes = task.n_classes if hasattr(task, 'n_classes') else 1
+        classifier = Classifier.from_params(4 * d_out, n_classes, params)
+        module = PairClassifier(pooler, classifier, pair_attn)
     return module
 
 
@@ -480,7 +533,10 @@ class MultiTaskModel(nn.Module):
             out = self._single_sentence_forward(batch, task, predict)
         elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                                PairOrdinalRegressionTask)):
-            out = self._pair_sentence_forward(batch, task, predict)
+            if task.name == 'recast_mtl':
+                out = self._RecastingMTL_forward(batch, task, predict)
+            else:        
+                out = self._pair_sentence_forward(batch, task, predict)
         elif isinstance(task, LanguageModelingTask):
             out = self._lm_forward(batch, task, predict)
         elif isinstance(task, VAETask):
@@ -598,6 +654,60 @@ class MultiTaskModel(nn.Module):
                 out['preds'] = logits
             else:
                 _, out['preds'] = logits.max(dim=1)
+        return out
+
+
+    def _RecastingMTL_forward(self, batch, task, predict):
+        ''' Forward module for recast_mtl 
+        '''
+        out = {}
+        # feed forwarding inputs through sentence encoders
+        sent1, mask1 = self.sent_encoder(batch['input1'], task)
+        sent2, mask2 = self.sent_encoder(batch['input2'], task)
+        labels_GT = batch['labels']
+        # pooler for both Input and Response
+        pooler = getattr(self, '%s_mdl' % task.name)
+        proj_layer = getattr(self, '%s_proj' % task.name)
+        
+        # passing through a module=pooler(proj+pooling)->(a,b,a-b,a*b)->proj
+        p1_out = pooler(sent1, sent2, mask1, mask2) # pooler out
+
+        # Now form within batch positive and negative samples from pairs of samples
+        # each input pair has a label(like 0-7 in discent). Now I recast this into 
+        # binary classification by considering two pairs of samples and checking same or diff class
+        temp_labels = np.matrix([[1.0 * (labels_GT[i].item() == labels_GT[j].item()) for i in range(len(labels_GT))] 
+                                                for j in range(len(labels_GT))])
+        # by setting lowertriangular elements to some large negative value,
+        # we can remove unneccessary pos and neg sample pairs
+        mask = 100*torch.ones(temp_labels.shape)
+        temp_labels = temp_labels - torch.tril(mask)
+        pos_pair_ind = np.where(temp_labels==1)
+        neg_pair_ind = np.where(temp_labels==0)
+        if len(pos_pair_ind[0]) >= len(neg_pair_ind[0]):
+            pos_pair_ind = (pos_pair_ind[0][:len(neg_pair_ind[0])], pos_pair_ind[1][:len(neg_pair_ind[0])])
+        else:
+            neg_pair_ind = (neg_pair_ind[0][:len(pos_pair_ind[0])], neg_pair_ind[1][:len(pos_pair_ind[0])])
+
+                
+        pos_samples1 = p1_out[pos_pair_ind[0]]
+        neg_samples1 = p1_out[neg_pair_ind[0]]
+        pos_samples2 = p1_out[pos_pair_ind[1]] 
+        neg_samples2 = p1_out[neg_pair_ind[1]]
+        
+        new_p1_out = torch.cat([pos_samples1, neg_samples1], 0)
+        new_p2_out = torch.cat([pos_samples2, neg_samples2], 0)    
+        #print(pos_samples1.shape, neg_samples1.shape) 
+
+        final_vec = torch.cat([new_p1_out, new_p2_out, torch.abs(new_p1_out - new_p2_out), new_p1_out * new_p2_out], 1)
+        final_labels = torch.cat([torch.ones(len(pos_pair_ind[0])), torch.zeros(len(neg_pair_ind[0]))])
+        #print(final_labels.shape, final_vec.shape)
+        #import ipdb as pdb; pdb.set_trace()
+        final_labels = torch.tensor(final_labels, dtype=torch.long).cuda()
+        final_proj = proj_layer(final_vec)
+        total_loss = torch.nn.CrossEntropyLoss()(final_proj, final_labels)
+        out['loss'] = total_loss
+        out["n_exs"] = len(final_labels)
+        task.scorer1(final_proj, final_labels)
         return out
 
 

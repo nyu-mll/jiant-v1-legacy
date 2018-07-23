@@ -1442,6 +1442,13 @@ class DisSentWikiHugeTask(DisSentTask):
         super().__init__(path, max_seq_len, "huge", name)
 
 
+class RecastingMTL_Task(DisSentTask):
+    ''' Task class for recasting every task to binary classification
+        copied from DisSentWikiFullTask.  Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
+    def __init__(self, path, max_seq_len, name="recast_mtl"):
+        super().__init__(path, max_seq_len, "wikitext.dissent", name)
+
+
 class WeakGroundedTask(PairClassificationTask):
     ''' Task class for Weak Grounded Sentences i.e., training on pairs of captions for the same image '''
 
