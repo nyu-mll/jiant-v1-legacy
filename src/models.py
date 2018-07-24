@@ -36,7 +36,7 @@ from .tasks import STSBTask, CoLATask, SSTTask, \
     PairRegressionTask, RankingTask, \
     SequenceGenerationTask, LanguageModelingTask, \
     PairOrdinalRegressionTask, JOCITask, WeakGroundedTask, \
-    GroundedTask, MTTask, RedditTask, Reddit_MTTask, RecastingMTL_Task
+    GroundedTask, MTTask, RedditTask, Reddit_MTTask
 
 from .tasks import STSBTask, CoLATask, \
     ClassificationTask, PairClassificationTask, SingleClassificationTask, \
@@ -289,8 +289,9 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
         setattr(model, '%s_mdl' % task.name, module)
     elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                            PairOrdinalRegressionTask)):
-        if (task.name == 'recast_mtl') or (task.name == 'recast_mtl_snli_dis') or (task.name == 'recast_SD_mini'):
-            pooler, proj_layer = build_pair_sentence_module_RecatingMTL(task, d_sent, model, vocab,
+        if task.name.startswith('recast_mtl'):
+        #if task.name in ['recast_mtl_dis', 'recast_mtl_snli_dis', 'recast_mtl_snli_dis_mini', 'recast_mtl_snli']:
+            pooler, proj_layer = build_pair_sentence_module_RecastMTL(task, d_sent, model, vocab,
                                                     task_params)
             setattr(model, '%s_mdl' % task.name, pooler) 
             setattr(model, '%s_proj' % task.name, proj_layer)
@@ -401,7 +402,7 @@ def build_single_sentence_module(task, d_inp, params):
     return SingleClassifier(pooler, classifier)
 
 
-def build_pair_sentence_module_RecatingMTL(task, d_inp, model, vocab, params):
+def build_pair_sentence_module_RecastMTL(task, d_inp, model, vocab, params):
     ''' Build a pair classifier, shared if necessary '''
 
     def build_pair_attn(d_in, use_attn, d_hid_attn):
@@ -474,7 +475,9 @@ def build_pair_sentence_module(task, d_inp, model, vocab, params):
     else:
         pair_attn = build_pair_attn(d_inp, params["attn"], params["d_hid_attn"])
 
-    if task.name == 'recast-mtl':
+    if task.name.startswith('recast_mtl'):
+        #if task.name in ['recast_mtl_dis', 'recast_mtl_snli_dis', 'recast_mtl_snli_dis_mini', 'recast_mtl_snli']:
+        #if task.name == 'recast-mtl':
         #instead of classifying here, I just project to lower dim and then classify
         proj_dim = 100
         proj_layer = Classifier.from_params(4 * d_out, proj_dim, params) 
@@ -545,8 +548,8 @@ class MultiTaskModel(nn.Module):
             out = self._pair_sentence_MNLI_diagnostic_forward(batch, task, predict)
         elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                                PairOrdinalRegressionTask)):
-            if (task.name == 'recast_mtl') or (task.name == 'recast_mtl_snli_dis') or (task.name == 'recast_SD_mini'):
-                out = self._RecastingMTL_forward(batch, task, predict)
+            if task.name.startswith('recast_mtl'):
+                out = self._RecastMTL_forward(batch, task, predict)
             else:        
                 out = self._pair_sentence_forward(batch, task, predict)
         elif isinstance(task, LanguageModelingTask):
@@ -697,7 +700,7 @@ class MultiTaskModel(nn.Module):
         return out
 
 
-    def _RecastingMTL_forward(self, batch, task, predict):
+    def _RecastMTL_forward(self, batch, task, predict):
         ''' Forward module for recast_mtl 
         '''
         out = {}
@@ -720,16 +723,18 @@ class MultiTaskModel(nn.Module):
         # each input pair has a label(like 0-7 in discent). Now I recast this into 
         # binary classification by considering two pairs of samples and checking same or diff class
         mask = 100*torch.ones([len(labels_GT), len(labels_GT)])
-        if task.name == 'recast_mtl':
-            for i in range(len(labels_GT)):
-                for j in range(i+1, len(labels_GT)):
-                    mask[i, j] = 1.0 * (labels_GT[i].item() == labels_GT[j].item())
-        else:
+        #if task.name == 'recast_mtl':
+        if task.name.startswith('recast_mtl_snli_dis'):
             for i in range(len(labels_GT)):
                 for j in range(i+1, len(labels_GT)):
                     if (labels_GT[i].item()>8 and labels_GT[j].item()>8) or (labels_GT[i].item()<9 and labels_GT[j].item()<9):      
                         mask[i, j] = 1.0 * (labels_GT[i].item() == labels_GT[j].item())
-                
+        else:
+            for i in range(len(labels_GT)):
+                for j in range(i+1, len(labels_GT)):
+                    mask[i, j] = 1.0 * (labels_GT[i].item() == labels_GT[j].item())
+
+        mask[0,0] = 1.0                
         pos_pair_ind = np.where(mask==1)
         neg_pair_ind = np.where(mask==0)
         if len(pos_pair_ind[0]) >= len(neg_pair_ind[0]):

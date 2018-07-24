@@ -1078,6 +1078,8 @@ class SNLITask(PairClassificationTask):
     def load_data(self, path, max_seq_len):
         ''' Process the dataset located at path.  '''
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
+        print("IN SNLI TASK")
+        print(path)
         tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
                            s1_idx=7, s2_idx=8, targ_idx=-1, skip_rows=1)
         val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
@@ -1538,7 +1540,7 @@ class WikiInsertionsTask(MTTask):
         return {'perplexity': ppl}
 
 
-class RecastingMTL_Task_SNLI_Dis(PairClassificationTask):
+class RecastMTL_SNLI_Dis(PairClassificationTask):
     ''' Task class for DisSent, dataset agnostic '''
 
     def __init__(self, path, max_seq_len, name="dissent"):
@@ -1696,11 +1698,17 @@ class DisSentWikiHugeTask(DisSentTask):
         super().__init__(path, max_seq_len, "huge", name)
 
 
-class RecastingMTL_Task(DisSentTask):
+class RecastMTL_Dis(DisSentTask):
     ''' Task class for recasting every task to binary classification
         copied from DisSentWikiFullTask.  Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
     def __init__(self, path, max_seq_len, name="recast_mtl"):
         super().__init__(path, max_seq_len, "wikitext.dissent", name)
+
+
+class RecastMTL_SNLI(SNLITask):
+    ''' Task class for recasting SNLI to binary classification '''
+    def __init__(self, path, max_seq_len, name="snli"):
+        super().__init__(path, max_seq_len, name)
 
 
 class WeakGroundedTask(PairClassificationTask):
