@@ -1538,6 +1538,67 @@ class WikiInsertionsTask(MTTask):
         return {'perplexity': ppl}
 
 
+class RecastingMTL_Task_SNLI_Dis(PairClassificationTask):
+    ''' Task class for DisSent, dataset agnostic '''
+
+    def __init__(self, path, max_seq_len, name="dissent"):
+        super().__init__(name, 11)  # 8 classes, for 8 discource markers
+        self.max_seq_len = max_seq_len
+        self.files_by_split = {"train": os.path.join(path, "train.tsv"),
+                               "val": os.path.join(path, "val.tsv"),
+                               "test": os.path.join(path, "test.tsv")}
+
+    def get_split_text(self, split: str):
+        ''' Get split text as iterable of records.
+
+        Split should be one of 'train', 'val', or 'test'.
+        '''
+        return self.load_data(self.files_by_split[split])
+
+    def load_data(self, path):
+        ''' Load data '''
+        with open(path, 'r') as txt_fh:
+            for row in txt_fh:
+                row = row.strip().split('\t')
+                if len(row) != 3 or not (row[0] and row[1] and row[2]):
+                    continue
+                sent1 = process_sentence(row[0], self.max_seq_len)
+                sent2 = process_sentence(row[1], self.max_seq_len)
+                targ = int(row[2])
+                yield (sent1, sent2, targ)
+
+    def get_sentences(self) -> Iterable[Sequence[str]]:
+        ''' Yield sentences, used to compute vocabulary. '''
+        for split in self.files_by_split:
+            # Don't use test set for vocab building.
+            if split.startswith("test"):
+                continue
+            path = self.files_by_split[split]
+            for sent1, sent2, _ in self.load_data(path):
+                yield sent1
+                yield sent2
+
+    def count_examples(self):
+        ''' Compute here b/c we're streaming the sentences. '''
+        example_counts = {}
+        for split, split_path in self.files_by_split.items():
+            example_counts[split] = sum(1 for line in open(split_path))
+        self.example_counts = example_counts
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        ''' Process split text into a list of AllenNLP Instances. '''
+        def _make_instance(input1, input2, labels):
+            d = {}
+            d["input1"] = _sentence_to_text_field(input1, indexers)
+            d["input2"] = _sentence_to_text_field(input2, indexers)
+            d["labels"] = LabelField(labels, label_namespace="labels",
+                                     skip_indexing=True)
+            return Instance(d)
+
+        for sent1, sent2, trg in split:
+            yield _make_instance(sent1, sent2, trg)
+
+
 class DisSentTask(PairClassificationTask):
     ''' Task class for DisSent, dataset agnostic '''
 

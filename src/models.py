@@ -289,7 +289,7 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
         setattr(model, '%s_mdl' % task.name, module)
     elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                            PairOrdinalRegressionTask)):
-        if task.name == 'recast_mtl':
+        if (task.name == 'recast_mtl') or (task.name == 'recast_mtl_snli_dis') or (task.name == 'recast_SD_mini'):
             pooler, proj_layer = build_pair_sentence_module_RecatingMTL(task, d_sent, model, vocab,
                                                     task_params)
             setattr(model, '%s_mdl' % task.name, pooler) 
@@ -545,7 +545,7 @@ class MultiTaskModel(nn.Module):
             out = self._pair_sentence_MNLI_diagnostic_forward(batch, task, predict)
         elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                                PairOrdinalRegressionTask)):
-            if task.name == 'recast_mtl':
+            if (task.name == 'recast_mtl') or (task.name == 'recast_mtl_snli_dis') or (task.name == 'recast_SD_mini'):
                 out = self._RecastingMTL_forward(batch, task, predict)
             else:        
                 out = self._pair_sentence_forward(batch, task, predict)
@@ -708,26 +708,34 @@ class MultiTaskModel(nn.Module):
         # pooler for both Input and Response
         pooler = getattr(self, '%s_mdl' % task.name)
         proj_layer = getattr(self, '%s_proj' % task.name)
-        
         # passing through a module=pooler(proj+pooling)->(a,b,a-b,a*b)->proj
         p1_out = pooler(sent1, sent2, mask1, mask2) # pooler out
+
+        # splitting discent labels and snli labels
+        #sort_labels = torch.sort(labels_GT_all)
+        #discent_indices = sort_labels[1][torch.get(sort_labels[0]<9]
+        #snli_indices = sort_labels[1][torch.get(sort_labels[0] > 8]
 
         # Now form within batch positive and negative samples from pairs of samples
         # each input pair has a label(like 0-7 in discent). Now I recast this into 
         # binary classification by considering two pairs of samples and checking same or diff class
-        temp_labels = np.matrix([[1.0 * (labels_GT[i].item() == labels_GT[j].item()) for i in range(len(labels_GT))] 
-                                                for j in range(len(labels_GT))])
-        # by setting lowertriangular elements to some large negative value,
-        # we can remove unneccessary pos and neg sample pairs
-        mask = 100*torch.ones(temp_labels.shape)
-        temp_labels = temp_labels - torch.tril(mask)
-        pos_pair_ind = np.where(temp_labels==1)
-        neg_pair_ind = np.where(temp_labels==0)
+        mask = 100*torch.ones([len(labels_GT), len(labels_GT)])
+        if task.name == 'recast_mtl':
+            for i in range(len(labels_GT)):
+                for j in range(i+1, len(labels_GT)):
+                    mask[i, j] = 1.0 * (labels_GT[i].item() == labels_GT[j].item())
+        else:
+            for i in range(len(labels_GT)):
+                for j in range(i+1, len(labels_GT)):
+                    if (labels_GT[i].item()>8 and labels_GT[j].item()>8) or (labels_GT[i].item()<9 and labels_GT[j].item()<9):      
+                        mask[i, j] = 1.0 * (labels_GT[i].item() == labels_GT[j].item())
+                
+        pos_pair_ind = np.where(mask==1)
+        neg_pair_ind = np.where(mask==0)
         if len(pos_pair_ind[0]) >= len(neg_pair_ind[0]):
             pos_pair_ind = (pos_pair_ind[0][:len(neg_pair_ind[0])], pos_pair_ind[1][:len(neg_pair_ind[0])])
         else:
             neg_pair_ind = (neg_pair_ind[0][:len(pos_pair_ind[0])], neg_pair_ind[1][:len(pos_pair_ind[0])])
-
                 
         pos_samples1 = p1_out[pos_pair_ind[0]]
         neg_samples1 = p1_out[neg_pair_ind[0]]
