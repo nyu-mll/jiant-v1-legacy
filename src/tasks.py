@@ -23,7 +23,7 @@ from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.training.metrics import CategoricalAccuracy, \
         BooleanAccuracy, F1Measure, Average
 from allennlp.data.token_indexers import SingleIdTokenIndexer
-from .allennlp_mods.correlation import Correlation
+from .allennlp_mods.correlation import Correlation, FastMatthews
 
 # Fields for instance processing
 from allennlp.data import Instance, Token
@@ -269,6 +269,13 @@ _tokenizer_suffix = ".retokenized." + utils.TOKENIZER.__class__.__name__
                     'val': "dev.edges.json" + _tokenizer_suffix,
                     'test': "test.edges.json" + _tokenizer_suffix,
                }, is_symmetric=False)
+# Entity type labeling on CoNLL 2003.
+@register_task('edges-ner-conll2003', rel_path='edges/ner_conll2003',
+               label_file="labels.txt", files_by_split={
+                    'train': "CoNLL-2003_train.json" + _tokenizer_suffix,
+                    'val': "CoNLL-2003_dev.json" + _tokenizer_suffix,
+                    'test': "CoNLL-2003_test.json" + _tokenizer_suffix,
+               }, single_sided=True)
 # Dependency edge labeling on UD treebank. NOTE: data is incomplete, will be
 # updated. Don't trust results yet.
 @register_task('edges-dep-labeling', rel_path='edges/dep',
@@ -354,10 +361,9 @@ class EdgeProbingTask(Task):
 
         # Scorers
         #  self.acc_scorer = CategoricalAccuracy()  # multiclass accuracy
-        self.mcc_scorer = Correlation("matthews")
+        self.mcc_scorer = FastMatthews()
         self.acc_scorer = BooleanAccuracy()  # binary accuracy
         self.f1_scorer = F1Measure(positive_label=1)  # binary F1 overall
-        #  self.val_metric = "%s_accuracy" % self.name
         self.val_metric = "%s_f1" % self.name  # TODO: switch to MCC?
         self.val_metric_decreases = False
 
@@ -367,6 +373,7 @@ class EdgeProbingTask(Task):
         for record in utils.load_json_data(filename):
             total_ctr += 1
             # Skip records with empty targets.
+            # TODO(ian): don't do this if generating negatives!
             if not record.get('targets', None):
                 skip_ctr += 1
                 continue
