@@ -175,7 +175,7 @@ def _write_edge_preds(task: tasks_module.EdgeProbingTask,
 
     with open(preds_file, 'w') as fd:
         for record in records:
-            fd.write(json.dumps(record))
+            fd.write(json.dumps(record), mode='b')
             fd.write("\n")
 
 def _write_glue_preds(task_name: str, preds_df: pd.DataFrame,
