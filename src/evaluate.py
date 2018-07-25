@@ -1,5 +1,6 @@
 """ Helper functions to evaluate a model on a dataset """
 import os
+import time
 import logging as log
 
 import json
@@ -12,6 +13,8 @@ from . import tasks as tasks_module
 from . import preprocess
 
 from typing import List, Sequence, Iterable, Tuple, Dict
+
+LOG_INTERVAL = 30
 
 def _coerce_list(preds) -> List:
     if isinstance(preds, torch.Tensor):
@@ -40,13 +43,14 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
     all_preds = {}
     n_examples_overall = 0
     for task in tasks:
-        log.info("Evaluating on: %s", task.name)
+        log.info("Evaluating on: %s, split: %s", task.name, split)
+        last_log = time.time()
         n_examples = 0
         task_preds = []  # accumulate DataFrames
         assert split in ["train", "val", "test"]
         dataset = getattr(task, "%s_data" % split)
         generator = iterator(dataset, num_epochs=1, shuffle=False, cuda_device=cuda_device)
-        for batch in generator:
+        for batch_idx, batch in enumerate(generator):
 
             out = model.forward(task, batch, predict=True)
             # We don't want mnli-diagnostic to affect the micro and macro average.
@@ -65,15 +69,18 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
             for field in FIELDS_TO_EXPORT:
                 if field in batch:
                     cols[field] = _coerce_list(batch[field])
+
             # Transpose data using Pandas
             df = pd.DataFrame(cols)
             task_preds.append(df)
+
+            if time.time() - last_log > LOG_INTERVAL:
+                log.info("\tTask %s: batch %d", task.name, batch_idx)
+                last_log = time.time()
+
         # task_preds will be a DataFrame with columns
         # ['preds'] + FIELDS_TO_EXPORT
         # for GLUE tasks, preds entries should be single scalars.
-
-        # Combine task_preds from each batch to a single DataFrame.
-        task_preds = pd.concat(task_preds, ignore_index=True)
 
         # Update metrics
         task_metrics = task.get_metrics(reset=True)
@@ -83,12 +90,18 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
         all_metrics["macro_avg"] += all_metrics[task.val_metric]
         n_examples_overall += n_examples
 
+        if not task_preds:
+            log.warning("Task %s: has no predictions!", task.name)
+            continue
+
+        # Combine task_preds from each batch to a single DataFrame.
+        task_preds = pd.concat(task_preds, ignore_index=True)
         # Store predictions, sorting by index if given.
         if 'idx' in task_preds.columns:
             log.info("Task '%s': sorting predictions by 'idx'", task.name)
             task_preds.sort_values(by=['idx'], inplace=True)
-
         all_preds[task.name] = task_preds
+        log.info("Finished evaluating on: %s", task.name)
 
     all_metrics["micro_avg"] /= n_examples_overall
     all_metrics["macro_avg"] /= len(tasks)
@@ -105,7 +118,7 @@ def write_preds(tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_n
 
         preds_df = all_preds[task.name]
         # Tasks that use _write_glue_preds:
-        glue_style_tasks = (preprocess.ALL_NLI_PROBING_TASKS 
+        glue_style_tasks = (preprocess.ALL_NLI_PROBING_TASKS
                             + preprocess.ALL_GLUE_TASKS + ['wmt'])
         if task.name in glue_style_tasks:
             # Strict mode: strict GLUE format (no extra cols)
