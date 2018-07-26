@@ -1,14 +1,15 @@
 """ Helper functions to evaluate a model on a dataset """
 import os
 import time
-import logging as log
-
 import json
+import logging as log
+import itertools
 import pandas as pd
 from csv import QUOTE_NONE, QUOTE_MINIMAL
+import ipdb as pdb
 
 import torch
-from allennlp.data.iterators import BasicIterator
+from allennlp.data.iterators import BasicIterator, BucketIterator
 from . import tasks as tasks_module
 from . import preprocess
 
@@ -17,6 +18,7 @@ from typing import List, Sequence, Iterable, Tuple, Dict
 from .utils import clear_scorers
 
 LOG_INTERVAL = 30
+ITERATOR = "basic"
 
 def _coerce_list(preds) -> List:
     if isinstance(preds, torch.Tensor):
@@ -40,7 +42,6 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
     IDX_REQUIRED_TASK_NAMES = preprocess.ALL_GLUE_TASKS + ['wmt']
     model.eval()
     clear_scorers(tasks)
-    iterator = BasicIterator(batch_size)
 
     all_metrics = {"micro_avg": 0.0, "macro_avg": 0.0}
     all_preds = {}
@@ -48,13 +49,30 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
     for task in tasks:
         log.info("Evaluating on: %s, split: %s", task.name, split)
         last_log = time.time()
-        n_examples = 0
-        task_preds = []  # accumulate DataFrames
         assert split in ["train", "val", "test"]
         dataset = getattr(task, "%s_data" % split)
-        generator = iterator(dataset, num_epochs=1, shuffle=False, cuda_device=cuda_device)
-        for batch_idx, batch in enumerate(generator):
 
+        log.info("USING %s ITERATOR WITH BATCH SIZE %d", ITERATOR, batch_size)
+        if ITERATOR == "basic":
+            iterator = BasicIterator(batch_size)
+            generator = iterator(dataset, num_epochs=1, shuffle=False, cuda_device=cuda_device)
+        elif ITERATOR == "bucket":
+            dummy, dataset = itertools.tee(dataset, 2)
+            instance = [i for i in itertools.islice(dummy, 1)][0]
+            pad_dict = instance.get_padding_lengths()
+            sorting_keys = []
+            for field in pad_dict:
+                for pad_field in pad_dict[field]:
+                    sorting_keys.append((field, pad_field))
+            iterator = BucketIterator(sorting_keys=sorting_keys,
+                                      max_instances_in_memory=10000,
+                                      batch_size=batch_size,
+                                      biggest_batch_first=True)
+            generator = iterator(dataset, num_epochs=1, shuffle=True, cuda_device=cuda_device)
+
+        n_examples = 0
+        task_preds = []  # accumulate DataFrames
+        for batch_idx, batch in enumerate(generator):
             out = model.forward(task, batch, predict=True)
             # We don't want mnli-diagnostic to affect the micro and macro average.
             # Accuracy of mnli-diagnostic is hardcoded to 0.
@@ -74,12 +92,17 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
                     cols[field] = _coerce_list(batch[field])
 
             # Transpose data using Pandas
-            df = pd.DataFrame(cols)
-            task_preds.append(df)
+            #df = pd.DataFrame(cols)
+            #task_preds.append(df)
+            task_preds.append(cols)
 
             if time.time() - last_log > LOG_INTERVAL:
                 log.info("\tTask %s: batch %d", task.name, batch_idx)
                 last_log = time.time()
+
+        if model.utilization is not None:
+            batch_util = model.utilization.get_metric(reset=True)
+            log.info("EVAL BATCH UTILIZATION: %.3f", batch_util)
 
         # task_preds will be a DataFrame with columns
         # ['preds'] + FIELDS_TO_EXPORT
@@ -96,6 +119,7 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
         if not task_preds:
             log.warning("Task %s: has no predictions!", task.name)
             continue
+        task_preds = [pd.DataFrame(cols) for cols in task_preds]
 
         # Combine task_preds from each batch to a single DataFrame.
         task_preds = pd.concat(task_preds, ignore_index=True)

@@ -231,9 +231,20 @@ class SamplingMultiTaskTrainer():
                                       max_instances_in_memory=10000,
                                       batch_size=batch_size,
                                       biggest_batch_first=True)
+
+            if self._val_data_limit >= 0:
+                max_data_points = min(task.n_val_examples, self._val_data_limit)
+            else:
+                max_data_points = task.n_val_examples
+            val_iterator = BucketIterator(sorting_keys=sorting_keys,
+                                          max_instances_in_memory=10000,
+                                          batch_size=batch_size,
+                                          instances_per_epoch=max_data_points,
+                                          biggest_batch_first=True)
+            n_val_batches = math.ceil(max_data_points / batch_size)
+
             tr_generator = iterator(task.train_data, num_epochs=None, cuda_device=self._cuda_device)
 
-            task_info['iterator'] = iterator
 
             if phase == "main":
                 # Warning: This won't be precise when training_data_fraction is set, since each example is included
@@ -242,7 +253,10 @@ class SamplingMultiTaskTrainer():
             else:
                 task_info['n_tr_batches'] = math.ceil(task.n_train_examples / batch_size)
 
+            task_info['iterator'] = iterator
             task_info['tr_generator'] = tr_generator
+            task_info['val_iterator'] = val_iterator
+            task_info['n_val_batches'] = n_val_batches
             task_info['loss'] = 0.0
             task_info['total_batches_trained'] = 0
             task_info['n_batches_since_val'] = 0
@@ -557,14 +571,10 @@ class SamplingMultiTaskTrainer():
             task_info = task_infos[task.name]
             task.preds_file_path = preds_file_path_dict[task.name]
 
-            if self._val_data_limit >= 0:
-                max_data_points = min(task.n_val_examples, self._val_data_limit)
-            else:
-                max_data_points = task.n_val_examples
-            val_generator = BasicIterator(batch_size, instances_per_epoch=max_data_points)(
-                task.val_data, num_epochs=1, shuffle=False,
-                cuda_device=self._cuda_device)
-            n_val_batches = math.ceil(max_data_points / batch_size)
+            iterator = task_infos[task.name]['val_iterator']
+            n_val_batches = task_infos[task.name]['n_val_batches']
+            val_generator = iterator(task.val_data, num_epochs=1, shuffle=True,
+                                     cuda_device=self._cuda_device)
             all_val_metrics["%s_loss" % task.name] = 0.0
 
             for batch in val_generator:
