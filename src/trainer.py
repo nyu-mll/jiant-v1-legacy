@@ -20,7 +20,7 @@ from allennlp.data.iterators import BasicIterator, BucketIterator  # pylint: dis
 from allennlp.training.learning_rate_schedulers import LearningRateScheduler  # pylint: disable=import-error
 from allennlp.training.optimizers import Optimizer  # pylint: disable=import-error
 
-from .utils import device_mapping, assert_for_log  # pylint: disable=import-error
+from .utils import device_mapping, assert_for_log, clear_scorers  # pylint: disable=import-error
 from .evaluate import evaluate
 from . import config
 
@@ -545,6 +545,7 @@ class SamplingMultiTaskTrainer():
         task_infos, metric_infos = self._task_infos, self._metric_infos
         g_scheduler = self._g_scheduler
         self._model.eval()
+        clear_scorers(tasks)
         all_val_metrics = {("%s_loss" % task.name): 0.0 for task in tasks}
         all_val_metrics["macro_avg"] = 0.0
         all_val_metrics["micro_avg"] = 0.0

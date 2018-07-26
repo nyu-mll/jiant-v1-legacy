@@ -14,6 +14,8 @@ from . import preprocess
 
 from typing import List, Sequence, Iterable, Tuple, Dict
 
+from .utils import clear_scorers
+
 LOG_INTERVAL = 30
 
 def _coerce_list(preds) -> List:
@@ -32,11 +34,12 @@ def parse_write_preds_arg(write_preds_arg: str) -> List[str]:
 
 def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
              cuda_device: int, split="val") -> Tuple[Dict, pd.DataFrame]:
-    '''Evaluate on a dataset'''
+    '''Evaluate on some tasks'''
     FIELDS_TO_EXPORT = ['idx', 'sent1_str', 'sent2_str', 'labels']
     # Enforce that these tasks have the 'idx' field set.
     IDX_REQUIRED_TASK_NAMES = preprocess.ALL_GLUE_TASKS + ['wmt']
     model.eval()
+    clear_scorers(tasks)
     iterator = BasicIterator(batch_size)
 
     all_metrics = {"micro_avg": 0.0, "macro_avg": 0.0}

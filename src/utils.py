@@ -3,8 +3,9 @@ Assorted utilities for working with neural networks in AllenNLP.
 """
 from typing import Dict, List, Sequence, Optional, Union, Iterable
 
-import copy
 import os
+import sys
+import copy
 import json
 import random
 import logging
@@ -38,6 +39,19 @@ SOS_TOK, EOS_TOK = "<SOS>", "<EOS>"
 # Note: using the full 'detokenize()' method is not recommended, since it does
 # a poor job of adding correct whitespace. Use unescape_xml() only.
 _MOSES_DETOKENIZER = MosesDetokenizer()
+
+def clear_scorers(tasks):
+    ''' Iterate through tasks and clear their scorers '''
+    logging.info("CLEARING TASK SCORERS. IGNORE WARNINGS.")
+    for task in tasks:
+        try:
+            _ = task.get_metrics(reset=True)
+        except ZeroDivisionError:
+            continue
+    sys.stderr.flush()
+    logging.info("DONE CLEARING SCORERS. RESUME WORRYING ABOUT WARNINGS.")
+    return
+
 
 def copy_iter(elems):
     '''Simple iterator yielding copies of elements.'''
