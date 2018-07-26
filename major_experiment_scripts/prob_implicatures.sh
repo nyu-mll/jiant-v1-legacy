@@ -5,9 +5,9 @@ PROBING_TASK=$2 # task name, e.g. recast-puns
 RUN_NAME=${3:-"test"}
 PROBE_VERB=$4
 
-PROBE_PATH="/nfs/jsalt/exp/alexis-probing/data/implicatures/"${PROBE_VERB}"/CONCATENATED/indexed_TEST.tsv"
+PROBE_PATH="/nfs/jsalt/exp/alexis-probing/data/implicatures/master/7-26/"${PROBE_VERB}"/indexed_TEST.tsv"
 
-EXP_NAME=${PROBE_VERB}
+EXP_NAME="7-26/"${PROBE_VERB}
 PARAM_FILE=${MODEL_DIR}"/params.conf"
 MODEL_FILE=${MODEL_DIR}"/model_state_eval_best.th"
 
