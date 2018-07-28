@@ -108,12 +108,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'recast-sentiment': (RecastSentimentTask, 'DNC/recast_sentiment_data'),
              'recast-verbcorner': (RecastVerbcornerTask, 'DNC/recast_verbcorner_data'),
              'recast-verbnet': (RecastVerbnetTask, 'DNC/recast_verbnet_data'),
-             'recast_mtl_dis': (RecastMTL_Dis, 'DisSent/wikitext/'),
-             'recast_mtl_snli_dis': (RecastMTL_SNLI_Dis, 'SNLI_Dis/'),
-             'recast_mtl_snli_dis_mini': (RecastMTL_SNLI_Dis, 'SNLI_Dis_mini/'),
-             'recast_mtl_snli': (RecastMTL_SNLI, 'SNLI/'),
-             'recast_mtl_snli_mini': (RecastMTL_SNLI, 'SNLI_mini/')
-             'groundedsw': (GroundedSWTask, 'mscoco/grounded/'),
+             'groundedsw': (GroundedSWTask, 'mscoco/grounded/')
              }
 # Add any tasks registered in tasks.py
 NAME2INFO.update(tasks_module.REGISTRY)

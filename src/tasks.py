@@ -1213,6 +1213,85 @@ class STSBAltTask(STSBTask):
         '''STSB'''
         super(STSBAltTask, self).__init__(path, max_seq_len, name)
 
+
+@register_task('recast_mtl_datamix', rel_path='Reddit_2008/')
+class RecastMTLDataMix(PairClassificationTask):
+
+    def __init__(self, path, max_seq_len, name="recast_mtl_data_mix"):
+        super().__init__(name, 2)
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.train_data_text[1] + \
+            self.val_data_text[0] + self.val_data_text[1]
+
+    def load_data(self, path, max_seq_len):
+        targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
+        ## SNLI dataset ##
+        path = '/nfs/jsalt/share/glue_data/SNLI/'
+        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
+                           s1_idx=7, s2_idx=8, targ_idx=-1, skip_rows=1)
+        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
+                            s1_idx=7, s2_idx=8, targ_idx=-1, skip_rows=1)
+        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
+                           s1_idx=7, s2_idx=8, targ_idx=None, idx_idx=0, skip_rows=1)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading SNLI data.")
+
+        # MNLI dataset ##
+        path = '/nfs/jsalt/share/glue_data/MNLI/'
+        tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len,
+                           s1_idx=8, s2_idx=9, targ_idx=11, targ_map=targ_map, skip_rows=1)
+
+        # Warning to anyone who edits this: The reference label is column *15*, not 11 as above.
+        val_matched_data = load_tsv(os.path.join(path, 'dev_matched.tsv'), max_seq_len,
+                                    s1_idx=8, s2_idx=9, targ_idx=15, targ_map=targ_map, skip_rows=1)
+        val_mismatched_data = load_tsv(os.path.join(path, 'dev_mismatched.tsv'), max_seq_len,
+                                       s1_idx=8, s2_idx=9, targ_idx=15, targ_map=targ_map,
+                                       skip_rows=1)
+        val_data = [m + mm for m, mm in zip(val_matched_data, val_mismatched_data)]
+        val_data = tuple(val_data)
+
+        te_matched_data = load_tsv(os.path.join(path, 'test_matched.tsv'), max_seq_len,
+                                   s1_idx=8, s2_idx=9, targ_idx=None, idx_idx=0, skip_rows=1)
+        te_mismatched_data = load_tsv(os.path.join(path, 'test_mismatched.tsv'), max_seq_len,
+                                      s1_idx=8, s2_idx=9, targ_idx=None, idx_idx=0, skip_rows=1)
+        te_diagnostic_data = load_tsv(os.path.join(path, 'diagnostic.tsv'), max_seq_len,
+                                      s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
+        te_data = [m + mm + d for m, mm, d in
+                   zip(te_matched_data, te_mismatched_data, te_diagnostic_data)]
+
+        self.train_data_text = self.train_data_text + tr_data
+        self.val_data_text = self.val_data_text + val_data
+
+        ## QNLI dataset ## 
+        targ_map = {'not_entailment': 3, 'entailment': 1}
+        path = '/nfs/jsalt/share/glue_data/QNLI/'
+        tr_data = load_tsv(os.path.join(path, "train.tsv"), max_seq_len, targ_map=targ_map,
+                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
+        val_data = load_tsv(os.path.join(path, "dev.tsv"), max_seq_len, targ_map=targ_map,
+                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
+        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
+                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
+        self.train_data_text = self.train_data_text + tr_data
+        self.val_data_text = self.val_data_text + val_data
+
+        ## RTE dataset ##
+        targ_map = {"not_entailment": 3, "entailment": 1}
+        path = '/nfs/jsalt/share/glue_data/RTE/'
+        tr_data = load_tsv(os.path.join(path, 'train.tsv'), max_seq_len, targ_map=targ_map,
+                           s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
+        val_data = load_tsv(os.path.join(path, 'dev.tsv'), max_seq_len, targ_map=targ_map,
+                            s1_idx=1, s2_idx=2, targ_idx=3, skip_rows=1)
+        te_data = load_tsv(os.path.join(path, 'test.tsv'), max_seq_len,
+                           s1_idx=1, s2_idx=2, targ_idx=None, idx_idx=0, skip_rows=1)
+
+        self.train_data_text = self.train_data_text + tr_data
+        self.val_data_text = self.val_data_text + val_data
+        self.test_data_text = self.val_data_text
+        log.info("\tFinished loading RTE.")
+
+
 class SNLITask(PairClassificationTask):
     ''' Task class for Stanford Natural Language Inference '''
 
@@ -1850,7 +1929,8 @@ class WikiInsertionsTask(MTTask):
         ppl = self.scorer1.get_metric(reset)
         return {'perplexity': ppl}
 
-
+@register_task('recast_mtl_snli_dis', rel_path='SNLI_Dis/') 
+@register_task('recast_mtl_snli_dis_mini', rel_path='SNLI_Dis_mini/') 
 class RecastMTL_SNLI_Dis(PairClassificationTask):
     ''' Task class for DisSent, dataset agnostic '''
 
@@ -2008,14 +2088,15 @@ class DisSentWikiHugeTask(DisSentTask):
     def __init__(self, path, max_seq_len, name="dissenthuge"):
         super().__init__(path, max_seq_len, "huge", name)
 
-
+@register_task('recast_mtl_dis', rel_path='DisSent/wikitext/') 
 class RecastMTL_Dis(DisSentTask):
     ''' Task class for recasting every task to binary classification
         copied from DisSentWikiFullTask.  Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
     def __init__(self, path, max_seq_len, name="recast_mtl"):
         super().__init__(path, max_seq_len, "wikitext.dissent", name)
 
-
+@register_task('recast_mtl_snli', rel_path='SNLI/') 
+@register_task('recast_mtl_snli_mini', rel_path='SNLI_mini/')
 class RecastMTL_SNLI(SNLITask):
     ''' Task class for recasting SNLI to binary classification '''
     def __init__(self, path, max_seq_len, name="snli"):
