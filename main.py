@@ -96,9 +96,6 @@ def main(cl_arguments):
     maybe_make_dir(args.project_dir)  # e.g. /nfs/jsalt/exp/$HOSTNAME
     maybe_make_dir(args.exp_dir)      # e.g. <project_dir>/jiant-demo
     maybe_make_dir(args.run_dir)      # e.g. <project_dir>/jiant-demo/sst
-    args['local_log_path'] = args.get('local_log_path',
-                                      os.path.join(args.run_dir,
-                                                   args.log_file))
     log.getLogger().addHandler(log.FileHandler(args.local_log_path))
 
     if cl_args.remote_log:
@@ -108,11 +105,10 @@ def main(cl_arguments):
         from src import emails
         global EMAIL_NOTIFIER
         log.info("Registering email notifier for %s", cl_args.notify)
-        EMAIL_NOTIFIER = emails.get_notifier(cl_args.notify, args,
-                                             timestamp=True)
+        EMAIL_NOTIFIER = emails.get_notifier(cl_args.notify, args)
 
     if EMAIL_NOTIFIER:
-        EMAIL_NOTIFIER(body="", prefix="Starting")
+        EMAIL_NOTIFIER(body="Starting run.", prefix="")
 
     _try_logging_git_info()
 
@@ -212,22 +208,32 @@ def main(cl_arguments):
     else:
         strict = False
 
+    if args.train_for_eval:
+        # If we're training models for evaluation, which is always done from scratch with a fresh
+        # optimizer, we shouldn't load parameters for those models. 
+        # Usually, there won't be trained parameters to skip, but this can happen if a run is killed
+        # during the train_for_eval phase.
+        task_names_to_avoid_loading = [task.name for task in eval_tasks]
+    else:
+        task_names_to_avoid_loading = []
+
     if not args.load_eval_checkpoint == "none":
         log.info("Loading existing model from %s...", args.load_eval_checkpoint)
-        load_model_state(model, args.load_eval_checkpoint, args.cuda, args.skip_task_models, strict=strict)
+        load_model_state(model, args.load_eval_checkpoint, 
+                         args.cuda, task_names_to_avoid_loading, strict=strict)
     else:
         # Look for eval checkpoints (available only if we're restoring from a run that already
         # finished), then look for training checkpoints.
         eval_best = glob.glob(os.path.join(args.run_dir,
                                            "model_state_eval_best.th"))
         if len(eval_best) > 0:
-            load_model_state(model, eval_best[0], args.cuda, args.skip_task_models, strict=strict)
+            load_model_state(model, eval_best[0], args.cuda, task_names_to_avoid_loading, strict=strict)
         else:
             macro_best = glob.glob(os.path.join(args.run_dir,
                                                 "model_state_main_epoch_*.best_macro.th"))
             if len(macro_best) > 0:
                 assert_for_log(len(macro_best) == 1, "Too many best checkpoints. Something is wrong.")
-                load_model_state(model, macro_best[0], args.cuda, args.skip_task_models, strict=strict)
+                load_model_state(model, macro_best[0], args.cuda, task_names_to_avoid_loading, strict=strict)
             else:
                 assert_for_log(
                     args.allow_untrained_encoder_parameters,
@@ -244,6 +250,12 @@ def main(cl_arguments):
                        "Error: ELMo scalars loaded and will be updated in train_for_eval but "
                        "they should not be updated! Check sep_embs_for_skip flag or make an issue.")
         for task in eval_tasks:
+            # Skip mnli-diagnostic
+            # This has to be handled differently than probing tasks because probing tasks require the "is_probing_task"
+            # to be set to True. For mnli-diagnostic this flag will be False because it is part of GLUE and
+            # "is_probing_task is global flag specific to a run, not to a task.
+            if task.name == 'mnli-diagnostic':
+                continue
             pred_module = getattr(model, "%s_mdl" % task.name)
             to_train = elmo_scalars + [(n, p) for n, p in pred_module.named_parameters() if p.requires_grad]
             # Look for <task_name>_<param_name>, then eval_<param_name>
@@ -257,27 +269,30 @@ def main(cl_arguments):
                                        to_train, opt_params, schd_params,
                                        args.shared_optimizer, load_model=False, phase="eval")
 
+            # Now that we've trained a model, revert to the normal checkpoint logic for this task.
+            task_names_to_avoid_loading.remove(task.name)
+
             # The best checkpoint will accumulate the best parameters for each task.
             # This logic looks strange. We think it works.
             best_epoch = best_epoch[task.name]
             layer_path = os.path.join(args.run_dir, "model_state_eval_best.th")
-            load_model_state(model, layer_path, args.cuda, skip_task_models=False, strict=strict)
+            load_model_state(model, layer_path, args.cuda, skip_task_models=task_names_to_avoid_loading, strict=strict)
 
     if args.do_eval:
         # Evaluate #
         log.info("Evaluating...")
-        val_results, val_preds = evaluate.evaluate(model, tasks,
+        val_results, val_preds = evaluate.evaluate(model, eval_tasks,
                                                    args.batch_size,
                                                    args.cuda, "val")
 
         splits_to_write = evaluate.parse_write_preds_arg(args.write_preds)
         if 'val' in splits_to_write:
-            evaluate.write_preds(val_preds, args.run_dir, 'val',
+            evaluate.write_preds(eval_tasks, val_preds, args.run_dir, 'val',
                                  strict_glue_format=args.write_strict_glue_format)
         if 'test' in splits_to_write:
-            _, te_preds = evaluate.evaluate(model, tasks,
+            _, te_preds = evaluate.evaluate(model, eval_tasks,
                                             args.batch_size, args.cuda, "test")
-            evaluate.write_preds(te_preds, args.run_dir, 'test',
+            evaluate.write_preds(tasks, te_preds, args.run_dir, 'test',
                                  strict_glue_format=args.write_strict_glue_format)
         run_name = args.get("run_name", os.path.basename(args.run_dir))
 
@@ -292,7 +307,7 @@ if __name__ == '__main__':
     try:
         main(sys.argv[1:])
         if EMAIL_NOTIFIER is not None:
-            EMAIL_NOTIFIER(body="Woohoo!", prefix="Successful")
+            EMAIL_NOTIFIER(body="Run completed successfully!", prefix="")
     except BaseException as e:
         # Make sure we log the trace for any crashes before exiting.
         log.exception("Fatal error in main():")

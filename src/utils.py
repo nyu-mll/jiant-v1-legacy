@@ -52,7 +52,7 @@ def wrap_singleton_string(item: Union[Sequence, str]):
         return [item]
     return item
 
-def load_model_state(model, state_path, gpu_id, skip_task_models=False, strict=True):
+def load_model_state(model, state_path, gpu_id, skip_task_models=[], strict=True):
     ''' Helper function to load a model state
 
     Parameters
@@ -60,7 +60,9 @@ def load_model_state(model, state_path, gpu_id, skip_task_models=False, strict=T
     model: The model object to populate with loaded parameters.
     state_path: The path to a model_state checkpoint.
     gpu_id: The GPU to use. -1 for no GPU.
-    skip_task_models: If set, load only the task-independent parameters.
+    skip_task_models: If set, skip task-specific parameters for these tasks.
+        This does not necessarily skip loading ELMo scalar weights, but I (Sam) sincerely
+        doubt that this matters.
     strict: Whether we should fail if any parameters aren't found in the checkpoint. If false,
         there is a risk of leaving some parameters in their randomly initialized state.
     '''
@@ -81,8 +83,14 @@ def load_model_state(model, state_path, gpu_id, skip_task_models=False, strict=T
                 logging.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
     if skip_task_models:
-        keys_to_skip = [key for key in model_state if "_mdl" in key]
-        logging.info("Not restoring task-specific parameters.")
+        keys_to_skip = []
+        for task in skip_task_models:
+            new_keys_to_skip = [key for key in model_state if "%s_mdl" % task in key]
+            if new_keys_to_skip:
+                logging.info("Skipping task-specific parameters for task: %s" % task)
+                keys_to_skip += new_keys_to_skip 
+            else:
+                logging.info("Found no task-specific parameters to skip for task: %s" % task)
         for key in keys_to_skip:
             del model_state[key]
 
@@ -103,7 +111,7 @@ def get_elmo_mixing_weights(text_field_embedder, task=None):
     '''
     elmo = text_field_embedder.token_embedder_elmo._elmo
     if task:
-        mix_id = text_field_embedder.task_map[task.name]
+        mix_id = text_field_embedder.task_map[task._classifier_name]
     else:
         mix_id = text_field_embedder.task_map["@pretrain@"]
     mixer = getattr(elmo, "scalar_mix_%d" % mix_id)
@@ -114,7 +122,7 @@ def get_elmo_mixing_weights(text_field_embedder, task=None):
 
 
 def get_batch_size(batch):
-    ''' Given a batch with unknown text_fields, get the batch size '''
+    ''' Given a batch with unknown text_fields, get an estimate of batch size '''
     batch_field = batch['inputs'] if 'inputs' in batch else batch['input1']
     keys = [k for k in batch_field.keys()]
     batch_size = batch_field[keys[0]].size()[0]
@@ -170,6 +178,119 @@ def load_lines(filename: str) -> Iterable[str]:
     with open(filename) as fd:
         for line in fd:
             yield line.strip()
+
+def load_diagnostic_tsv(
+        data_file,
+        max_seq_len,
+        s1_idx=0,
+        s2_idx=1,
+        targ_idx=2,
+        idx_idx=None,
+        targ_map=None,
+        targ_fn=None,
+        skip_rows=0,
+        delimiter='\t',
+        filter_idx=None,
+        filter_value=None):
+    '''Load a tsv
+
+    It loads the data with all it's attributes from diagnostic dataset for MNLI'''
+    sent1s, sent2s, targs, idxs, lex_sem, pr_ar_str, logic, knowledge  = [], [], [], [], [], [], [], []
+
+    # There are 4 columns and every column could containd multiple values.
+    # For every column there is a dict which maps index to (string) value and different dict which maps value to index.
+    ix_to_lex_sem_dic = {}
+    ix_to_pr_ar_str_dic = {}
+    ix_to_logic_dic = {}
+    ix_to_knowledge_dic = {}
+
+    lex_sem_to_ix_dic = {}
+    pr_ar_str_to_ix_dic = {}
+    logic_to_ix_dic = {}
+    knowledge_to_ix_dic = {}
+
+    # This converts tags to indices and adds new indices to dictionaries above.
+    # In every row there could be multiple tags in one column
+    def tags_to_ixs(tags, tag_to_ix_dict, ix_to_tag_dic):
+        splitted_tags = tags.split(';')
+        indexes = []
+        for t in splitted_tags:
+            if t == '':
+                continue
+            if t in tag_to_ix_dict:
+                indexes.append(tag_to_ix_dict[t])
+            else:
+                # index 0 will be used for missing value
+                highest_ix = len(tag_to_ix_dict)
+                new_index = highest_ix + 1
+                tag_to_ix_dict[t] = new_index
+                ix_to_tag_dic[new_index] = t
+                indexes.append(new_index)
+        return indexes
+
+
+
+
+    with codecs.open(data_file, 'r', 'utf-8', errors='ignore') as data_fh:
+        for _ in range(skip_rows):
+            data_fh.readline()
+        for row_idx, row in enumerate(data_fh):
+            try:
+                row = row.rstrip().split(delimiter)
+                sent1 = process_sentence(row[s1_idx], max_seq_len)
+                if targ_map is not None:
+                        targ = targ_map[row[targ_idx]]
+                elif targ_fn is not None:
+                        targ = targ_fn(row[targ_idx])
+                else:
+                        targ = int(row[targ_idx])
+                sent2 = process_sentence(row[s2_idx], max_seq_len)
+                sent2s.append(sent2)
+
+                sent1s.append(sent1)
+                targs.append(targ)
+
+                lex_sem_sample = tags_to_ixs(row[0], lex_sem_to_ix_dic, ix_to_lex_sem_dic)
+                pr_ar_str_sample = tags_to_ixs(row[1], pr_ar_str_to_ix_dic, ix_to_pr_ar_str_dic)
+                logic_sample = tags_to_ixs(row[2], logic_to_ix_dic, ix_to_logic_dic)
+                knowledge_sample = tags_to_ixs(row[3], knowledge_to_ix_dic, ix_to_knowledge_dic)
+
+                idxs.append(row_idx)
+                lex_sem.append(lex_sem_sample)
+                pr_ar_str.append(pr_ar_str_sample)
+                logic.append(logic_sample)
+                knowledge.append(knowledge_sample)
+
+            except Exception as e:
+                print(e, " file: %s, row: %d" % (data_file, row_idx))
+                continue
+
+
+    ix_to_lex_sem_dic[0] = "missing"
+    ix_to_pr_ar_str_dic[0] = "missing"
+    ix_to_logic_dic[0] = "missing"
+    ix_to_knowledge_dic[0] = "missing"
+
+    lex_sem_to_ix_dic["missing"] = 0
+    pr_ar_str_to_ix_dic["missing"] = 0
+    logic_to_ix_dic["missing"] = 0
+    knowledge_to_ix_dic["missing"] = 0
+
+    return {'sents1': sent1s,
+            'sents2': sent2s,
+            'targs': targs,
+            'idxs': idxs,
+            'lex_sem': lex_sem,
+            'pr_ar_str': pr_ar_str,
+            'logic': logic,
+            'knowledge': knowledge,
+            'ix_to_lex_sem_dic': ix_to_lex_sem_dic,
+            'ix_to_pr_ar_str_dic': ix_to_pr_ar_str_dic,
+            'ix_to_logic_dic': ix_to_logic_dic,
+            'ix_to_knowledge_dic': ix_to_knowledge_dic
+            }
+
+
 
 def load_tsv(
         data_file,

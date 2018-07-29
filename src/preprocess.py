@@ -18,33 +18,35 @@ try:
 except BaseException:
     log.info("fastText library not found!")
 
-import _pickle as pkl
+import _pickle as pkl  #  :(
 
+from . import config
 from . import serialize
 from . import utils
 from . import tasks as tasks_module
 
 from .tasks import \
-    CoLATask, MRPCTask, MultiNLITask, QQPTask, RTETask, \
-    QNLITask, SNLITask, SSTTask, STSBTask, WNLITask, \
+    CoLATask, MRPCTask, MultiNLITask, QQPTask, QQPAltTask, RTETask, \
+    QNLITask, QNLIAltTask, SNLITask, SSTTask, STSBTask, STSBAltTask, WNLITask, \
     PDTBTask, \
     WikiText2LMTask, WikiText103LMTask, DisSentBWBSingleTask, \
     DisSentWikiSingleTask, DisSentWikiFullTask, DisSentWikiBigTask, \
     DisSentWikiHugeTask, DisSentWikiBigFullTask, \
     JOCITask, PairOrdinalRegressionTask, WeakGroundedTask, \
-    GroundedTask, MTTask, BWBLMTask, WikiInsertionsTask, \
+    GroundedTask, MTTask, MTEnRuTask, BWBLMTask, WikiInsertionsTask, \
     NLITypeProbingTask, MultiNLIAltTask, VAETask, \
-    RedditTask, Reddit_MTTask
+    GroundedSWTask
+
 from .tasks import \
     RecastKGTask, RecastLexicosynTask, RecastWinogenderTask, \
     RecastFactualityTask, RecastSentimentTask, RecastVerbcornerTask, \
     RecastVerbnetTask, RecastNERTask, RecastPunTask, TaggingTask, \
     MultiNLIFictionTask, MultiNLISlateTask, MultiNLIGovernmentTask, \
     MultiNLITravelTask, MultiNLITelephoneTask
-from .tasks import POSTaggingTask, CCGTaggingTask
+from .tasks import POSTaggingTask, CCGTaggingTask, MultiNLIDiagnosticTask
 
 ALL_GLUE_TASKS = ['sst', 'cola', 'mrpc', 'qqp', 'sts-b',
-                  'mnli', 'qnli', 'rte', 'wnli']
+                  'mnli', 'qnli', 'rte', 'wnli', 'mnli-diagnostic']
 
 # people are mostly using nli-prob for now, but we will change to
 # using individual tasks later, so better to have as a list
@@ -52,14 +54,18 @@ ALL_NLI_PROBING_TASKS = ['nli-prob']
 
 # Edge probing suite.
 ALL_EDGE_TASKS = ['edges-srl-conll2005', 'edges-spr2',
-                  'edges-dpr', 'edges-coref-ontonotes']
+                  'edges-dpr', 'edges-ner-conll2003',
+                  'edges-coref-ontonotes',
+                  'edges-dep-labeling']
 
 # DEPRECATED: use @register_task in tasks.py instead.
 NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'cola': (CoLATask, 'CoLA/'),
              'mrpc': (MRPCTask, 'MRPC/'),
              'qqp': (QQPTask, 'QQP'),
+             'qqp-alt': (QQPAltTask, 'QQP'),
              'sts-b': (STSBTask, 'STS-B/'),
+             'sts-b-alt': (STSBAltTask, 'STS-B/'),
              'mnli': (MultiNLITask, 'MNLI/'),
              'mnli-alt': (MultiNLIAltTask, 'MNLI/'),
              'mnli-fiction': (MultiNLIFictionTask, 'MNLI/'),
@@ -67,7 +73,9 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'mnli-government': (MultiNLIGovernmentTask, 'MNLI/'),
              'mnli-telephone': (MultiNLITelephoneTask, 'MNLI/'),
              'mnli-travel': (MultiNLITravelTask, 'MNLI/'),
+             'mnli-diagnostic': (MultiNLIDiagnosticTask, 'MNLI/'),
              'qnli': (QNLITask, 'QNLI/'),
+             'qnli-alt': (QNLIAltTask, 'QNLI/'),
              'rte': (RTETask, 'RTE/'),
              'snli': (SNLITask, 'SNLI/'),
              'wnli': (WNLITask, 'WNLI/'),
@@ -77,6 +85,7 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'bwb': (BWBLMTask, 'BWB/'),
              'pdtb': (PDTBTask, 'PDTB/'),
              'wmt14_en_de': (MTTask, 'wmt14_en_de'),
+             'wmt17_en_ru': (MTEnRuTask, 'wmt17_en_ru'),
              'wikiins': (WikiInsertionsTask, 'wiki-insertions'),
              'dissentbwb': (DisSentBWBSingleTask, 'DisSent/bwb/'),
              'dissentwiki': (DisSentWikiSingleTask, 'DisSent/wikitext/'),
@@ -86,8 +95,6 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'dissenthuge': (DisSentWikiHugeTask, 'DisSent/wikitext/'),
              'weakgrounded': (WeakGroundedTask, 'mscoco/weakgrounded/'),
              'grounded': (GroundedTask, 'mscoco/grounded/'),
-             'reddit': (RedditTask, 'Reddit/'),
-             'reddit_MTtask': (Reddit_MTTask, 'reddit_comments_replies_MT/'),
              'pos': (POSTaggingTask, 'POS/'),
              'ccg': (CCGTaggingTask, 'CCG/'),
              'nli-prob': (NLITypeProbingTask, 'NLI-Prob/'),
@@ -101,12 +108,14 @@ NAME2INFO = {'sst': (SSTTask, 'SST-2/'),
              'recast-sentiment': (RecastSentimentTask, 'DNC/recast_sentiment_data'),
              'recast-verbcorner': (RecastVerbcornerTask, 'DNC/recast_verbcorner_data'),
              'recast-verbnet': (RecastVerbnetTask, 'DNC/recast_verbnet_data'),
+             'groundedsw': (GroundedSWTask, 'mscoco/grounded/'),
              }
 # Add any tasks registered in tasks.py
 NAME2INFO.update(tasks_module.REGISTRY)
 
 SOS_TOK, EOS_TOK = "<SOS>", "<EOS>"
 SPECIALS = [SOS_TOK, EOS_TOK]
+UNK_TOK = "@@UNKNOWN@@"
 
 ALL_SPLITS = ['train', 'val', 'test']
 
@@ -256,11 +265,10 @@ def _build_embeddings(args, vocab, emb_file: str):
 def _build_vocab(args, tasks, vocab_path: str):
     ''' Build vocabulary from scratch, reading data from tasks. '''
     log.info("\tBuilding vocab from scratch")
-    ### FIXME MAGIC NUMBER
     max_v_sizes = {
         'word': args.max_word_v_size,
         'char': args.max_char_v_size,
-        'target': 20000, # TODO target max size
+        'target': args.max_targ_word_v_size
     }
     word2freq, char2freq, target2freq = get_words(tasks)
     vocab = get_vocab(word2freq, char2freq, target2freq, max_v_sizes)
@@ -285,6 +293,10 @@ def build_tasks(args):
                   path=args.data_dir, scratch_path=args.exp_dir,
                   load_pkl=bool(not args.reload_tasks),
                   nli_prob_probe_path=args['nli-prob'].probe_path)
+    for task in tasks:
+        task_classifier = config.get_task_attr(args, task.name, "use_classifier")
+        setattr(task, "_classifier_name",
+                task_classifier if task_classifier else task.name)
 
     # 2) build / load vocab and indexers
     vocab_path = os.path.join(args.exp_dir, 'vocab')
@@ -323,6 +335,8 @@ def build_tasks(args):
     preproc_dir = os.path.join(args.exp_dir, "preproc")
     utils.maybe_make_dir(preproc_dir)
     reindex_tasks = parse_task_list_arg(args.reindex_tasks)
+    utils.assert_for_log(not (args.reload_indexing and not reindex_tasks),
+                         "Flag reload_indexing was set, but no tasks are set to reindex (use -o \"args.reindex_tasks = \"task1,task2,...\"\")")
     for task in tasks:
         force_reindex = (args.reload_indexing and task.name in reindex_tasks)
         for split in ALL_SPLITS:
@@ -401,6 +415,8 @@ def parse_task_list_arg(task_list):
 
 def get_tasks(train_task_names, eval_task_names, max_seq_len, path=None,
               scratch_path=None, load_pkl=1, nli_prob_probe_path=None):
+    # We don't want mnli-diagnostic in train_task_names
+    train_task_names = [name for name in train_task_names if name not in {'mnli-diagnostic'}]
     ''' Load tasks '''
     task_names = sorted(set(train_task_names + eval_task_names))
     assert path is not None
@@ -449,7 +465,7 @@ def get_words(tasks):
     '''
     word2freq, char2freq, target2freq = defaultdict(int), defaultdict(int), defaultdict(int)
 
-    def count_sentence(sentence):
+    def update_vocab_freqs(sentence):
         '''Update counts for words in the sentence'''
         for word in sentence:
             word2freq[word] += 1
@@ -457,16 +473,28 @@ def get_words(tasks):
                 char2freq[char] += 1
         return
 
+    def update_target_vocab_freqs(sentence):
+        for word in sentence:
+            target2freq[word] += 1
+        return
+
     for task in tasks:
         log.info("\tCounting words for task: '%s'", task.name)
-        for sentence in task.get_sentences():
-            count_sentence(sentence)
+        if isinstance(task, MTEnRuTask):
+            # TODO: replace this with MTTask
+            # rename MTEnRuTask to MTTask and regenerate indices, pickles
+            for src_sent, tgt_sent in task.get_sentences():
+                update_vocab_freqs(src_sent)
+                update_target_vocab_freqs(tgt_sent)
+        else:
+            for sentence in task.get_sentences():
+                update_vocab_freqs(sentence)
 
     for task in tasks:
         if hasattr(task, "target_sentences"):
             for sentence in task.target_sentences:
-                for word in sentence:
-                    target2freq[word] += 1
+                update_target_vocab_freqs(sentence)
+
 
     log.info("\tFinished counting words")
     return word2freq, char2freq, target2freq
@@ -491,7 +519,7 @@ def get_vocab(word2freq, char2freq, target2freq, max_v_sizes):
     targets_by_freq = [(target, freq) for target, freq in target2freq.items()]
     targets_by_freq.sort(key=lambda x: x[1], reverse=True)
     for target, _ in targets_by_freq[:max_v_sizes['target']]:
-        vocab.add_token_to_namespace(target, 'targets') # TODO namespace
+        vocab.add_token_to_namespace(target, 'targets')
     return vocab
 
 def add_task_label_vocab(vocab, task):
