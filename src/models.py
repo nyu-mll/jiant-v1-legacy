@@ -314,10 +314,11 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
     elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                            PairOrdinalRegressionTask)):
         if task.name.startswith('recast_mtl'):
-            pooler, proj_layer = build_pair_sentence_module_RecastMTL(task, d_sent, model, vocab,
+            pooler, proj_layer, layer_ident = build_pair_sentence_module_RecastMTL(task, d_sent, model, vocab,
                                                     task_params)
             setattr(model, '%s_mdl' % task.name, pooler) 
             setattr(model, '%s_proj' % task.name, proj_layer)
+            setattr(model, '%s_ident' % task.name, layer_ident)
         else:
             module = build_pair_sentence_module(task, d_sent, model, vocab,
                                                 task_params)
@@ -479,9 +480,16 @@ def build_pair_sentence_module_RecastMTL(task, d_inp, model, vocab, params):
     proj_dim = 100
     proj_layer = Classifier.from_params(4 * d_out, proj_dim, params) 
     module = PairClassifier(pooler, proj_layer, pair_attn)
+    # for verification
     n_classes = 2
     linear_classifier = nn.Sequential(nn.Linear(4 * proj_dim, n_classes))
-    return module, linear_classifier
+
+    # for classification
+    n_classes = task.n_classes if hasattr(task, 'n_classes') else 1
+    classifier = Classifier.from_params(4 * d_out, n_classes, params)
+    layer_ident = PairClassifier(pooler, classifier, pair_attn)
+
+    return module, linear_classifier, layer_ident
 
 
 def build_pair_sentence_module(task, d_inp, model, vocab, params):
@@ -790,6 +798,7 @@ class MultiTaskModel(nn.Module):
         # passing through a module=pooler(proj+pooling)->(a,b,a-b,a*b)->proj
         p1_out = pooler(sent1, sent2, mask1, mask2) # pooler out
 
+
         # Now form within batch positive and negative samples from pairs of samples
         # each input pair has a label(like 0-7 in discent). Now I recast this into 
         # binary classification by considering two pairs of samples and checking same or diff class
@@ -818,6 +827,7 @@ class MultiTaskModel(nn.Module):
         pos_samples2 = p1_out[pos_pair_ind[1]] 
         neg_samples2 = p1_out[neg_pair_ind[1]]
 
+        # concatenating +ve and -ve samples in each of the 2 streams
         new_p1_out = torch.cat([pos_samples1, neg_samples1], 0)
         new_p2_out = torch.cat([pos_samples2, neg_samples2], 0)    
         #print(pos_samples1.shape, neg_samples1.shape) 
@@ -829,7 +839,15 @@ class MultiTaskModel(nn.Module):
         final_labels = torch.tensor(final_labels, dtype=torch.long).cuda()
         final_proj = proj_layer(final_vec)
         total_loss = torch.nn.CrossEntropyLoss()(final_proj, final_labels)
-        out['loss'] = total_loss
+
+        if task.name.endswith('joint'):
+            # identification loss
+            layer_ident = getattr(self, '%s_ident' % task.name)
+            out_ident = layer_ident(sent1, sent2, mask1, mask2)
+            ident_loss = torch.nn.CrossEntropyLoss()(out_ident, labels_GT) 
+            out['loss'] = total_loss + ident_loss
+        else:
+            out['loss'] = total_loss
         out["n_exs"] = len(final_labels)
         task.scorer1(final_proj, final_labels)
         return out

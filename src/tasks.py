@@ -2123,6 +2123,14 @@ class RecastMTL_Dis(DisSentTask):
         super().__init__(path, max_seq_len, "wikitext.dissent.big", name)
 
 
+@register_task('recast_mtl_dissentwikifullbig_joint', rel_path='DisSent/wikitext/') 
+class RecastMTL_Dis(DisSentTask):
+    ''' Task class for recasting every task to binary classification
+        copied from DisSentWikiBigFullTask.  Task class for DisSent with Wikitext 103 only considering clauses from within a single sentence'''
+    def __init__(self, path, max_seq_len, name="recast_mtl_dissentwikifullbig_joint"):
+        super().__init__(path, max_seq_len, "wikitext.dissent.big", name)
+
+
 @register_task('recast_mtl_snli', rel_path='SNLI/') 
 @register_task('recast_mtl_snli_mini', rel_path='SNLI_mini/')
 class RecastMTL_SNLI(SNLITask):
