@@ -314,7 +314,6 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
     elif isinstance(task, (PairClassificationTask, PairRegressionTask,
                            PairOrdinalRegressionTask)):
         if task.name.startswith('recast_mtl'):
-        #if task.name in ['recast_mtl_dis', 'recast_mtl_snli_dis', 'recast_mtl_snli_dis_mini', 'recast_mtl_snli']:
             pooler, proj_layer = build_pair_sentence_module_RecastMTL(task, d_sent, model, vocab,
                                                     task_params)
             setattr(model, '%s_mdl' % task.name, pooler) 
@@ -791,11 +790,6 @@ class MultiTaskModel(nn.Module):
         # passing through a module=pooler(proj+pooling)->(a,b,a-b,a*b)->proj
         p1_out = pooler(sent1, sent2, mask1, mask2) # pooler out
 
-        # splitting discent labels and snli labels
-        #sort_labels = torch.sort(labels_GT_all)
-        #discent_indices = sort_labels[1][torch.get(sort_labels[0]<9]
-        #snli_indices = sort_labels[1][torch.get(sort_labels[0] > 8]
-
         # Now form within batch positive and negative samples from pairs of samples
         # each input pair has a label(like 0-7 in discent). Now I recast this into 
         # binary classification by considering two pairs of samples and checking same or diff class
@@ -823,7 +817,7 @@ class MultiTaskModel(nn.Module):
         neg_samples1 = p1_out[neg_pair_ind[0]]
         pos_samples2 = p1_out[pos_pair_ind[1]] 
         neg_samples2 = p1_out[neg_pair_ind[1]]
-        
+
         new_p1_out = torch.cat([pos_samples1, neg_samples1], 0)
         new_p2_out = torch.cat([pos_samples2, neg_samples2], 0)    
         #print(pos_samples1.shape, neg_samples1.shape) 
