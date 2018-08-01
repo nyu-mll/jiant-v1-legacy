@@ -1,6 +1,6 @@
 # Edge Probing Data
 
-TODO(all): please document data-preparation scripts in this file! Add one or more sections for the tasks that you processed, describing how to produce the JSON data from the standard / distributed versions of the base datasets. Be sure to include:
+**TODO(all):** please document data-preparation scripts in this file! Add one or more sections for the tasks that you processed, describing how to produce the JSON data from the standard / distributed versions of the base datasets. Be sure to include:
 
 - Links to the public / LDC versions of the raw data (so that an external user 
   can repeat this from scratch).
