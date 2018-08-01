@@ -30,13 +30,21 @@ Processed from the DeepSRL format into protocol buffers on Ian's Google workstat
 
 Lorem ipsum...
 
-## Semantic Proto Roles v2 (TODO: Adam)
+## Semantic Proto Roles v2 (Adam)
 
-Lorem ipsum...
+Tasks: ` `
 
-## Definite Pronoun Resolution (TODO: Adam)
+To get the original data run `bash get_spr2_data.sh`.
+To convert the data, run `python conver-spr2.py`
 
-Lorem ipsum...
+* This requires the python package called `conllu` *
+
+## Definite Pronoun Resolution (Adam)
+
+Tasks: ` `
+
+To get the original data, run `bash get_dpr_data.sh`.
+To convert the data, run `python convert-dpr.py`
 
 ## Winobias and Winogender (TODO: Patrick)
 
