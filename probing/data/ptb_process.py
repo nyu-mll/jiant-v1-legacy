@@ -1,29 +1,18 @@
+#!/usr/bin/env python
+# Helper script to generate edge-probing json file recasted from Penn Treebank.
+#   
+# Usage:
+#  python ptb_process.py -env /path/to/nlk/data/env
+#
+# Speed: takes roughly 20 minutes to run on a single core.
+
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
-#import ipdb as pdb
-
-import nltk
-nltk.data.path = ["/nfs/jsalt/share/nltk_data"] + nltk.data.path
-
-# Install a few python packages using pip
-#from w266_common import utils
-
 import pip
 import pkgutil
 from pip._internal import main as pipmain
-if not pkgutil.find_loader("tqdm"):
-    pipmain(["install", "tqdm"])
-if not pkgutil.find_loader("graphviz"):
-    pipmain(["install", "graphviz"])
-
-
-import nltk
-# from  w266_common import treeviz
-# # Monkey-patch NLTK with better Tree display that works on Cloud or other display-less server.
-# print("Overriding nltk.tree.Tree pretty-printing to use custom GraphViz.")
-# treeviz.monkey_patch(nltk.tree.Tree, node_style_fn=None, format='svg')
 
 import os, sys, collections
 import copy
@@ -36,30 +25,77 @@ from IPython.display import display, HTML
 from tqdm import tqdm as ProgressBar
 
 import logging
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-# Helpers for this assignment
-#from w266_common import utils, treeviz
-# import part2_helpers
-# import pcfg, pcfg_test
-# import cky, cky_test
+from w266_common import utils, treeviz
+import part2_helpers
+import pcfg, pcfg_test
+import cky, cky_test
 
+import argparse
 import time
-t_0 = time.time()
 
-#fxn_tags = ['ADV', 'NOM', 'DTV', 'LGS', 'PRD', 'PUT', 'SBJ', 'TPC', 'VOC', 'BNF', 'DIR', 'EXT', 'LOC', 'MNR', 'PRP', 'TMP', 'CLR', 'CLF', 'HLN', 'TTL']
-
+#Constants:
 form_function_discrepancies = ['ADV', 'NOM']
 grammatical_rule = ['DTV', 'LGS', 'PRD', 'PUT', 'SBJ', 'TPC', 'VOC']
 adverbials = ['BNF', 'DIR', 'EXT', 'LOC', 'MNR', 'PRP', 'TMP']
 miscellaneous = ['CLR', 'CLF', 'HLN', 'TTL']
-
 punctuations = ['-LRB-', '-RRB-', '-LCB-', '-RCB-', '-LSB-', '-RSB-']
 #special_labels = ['PRP-S', 'WP-S']
+#fxn_tags = ['ADV', 'NOM', 'DTV', 'LGS', 'PRD', 'PUT', 'SBJ', 'TPC', 'VOC', 'BNF', 'DIR', 'EXT', 'LOC', 'MNR', 'PRP', 'TMP', 'CLR', 'CLF', 'HLN', 'TTL']
 
+def check_requirements():
+    # Install a few python packages using pip
+    if not pkgutil.find_loader("tqdm"):
+        pipmain(["install", "tqdm"])
+    if not pkgutil.find_loader("graphviz"):
+        pipmain(["install", "graphviz"])
 
-# Using full ptb 
-corpus = nltk.corpus.ptb
+def load_ptb(nltk_data_filepath):
+
+    nltk.data.path = [nltk_data_filepath] + nltk.data.path
+
+    # Monkey-patch NLTK with better Tree display that works on Cloud or other display-less server.
+    print("Overriding nltk.tree.Tree pretty-printing to use custom GraphViz.")
+    treeviz.monkey_patch(nltk.tree.Tree, node_style_fn=None, format='svg')
+
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+    # Using full ptb 
+    corpus = nltk.corpus.ptb
+
+    # Parsing file names to find file IDs corresponding to standard split of train, dev, and test data
+    train_files, dev_files, dev_full_files, test_files = [], [], [], []
+    for f in corpus.fileids():
+        if f.split('/')[0] == 'BROWN':
+            continue
+        section = int(f.split('/')[1])
+        file_num = int(f.split('/')[2][6:8])
+        if section > 1 and section < 22:
+            train_files.append(f)
+        elif section == 22:
+            dev_full_files.append(f)
+        if file_num < 20:
+            dev_files.append(f)
+        elif section == 23:
+            test_files.append(f)
+
+    train_sent, dev_sent, dev_full_sent, test_sent = [], [], [], []
+    use_full_ptb = True 
+    if use_full_ptb:
+        part2_helpers.verify_ptb_install()
+        corpus = nltk.corpus.ptb  
+        if not hasattr(corpus, '_parsed_sents'):
+            print("Monkey-patching corpus reader...")
+            corpus._parsed_sents = corpus.parsed_sents
+            for train_file in train_files:
+                train_sent += [s for s in corpus._parsed_sents(train_file)]
+            for dev_file in dev_files:
+                dev_sent += [s for s in corpus._parsed_sents(dev_file)]
+            for test_file in test_files:
+                test_sent += [s for s in corpus._parsed_sents(test_file)]
+            for dev_full_file in dev_full_files:
+                dev_full_sent += [s for s in corpus._parsed_sents(dev_full_file)]
+    return train_sent, dev_sent, dev_full_sent, test_sent
 
 def find_depth(tree, subtree):
     treepositions = tree.treepositions()
@@ -68,9 +104,8 @@ def find_depth(tree, subtree):
             return len(indices)
     raise runtime_error('something is wrong with implementation of find_depth')
 
-
-#function converting Tree object to dictionary compatible with common JSON format
 def sent_to_dict(sentence):
+    '''Function converting Tree object to dictionary compatible with common JSON format'''
     json_d = {}
 
     text = ""
@@ -117,7 +152,6 @@ def tree_to_json(split, sent_list):
     num_sent = len(sent_list)
     #may want to parallelize this for loop
     for index, sentence in enumerate(sent_list):
-#        print(index)
         data["data"].append(sent_to_dict(sentence))
 
     with open('ptb_' + split + '.json', 'w') as outfile:
@@ -131,7 +165,8 @@ def is_null(tree):
         return True
     if (not isinstance(tree, str)):
         for i in range(len(tree)):        
-            if isinstance(tree[i], str) or (not is_null(tree[i])): #I have trouble not using recursion here
+            # Determine, via recursion, whether a given subtree consists entirely of null elements:
+            if isinstance(tree[i], str) or (not is_null(tree[i])):
                 return False
         return True
     return False
@@ -170,53 +205,33 @@ def prune(tree):
                 null_children_indices.append(null_children_index)
                 tree_positions = recur_delete(tree_positions, null_children_index)
         
-    #Very hacky, perhaps there's a better way to remove branches of a tree:
+    # Remove branches of a tree by converting tree to string, finding and deleting patterns,
+    #   and converting string back to tree (very hacky, perhaps there's a safer way):
     import re
     pruned_tree = re.sub( '\s+', ' ', str(tree)).strip()
-    #print(null_children_indices)
     prune_keys = [str(tree[index]) for index in null_children_indices]
     prune_keys.sort(key=len, reverse=True)
     for prune_key in prune_keys: 
         pruned_tree = pruned_tree.replace(prune_key, "")
     return Tree.fromstring(pruned_tree)
 
-if __name__ == "__main__":
-    # Parsing file names to find file IDs corresponding to standard split of train, dev, and test data
-    train_files, dev_files, dev_full_files, test_files = [], [], [], []
-    for f in corpus.fileids():
-        if f.split('/')[0] == 'BROWN':
-            continue
-        section = int(f.split('/')[1])
-        file_num = int(f.split('/')[2][6:8])
-        if section > 1 and section < 22:
-            train_files.append(f)
-        elif section == 22:
-            dev_full_files.append(f)
-            if file_num < 20:
-                dev_files.append(f)
-        elif section == 23:
-            test_files.append(f)
+def main(args):
+    check_requirements()
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-env', dest='nltk_data_filepath', type=str, required=True,
+                        default="/nfs/jsalt/share/nltk_data",
+                        help="Path to nltk ptb data.")
+    args = parser.parse_args(args)
 
-    train_sent, dev_sent, dev_full_sent, test_sent = [], [], [], []
-    use_full_ptb = True 
-    if use_full_ptb:
-        part2_helpers.verify_ptb_install()
-        corpus = nltk.corpus.ptb  
-        if not hasattr(corpus, '_parsed_sents'):
-            print("Monkey-patching corpus reader...")
-            corpus._parsed_sents = corpus.parsed_sents
-            for train_file in train_files:
-                train_sent += [s for s in corpus._parsed_sents(train_file)]
-            for dev_file in dev_files:
-                dev_sent += [s for s in corpus._parsed_sents(dev_file)]
-            for test_file in test_files:
-                test_sent += [s for s in corpus._parsed_sents(test_file)]
-            for dev_full_file in dev_full_files:
-                dev_full_sent += [s for s in corpus._parsed_sents(dev_full_file)]
+    nltk_data_filepath = args.nltk_data_filepath
 
+    train_sent, dev_sent, dev_full_sent, test_sent = load_ptb(nltk_data_filepath)
+    
     print("Converting to common JSON format...")
     print("Starting timer.")
 
+    t_0 = time.time()
 
     train_sent = [prune(sentence) for sentence in train_sent]
     dev_sent = [prune(sentence) for sentence in dev_sent]
@@ -234,3 +249,7 @@ if __name__ == "__main__":
 
     print("done.")
     print("Converting to JSON takes " + str(time.time() - t_0) + " seconds.")
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
+    sys.exit(0)
