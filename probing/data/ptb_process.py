@@ -74,8 +74,8 @@ def load_ptb(nltk_data_filepath):
             train_files.append(f)
         elif section == 22:
             dev_full_files.append(f)
-        if file_num < 20:
-            dev_files.append(f)
+            if file_num < 20:
+                dev_files.append(f)
         elif section == 23:
             test_files.append(f)
 
