@@ -1867,8 +1867,16 @@ class Wiki103Classification(PairClassificationTask):
         ''' Process a language modeling split.  Split is a single list of sentences here.  '''
         def _make_instance(input1, input2, labels):
             d = {}
-            d["input1"] = _sentence_to_text_field(input1, indexers)
-            d["input2"] = _sentence_to_text_field(input2, indexers)
+            m = len(input1)
+            n = len(input2)
+            if m > n:
+                d["input1"] = _sentence_to_text_field(input1, indexers)
+                d["input2"] = _sentence_to_text_field(input2+['@@PADDING@@'] * (m-n), indexers)
+            else:
+                d["input1"] = _sentence_to_text_field(input1+['@@PADDING@@'] * (n-m), indexers)
+                d["input2"] = _sentence_to_text_field(input2, indexers)
+            #d["input1"] = _sentence_to_text_field(input1, indexers)
+            #d["input2"] = _sentence_to_text_field(input2, indexers)
             d["labels"] = LabelField(labels, label_namespace="labels",
                                      skip_indexing=True)
             return Instance(d)

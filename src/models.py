@@ -652,8 +652,14 @@ class MultiTaskModel(nn.Module):
         '''
         out = {}
         # embed the sentence
-        sent1, mask1 = self.sent_encoder(batch['input1'], task)
-        sent2, mask2 = self.sent_encoder(batch['input2'], task)
+        a = {}
+        a['elmo'] = torch.cat([batch['input1']['elmo'], batch['input2']['elmo']], 0)
+        sent, mask = self.sent_encoder(a, task)
+        bsize = int(sent.size(0) / 2)
+        #sent1, mask1 = self.sent_encoder(batch['input1'], task)
+        #sent2, mask2 = self.sent_encoder(batch['input2'], task)
+        sent1, mask1 = sent[:bsize, :, :], mask[:bsize, :, :]
+        sent2, mask2 = sent[bsize:, :, :], mask[bsize:, :, :]
         classifier = self._get_classifier(task)
 
         # Negative pairs are created by rotating sent2
