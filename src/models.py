@@ -652,6 +652,8 @@ class MultiTaskModel(nn.Module):
             So rotating sent1/sent2 and pairing with sent2/sent1 is one way to obtain -ve pairs
         '''
         out = {}
+        import ipdb; ipdb.set_trace()
+
         # embed the sentence
         sent1, mask1 = self.sent_encoder(batch['input1'], task)
         sent2, mask2 = self.sent_encoder(batch['input2'], task)
@@ -661,8 +663,11 @@ class MultiTaskModel(nn.Module):
         # Note that we need to rotate corresponding mask also. *_new contain positive and negative pairs
         sent1_new = torch.cat([sent1, sent1], 0)
         mask1_new = torch.cat([mask1, mask1], 0)
-        sent2_new = torch.cat([sent2, torch.cat([sent2[2:], sent2[0:2]], 0)], 0)
-        mask2_new = torch.cat([mask2, torch.cat([mask2[2:], mask2[0:2]], 0)], 0)
+        neg_idxs = np.random.permutation(sent1.size(0))
+        sent2_new = torch.cat([sent2, sent2[neg_idxs]], 0)
+        mask2_new = torch.cat([mask2, mask2[neg_idxs]], 0)
+        #sent2_new = torch.cat([sent2, torch.cat([sent2[2:], sent2[0:2]], 0)], 0)
+        #mask2_new = torch.cat([mask2, torch.cat([mask2[2:], mask2[0:2]], 0)], 0)
         logits = classifier(sent1_new, sent2_new, mask1_new, mask2_new)
         out['logits'] = logits
         out['n_exs'] = len(sent1_new)
