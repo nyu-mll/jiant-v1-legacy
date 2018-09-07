@@ -26,18 +26,17 @@ Original data prepared by following instructions from [He et al. 2017](https://h
 
 Processed from the DeepSRL format into protocol buffers on Ian's Google workstation, then converted into edge probing JSON format via a Colaboratory notebook. TODO(Ian) to reconstruct this directly from the original data and check scripts in here.
 
-## Nonced data (TODO: Najoung)
-
-Lorem ipsum...
-
 ## Semantic Proto Roles v2 (Adam)
 
-Tasks: ` `
+Tasks: `edges-spr2`
 
-To get the original data run `bash get_spr2_data.sh`.
-To convert the data, run `python conver-spr2.py`
+Run:
+```
+pip install conllu
+./get_spr2_data.sh $JIANT_DATA_DIR/spr2
+```
 
-* This requires the python package called `conllu` *
+The `conllu` package is required to process the universal dependencies source data.
 
 ## Definite Pronoun Resolution (Adam)
 
