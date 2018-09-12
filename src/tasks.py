@@ -424,11 +424,15 @@ class EdgeProbingTask(Task):
         assert label_type in {"multilabel", "binary"}
         self.label_type = label_type
 
-        label_file = os.path.join(path, label_file)
-        self.all_labels = list(utils.load_lines(label_file))
-        self.n_classes = len(self.all_labels)
         # see add_task_label_namespace in preprocess.py
         self._label_namespace = self.name + "_labels"
+        if self.label_type == "binary":
+            self.all_labels = tuple()  # empty
+            self.n_classes = 1
+        else:
+            self.all_labels = list(utils.load_lines(
+                                       os.path.join(path, label_file)))
+            self.n_classes = len(self.all_labels)
 
         # Scorers
         #  self.acc_scorer = CategoricalAccuracy()  # multiclass accuracy
@@ -513,7 +517,8 @@ class EdgeProbingTask(Task):
         elif self.label_type == "binary":
             label = int(target_label)
             assert label in [0,1]
-            return ArrayField(np.array([label], dtype=np.bool), pad=0)
+            return ArrayField(np.array([label], dtype=np.bool),
+                              padding_value=0)
         else:
             raise ValueError("Unsupported label type %s" % self.label_type)
 
