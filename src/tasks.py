@@ -27,7 +27,7 @@ from .allennlp_mods.correlation import Correlation, FastMatthews
 # Fields for instance processing
 from allennlp.data import Instance, Token
 from allennlp.data.fields import TextField, LabelField, \
-        SpanField, ListField, MetadataField
+        SpanField, ListField, MetadataField, ArrayField
 from .allennlp_mods.numeric_field import NumericField
 from .allennlp_mods.multilabel_field import MultiLabelField
 
@@ -300,7 +300,7 @@ class PairClassificationTask(ClassificationTask):
                     'train': "train.edges.json",
                     'val': "dev.edges.json",
                     'test': "test.edges.json",
-               }, is_symmetric=False)
+               }, is_symmetric=False, label_type="binary")
 # Re-processed version of the above, via AllenNLP data loaders.
 @register_task('edges-coref-ontonotes-conll',
                rel_path='edges/ontonotes-coref-conll',
@@ -308,7 +308,7 @@ class PairClassificationTask(ClassificationTask):
                     'train': "coref_conll_ontonotes_en_train.json",
                     'val': "coref_conll_ontonotes_en_dev.json",
                     'test': "coref_conll_ontonotes_en_test.json",
-               }, is_symmetric=False)
+               }, is_symmetric=False, label_type="binary")
 # Entity type labeling on CoNLL 2003.
 @register_task('edges-ner-conll2003', rel_path='edges/ner_conll2003',
                label_file="labels.txt", files_by_split={
@@ -388,7 +388,8 @@ class EdgeProbingTask(Task):
                  label_file: str=None,
                  files_by_split: Dict[str,str]=None,
                  is_symmetric: bool=False,
-                 single_sided: bool=False):
+                 single_sided: bool=False,
+                 label_type: str="multilabel"):
         """Construct an edge probing task.
 
         path, max_seq_len, and name are passed by the code in preprocess.py;
@@ -406,6 +407,7 @@ class EdgeProbingTask(Task):
                 type and share parameters. Otherwise, we learn a separate
                 projection layer and attention weight for each.
             single_sided: if true, only use span1.
+            label_type: one of {"multilabel", "binary"}
         """
         super().__init__(name)
 
@@ -419,6 +421,8 @@ class EdgeProbingTask(Task):
         self.max_seq_len = max_seq_len
         self.is_symmetric = is_symmetric
         self.single_sided = single_sided
+        assert label_type in {"multilabel", "binary"}
+        self.label_type = label_type
 
         label_file = os.path.join(path, label_file)
         self.all_labels = list(utils.load_lines(label_file))
@@ -499,6 +503,20 @@ class EdgeProbingTask(Task):
     def _make_span_field(self, s, text_field, offset=1):
         return SpanField(s[0]+offset, s[1]-1+offset, text_field)
 
+    def _make_label_field(self, target_label):
+        if self.label_type == "multilabel":
+            # Always use multilabel targets, so be sure each label is a list.
+            label_set = utils.wrap_singleton_string(target_label)
+            return MultiLabelField(label_set,
+                                   label_namespace=self._label_namespace,
+                                   skip_indexing=False)
+        elif self.label_type == "binary":
+            label = int(target_label)
+            assert label in [0,1]
+            return ArrayField(np.array([label], dtype=np.bool), pad=0)
+        else:
+            raise ValueError("Unsupported label type %s" % self.label_type)
+
     def make_instance(self, record, idx, indexers) -> Type[Instance]:
         """Convert a single record to an AllenNLP Instance."""
         tokens = record['text'].split()  # already space-tokenized by Moses
@@ -516,13 +534,15 @@ class EdgeProbingTask(Task):
             d['span2s'] = ListField([self._make_span_field(t['span2'], text_field, 1)
                                      for t in record['targets']])
 
-        # Always use multilabel targets, so be sure each label is a list.
-        labels = [utils.wrap_singleton_string(t['label'])
-                  for t in record['targets']]
-        d['labels'] = ListField([MultiLabelField(label_set,
-                                     label_namespace=self._label_namespace,
-                                     skip_indexing=False)
-                                 for label_set in labels])
+        d['labels'] = ListField([self._make_label_field(t['label'])
+                                 for t in record['targets']])
+        #  # Always use multilabel targets, so be sure each label is a list.
+        #  labels = [utils.wrap_singleton_string(t['label'])
+        #            for t in record['targets']]
+        #  d['labels'] = ListField([MultiLabelField(label_set,
+        #                               label_namespace=self._label_namespace,
+        #                               skip_indexing=False)
+        #                           for label_set in labels])
         return Instance(d)
 
     def process_split(self, records, indexers) -> Iterable[Type[Instance]]:
