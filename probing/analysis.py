@@ -44,7 +44,7 @@ class EdgeProbingExample(object):
             buf.write("\n")
             buf.write("  span1: {}\n".format(_fmt_span(*t['span1'])))
             buf.write("  span2: {}\n".format(_fmt_span(*t['span2'])))
-            labels = utils.wrap_singleton_string(t['label'])
+            labels = utils.wrap_singleton_label(t['label'])
             buf.write("  label: ({:d})\t {}\n".format(len(labels), ", ".join(labels)))
         return buf.getvalue()
 
@@ -76,7 +76,7 @@ class Predictions(object):
             ex_records.append(d)
 
             for t in r['targets']:
-                d = {'label': utils.wrap_singleton_string(t['label']),
+                d = {'label': utils.wrap_singleton_label(t['label']),
                      'idx': idx}
                 if 'span1' in t:
                     d['span1'] = tuple(t['span1'])

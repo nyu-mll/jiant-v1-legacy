@@ -18,11 +18,13 @@ def write_json_data(filename: str, records: Iterable[Dict]):
             fd.write(json.dumps(record))
             fd.write("\n")
 
-def wrap_singleton_string(item: Union[Sequence, str]):
-    ''' Wrap a single string as a list. '''
+def wrap_singleton_label(item: Union[Sequence, str]):
+    ''' Wrap a single label as a list. '''
     if isinstance(item, str):
         # Can't check if iterable, because a string is an iterable of
         # characters, which is not what we want.
+        return [item]
+    if not hasattr(item, '__iter__'):
         return [item]
     return item
 
@@ -44,7 +46,7 @@ class EdgeProbingDatasetStats(object):
         targets = record.get('targets', [])
         stats['targets.count'] += len(targets)
         for target in targets:
-            labels = wrap_singleton_string(target['label'])
+            labels = wrap_singleton_label(target['label'])
             stats['targets.label.count'] += len(labels)
             span1 = target.get('span1', [-1,-1])
             stats['targets.span1.length'] += (max(span1) - min(span1))

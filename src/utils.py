@@ -41,11 +41,13 @@ def copy_iter(elems):
     for elem in elems:
         yield copy.deepcopy(elem)
 
-def wrap_singleton_string(item: Union[Sequence, str]):
-    ''' Wrap a single string as a list. '''
+def wrap_singleton_label(item: Union[Sequence, str]):
+    ''' Wrap a single label as a list. '''
     if isinstance(item, str):
         # Can't check if iterable, because a string is an iterable of
         # characters, which is not what we want.
+        return [item]
+    if not hasattr(item, '__iter__'):
         return [item]
     return item
 

@@ -517,7 +517,7 @@ class EdgeProbingTask(Task):
                                      for t in record['targets']])
 
         # Always use multilabel targets, so be sure each label is a list.
-        labels = [utils.wrap_singleton_string(t['label'])
+        labels = [utils.wrap_singleton_label(t['label'])
                   for t in record['targets']]
         d['labels'] = ListField([MultiLabelField(label_set,
                                      label_namespace=self._label_namespace,
