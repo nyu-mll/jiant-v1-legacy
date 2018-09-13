@@ -450,7 +450,6 @@ class EdgeProbingTask(Task):
             self.val_metric = "%s_pearson" % self.name
             self.val_metric_decreases = False
         else:  # binary or multilabel
-            #  self.acc_scorer = CategoricalAccuracy()  # multiclass accuracy
             self.mcc_scorer = FastMatthews()
             self.acc_scorer = BooleanAccuracy()  # binary accuracy
             self.f1_scorer = F1Measure(positive_label=1)  # binary F1 overall

@@ -58,7 +58,6 @@ class EdgeClassifierModule(nn.Module):
     def __init__(self, task, d_inp: int, task_params):
         super(EdgeClassifierModule, self).__init__()
         # Set config options needed for forward pass.
-        #  self.loss_type = task_params['cls_loss_fn']
         self.span_pooling = task_params['cls_span_pooling']
         self.cnn_context = task_params['edgeprobe_cnn_context']
         self.is_symmetric = task.is_symmetric
