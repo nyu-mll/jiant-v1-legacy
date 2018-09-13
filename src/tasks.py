@@ -157,6 +157,16 @@ class Task():
             self.example_counts[split] = count
 
     @property
+    def tokenizer_name(self):
+        ''' Get the name of the tokenizer used for this task.
+
+        Generally, this is just MosesTokenizer, but other tokenizations may be
+        needed in special cases such as when working with BPE-based models
+        such as the OpenAI transformer LM.
+        '''
+        return utils.TOKENIZER.__class__.__name__
+
+    @property
     def n_train_examples(self):
         return self.example_counts['train']
 
@@ -249,115 +259,113 @@ class PairClassificationTask(ClassificationTask):
         return process_single_pair_task_split(split, indexers, is_pair=True)
 
 
-# Make sure we load the properly-retokenized versions.
-_tokenizer_suffix = ".retokenized." + utils.TOKENIZER.__class__.__name__
 # SRL CoNLL 2005, formulated as an edge-labeling task.
 @register_task('edges-srl-conll2005', rel_path='edges/srl_conll2005',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.wsj.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.wsj.edges.json",
                }, is_symmetric=False)
 # SRL CoNLL 2012 (OntoNotes), formulated as an edge-labeling task.
 @register_task('edges-srl-conll2012', rel_path='edges/srl_conll2012',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.edges.json",
                }, is_symmetric=False)
 # SPR1, as an edge-labeling task (multilabel).
 @register_task('edges-spr1', rel_path='edges/spr1',
                label_file="labels.txt", files_by_split={
-                    'train': "spr1.train.json" + _tokenizer_suffix,
-                    'val': "spr1.dev.json" + _tokenizer_suffix,
-                    'test': "spr1.test.json" + _tokenizer_suffix,
+                    'train': "spr1.train.json",
+                    'val': "spr1.dev.json",
+                    'test': "spr1.test.json",
                }, is_symmetric=False)
 # SPR2, as an edge-labeling task (multilabel).
 @register_task('edges-spr2', rel_path='edges/spr2',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.edges.json",
                }, is_symmetric=False)
 # Definite pronoun resolution. Two labels.
 @register_task('edges-dpr', rel_path='edges/dpr',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.edges.json",
                }, is_symmetric=False)
 # Coreference on OntoNotes corpus. Two labels.
 @register_task('edges-coref-ontonotes', rel_path='edges/ontonotes-coref',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.edges.json",
                }, is_symmetric=False)
 # Re-processed version of the above, via AllenNLP data loaders.
 @register_task('edges-coref-ontonotes-conll',
                rel_path='edges/ontonotes-coref-conll',
                label_file="labels.txt", files_by_split={
-                    'train': "coref_conll_ontonotes_en_train.json" + _tokenizer_suffix,
-                    'val': "coref_conll_ontonotes_en_dev.json" + _tokenizer_suffix,
-                    'test': "coref_conll_ontonotes_en_test.json" + _tokenizer_suffix,
+                    'train': "coref_conll_ontonotes_en_train.json",
+                    'val': "coref_conll_ontonotes_en_dev.json",
+                    'test': "coref_conll_ontonotes_en_test.json",
                }, is_symmetric=False)
 # Entity type labeling on CoNLL 2003.
 @register_task('edges-ner-conll2003', rel_path='edges/ner_conll2003',
                label_file="labels.txt", files_by_split={
-                    'train': "CoNLL-2003_train.json" + _tokenizer_suffix,
-                    'val': "CoNLL-2003_dev.json" + _tokenizer_suffix,
-                    'test': "CoNLL-2003_test.json" + _tokenizer_suffix,
+                    'train': "CoNLL-2003_train.json",
+                    'val': "CoNLL-2003_dev.json",
+                    'test': "CoNLL-2003_test.json",
                }, single_sided=True)
 # Entity type labeling on OntoNotes.
 @register_task('edges-ner-ontonotes',
                rel_path='edges/ontonotes-ner',
                label_file="labels.txt", files_by_split={
-                    'train': "ner_ontonotes_en_train.json" + _tokenizer_suffix,
-                    'val': "ner_ontonotes_en_dev.json" + _tokenizer_suffix,
-                    'test': "ner_ontonotes_en_test.json" + _tokenizer_suffix,
+                    'train': "ner_ontonotes_en_train.json",
+                    'val': "ner_ontonotes_en_dev.json",
+                    'test': "ner_ontonotes_en_test.json",
                }, single_sided=True)
 # Dependency edge labeling on UD treebank (GUM). Use 'ewt' version instead.
 @register_task('edges-dep-labeling', rel_path='edges/dep',
                label_file="labels.txt", files_by_split={
-                    'train': "train.json" + _tokenizer_suffix,
-                    'val': "dev.json" + _tokenizer_suffix,
-                    'test': "test.json" + _tokenizer_suffix,
+                    'train': "train.json",
+                    'val': "dev.json",
+                    'test': "test.json",
                }, is_symmetric=False)
 # Dependency edge labeling on English Web Treebank (UD).
 @register_task('edges-dep-labeling-ewt', rel_path='edges/dep_ewt',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.edges.json",
                }, is_symmetric=False)
 # PTB constituency membership / labeling.
 @register_task('edges-constituent-ptb', rel_path='edges/ptb-membership',
                label_file="labels.txt", files_by_split={
-                    'train': "ptb_train.json" + _tokenizer_suffix,
-                    'val': "ptb_dev.json" + _tokenizer_suffix,
-                    'test': "ptb_test.json" + _tokenizer_suffix,
+                    'train': "ptb_train.json",
+                    'val': "ptb_dev.json",
+                    'test': "ptb_test.json",
                }, single_sided=True)
 # Constituency membership / labeling on OntoNotes.
 @register_task('edges-constituent-ontonotes',
                rel_path='edges/ontonotes-constituents',
                label_file="labels.txt", files_by_split={
-                    'train': "consts_ontonotes_en_train.json" + _tokenizer_suffix,
-                    'val': "consts_ontonotes_en_dev.json" + _tokenizer_suffix,
-                    'test': "consts_ontonotes_en_test.json" + _tokenizer_suffix,
+                    'train': "consts_ontonotes_en_train.json",
+                    'val': "consts_ontonotes_en_dev.json",
+                    'test': "consts_ontonotes_en_test.json",
                }, single_sided=True)
 # CCG tagging (tokens only).
 @register_task('edges-ccg-tag', rel_path='edges/ccg_tag',
                label_file="labels.txt", files_by_split={
-                    'train': "ccg.tag.train.json" + _tokenizer_suffix,
-                    'val': "ccg.tag.dev.json" + _tokenizer_suffix,
-                    'test': "ccg.tag.test.json" + _tokenizer_suffix,
+                    'train': "ccg.tag.train.json",
+                    'val': "ccg.tag.dev.json",
+                    'test': "ccg.tag.test.json",
                }, single_sided=True)
 # CCG parsing (constituent labeling).
 @register_task('edges-ccg-parse', rel_path='edges/ccg_parse',
                label_file="labels.txt", files_by_split={
-                    'train': "ccg.parse.train.json" + _tokenizer_suffix,
-                    'val': "ccg.parse.dev.json" + _tokenizer_suffix,
-                    'test': "ccg.parse.test.json" + _tokenizer_suffix,
+                    'train': "ccg.parse.train.json",
+                    'val': "ccg.parse.dev.json",
+                    'test': "ccg.parse.test.json",
                }, single_sided=True)
 class EdgeProbingTask(Task):
     ''' Generic class for fine-grained edge probing.
@@ -370,6 +378,11 @@ class EdgeProbingTask(Task):
     Subclass this for each dataset, or use register_task with appropriate kw
     args.
     '''
+    @property
+    def _tokenizer_suffix(self):
+        ''' Suffix to make sure we use the correct source files. '''
+        return ".retokenized." + self.tokenizer_name
+
     def __init__(self, path: str, max_seq_len: int,
                  name: str,
                  label_file: str=None,
@@ -399,7 +412,7 @@ class EdgeProbingTask(Task):
         assert label_file is not None
         assert files_by_split is not None
         self._files_by_split = {
-            split: os.path.join(path, fname)
+            split: os.path.join(path, fname) + self._tokenizer_suffix
             for split, fname in files_by_split.items()
         }
         self._iters_by_split = self.load_data()
@@ -737,6 +750,7 @@ class WikiTextLMTask(LanguageModelingTask):
                 yield sent
 
 
+@register_task('wiki103', rel_path='WikiText103/')
 class WikiText103LMTask(WikiTextLMTask):
     """Language modeling task on Wikitext 103
     See base class: WikiTextLMTask
@@ -748,6 +762,7 @@ class WikiText103LMTask(WikiTextLMTask):
                                'test':os.path.join(path, "test.sentences.txt")}
 
 
+@register_task('bwb', rel_path='BWB/')
 class BWBLMTask(LanguageModelingTask):
     """Language modeling task on Billion Word Benchmark
     See base class: LanguageModelingTask
@@ -757,6 +772,7 @@ class BWBLMTask(LanguageModelingTask):
         self.max_seq_len = max_seq_len
 
 
+@register_task('sst', rel_path='SST-2/')
 class SSTTask(SingleClassificationTask):
     ''' Task class for Stanford Sentiment Treebank.  '''
 
@@ -962,6 +978,7 @@ class MTDataPairClassificationTask(RedditPairClassificationTask):
         self.example_counts = example_counts
 
 
+@register_task('cola', rel_path='CoLA/')
 class CoLATask(SingleClassificationTask):
     '''Class for Warstdadt acceptability task'''
 
@@ -994,6 +1011,7 @@ class CoLATask(SingleClassificationTask):
                 'accuracy': self.scorer2.get_metric(reset)}
 
 
+@register_task('qqp', rel_path='QQP/')
 class QQPTask(PairClassificationTask):
     ''' Task class for Quora Question Pairs. '''
 
@@ -1026,6 +1044,7 @@ class QQPTask(PairClassificationTask):
         return {'acc_f1': (acc + f1) / 2, 'accuracy': acc, 'f1': f1,
                 'precision': pcs, 'recall': rcl}
 
+@register_task('qqp-alt', rel_path='QQP/')
 class QQPAltTask(QQPTask):
     ''' Task class for Quora Question Pairs.
 
@@ -1102,6 +1121,7 @@ class MultiNLISingleGenreTask(PairClassificationTask):
         return {'accuracy': self.scorer1.get_metric(reset)}
 
 
+@register_task('mnli-fiction', rel_path='MNLI/')
 class MultiNLIFictionTask(MultiNLISingleGenreTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''
 
@@ -1116,6 +1136,7 @@ class MultiNLIFictionTask(MultiNLISingleGenreTask):
             name=name)
 
 
+@register_task('mnli-slate', rel_path='MNLI/')
 class MultiNLISlateTask(MultiNLISingleGenreTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''
 
@@ -1124,6 +1145,7 @@ class MultiNLISlateTask(MultiNLISingleGenreTask):
         super(MultiNLISlateTask, self).__init__(path, max_seq_len, genre="slate", name=name)
 
 
+@register_task('mnli-government', rel_path='MNLI/')
 class MultiNLIGovernmentTask(MultiNLISingleGenreTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''
 
@@ -1138,6 +1160,7 @@ class MultiNLIGovernmentTask(MultiNLISingleGenreTask):
             name=name)
 
 
+@register_task('mnli-telephone', rel_path='MNLI/')
 class MultiNLITelephoneTask(MultiNLISingleGenreTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''
 
@@ -1152,6 +1175,7 @@ class MultiNLITelephoneTask(MultiNLISingleGenreTask):
             name=name)
 
 
+@register_task('mnli-travel', rel_path='MNLI/')
 class MultiNLITravelTask(MultiNLISingleGenreTask):
     ''' Task class for Multi-Genre Natural Language Inference, Fiction genre.'''
 
@@ -1166,6 +1190,7 @@ class MultiNLITravelTask(MultiNLISingleGenreTask):
             name=name)
 
 
+@register_task('mrpc', rel_path='MRPC/')
 class MRPCTask(PairClassificationTask):
     ''' Task class for Microsoft Research Paraphase Task.  '''
 
@@ -1200,6 +1225,7 @@ class MRPCTask(PairClassificationTask):
                 'precision': pcs, 'recall': rcl}
 
 
+@register_task('sts-b', rel_path='STS-B/')
 class STSBTask(PairRegressionTask):
     ''' Task class for Sentence Textual Similarity Benchmark.  '''
 
@@ -1235,6 +1261,7 @@ class STSBTask(PairRegressionTask):
         return {'corr': (pearsonr + spearmanr) / 2,
                 'pearsonr': pearsonr, 'spearmanr': spearmanr}
 
+@register_task('sts-b-alt', rel_path='STS-B/')
 class STSBAltTask(STSBTask):
     ''' Task class for Sentence Textual Similarity Benchmark.
 
@@ -1245,6 +1272,8 @@ class STSBAltTask(STSBTask):
         '''STSB'''
         super(STSBAltTask, self).__init__(path, max_seq_len, name)
 
+
+@register_task('snli', rel_path='SNLI/')
 class SNLITask(PairClassificationTask):
     ''' Task class for Stanford Natural Language Inference '''
 
@@ -1270,6 +1299,7 @@ class SNLITask(PairClassificationTask):
         log.info("\tFinished loading SNLI data.")
 
 
+@register_task('mnli', rel_path='MNLI/')
 class MultiNLITask(PairClassificationTask):
     ''' Task class for Multi-Genre Natural Language Inference '''
 
@@ -1309,7 +1339,7 @@ class MultiNLITask(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading MNLI data.")
 
-
+@register_task('mnli-diagnostic', rel_path='MNLI/')
 class MultiNLIDiagnosticTask(PairClassificationTask):
     ''' Task class for diagnostic on MNLI'''
 
@@ -1457,6 +1487,7 @@ class MultiNLIDiagnosticTask(PairClassificationTask):
         collect_metrics(self.ix_to_knowledge_dic, 'knowledge')
         return collected_metrics
 
+@register_task('nli-prob', rel_path='NLI-Prob/')
 class NLITypeProbingTask(PairClassificationTask):
     ''' Task class for Probing Task (NLI-type)'''
 
@@ -1481,7 +1512,7 @@ class NLITypeProbingTask(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading NLI-type probing data.")
 
-@register_task('nli-prob-negation', 'NLI-Prob/')
+@register_task('nli-prob-negation', rel_path='NLI-Prob/')
 class NLITypeProbingTaskNeg(PairClassificationTask):
 
     def __init__(self, path, max_seq_len, name="nli-prob-negation", probe_path="probe_dummy.tsv"):
@@ -1504,7 +1535,7 @@ class NLITypeProbingTaskNeg(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading negation data.")
 
-@register_task('nli-prob-prepswap', 'NLI-Prob/')
+@register_task('nli-prob-prepswap', rel_path='NLI-Prob/')
 class NLITypeProbingTaskPrepswap(PairClassificationTask):
 
     def __init__(self, path, max_seq_len, name="nli-prob-prepswap", probe_path="probe_dummy.tsv"):
@@ -1526,7 +1557,7 @@ class NLITypeProbingTaskPrepswap(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading preposition swap data.")
 
-@register_task('nps', 'nps/')
+@register_task('nps', rel_path='nps/')
 class NPSTask(PairClassificationTask):
 
     def __init__(self, path, max_seq_len, name="nps", probe_path="probe_dummy.tsv"):
@@ -1550,8 +1581,7 @@ class NPSTask(PairClassificationTask):
         log.info("\tFinished loading NP/S data.")
 
 
-
-@register_task('nli-alt', 'NLI-Prob/')
+@register_task('nli-alt', rel_path='NLI-Prob/')
 class NLITypeProbingAltTask(NLITypeProbingTask):
     ''' Task class for Alt Probing Task (NLI-type), NLITypeProbingTask with different indices'''
 
@@ -1575,6 +1605,7 @@ class NLITypeProbingAltTask(NLITypeProbingTask):
         self.test_data_text = te_data
         log.info("\tFinished loading NLI-alt probing data.")
 
+@register_task('mnli-alt', rel_path='MNLI/')
 class MultiNLIAltTask(MultiNLITask):
     ''' Task class for Multi-Genre Natural Language Inference.
 
@@ -1586,6 +1617,7 @@ class MultiNLIAltTask(MultiNLITask):
         super(MultiNLIAltTask, self).__init__(path, max_seq_len, name)
 
 
+@register_task('rte', rel_path='RTE/')
 class RTETask(PairClassificationTask):
     ''' Task class for Recognizing Textual Entailment 1, 2, 3, 5 '''
 
@@ -1612,6 +1644,7 @@ class RTETask(PairClassificationTask):
         log.info("\tFinished loading RTE.")
 
 
+@register_task('qnli', rel_path='QNLI/')
 class QNLITask(PairClassificationTask):
     '''Task class for SQuAD NLI'''
 
@@ -1635,6 +1668,7 @@ class QNLITask(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading QNLI.")
 
+@register_task('qnli-alt', rel_path='QNLI/')
 class QNLIAltTask(QNLITask):
     ''' Task class for SQuAD NLI
     Identical to SQuAD NLI class, but it can be handy to have two when controlling model settings.
@@ -1644,6 +1678,7 @@ class QNLIAltTask(QNLITask):
         '''QNLI'''
         super(QNLIAltTask, self).__init__(path, max_seq_len, name)
 
+@register_task('wnli', rel_path='WNLI/')
 class WNLITask(PairClassificationTask):
     '''Class for Winograd NLI task'''
 
@@ -1668,6 +1703,7 @@ class WNLITask(PairClassificationTask):
         log.info("\tFinished loading Winograd.")
 
 
+@register_task('joci', rel_path='JOCI/')
 class JOCITask(PairOrdinalRegressionTask):
     '''Class for JOCI ordinal regression task'''
     def __init__(self, path, max_seq_len, name="joci"):
@@ -1968,6 +2004,7 @@ class Wiki103Seq2SeqTask(MTTask):
             prev_sent = sent
 
 
+@register_task('dissentwiki', rel_path='DisSent/wikitext/')
 class DisSentTask(PairClassificationTask):
     ''' Task class for DisSent, dataset agnostic.
         Based on Nie, Bennett, and Goodman (2017), but with different datasets.
@@ -2041,6 +2078,7 @@ class DisSentWikiSingleTask(DisSentTask):
         super().__init__(path, max_seq_len, "wikitext.dissent.single_sent", name)
 
 
+@register_task('dissentwikifullbig', rel_path='DisSent/wikitext/')
 class DisSentWikiBigFullTask(DisSentTask):
     ''' Task class for DisSent with Wikitext 103 considering clauses from within a single sentence
         or across two sentences.
@@ -2049,6 +2087,7 @@ class DisSentWikiBigFullTask(DisSentTask):
         super().__init__(path, max_seq_len, "wikitext.dissent.big", name)
 
 
+@register_task('weakgrounded', rel_path='mscoco/weakgrounded/')
 class WeakGroundedTask(PairClassificationTask):
     ''' Task class for Weak Grounded Sentences i.e., training on pairs of captions for the same image '''
 
@@ -2076,6 +2115,7 @@ class WeakGroundedTask(PairClassificationTask):
         log.info("\tFinished loading MSCOCO data.")
 
 
+@register_task('grounded', rel_path='mscoco/grounded/')
 class GroundedTask(Task):
     ''' Task class for Grounded Sentences i.e., training on caption->image pair '''
     ''' Defined new metric function from AllenNLP Average '''
@@ -2185,6 +2225,7 @@ class GroundedTask(Task):
         log.info("\tTrain: %d, Val: %d, Test: %d", len(train[0]), len(val[0]), len(test[0]))
         log.info("\tFinished loading MSCOCO data!")
 
+@register_task('groundedsw', rel_path='mscoco/grounded')
 class GroundedSWTask(Task):
     ''' Task class for Grounded Sentences i.e., training on caption->image pair '''
     ''' Defined new metric function from AllenNLP Average '''
@@ -2276,43 +2317,6 @@ class GroundedSWTask(Task):
         log.info("Train: %d, Val: %d, Test: %d", len(train[0]), len(val[0]), len(test[0]))
         log.info("\nFinished loading SW data!")
 
-class VAETask(SequenceGenerationTask):
-    '''Variational Autoencoder (with corrupted input) Task'''
-
-    def __init__(self, path, max_seq_len, name='MTTask'):
-        super().__init__(name)
-        self.scorer1 = Average()
-        self.scorer2 = None
-        self.val_metric = "%s_perplexity" % self.name
-        self.val_metric_decreases = True
-        self.load_data(path, max_seq_len)
-        self.sentences = self.train_data_text[0] + self.val_data_text[0] + \
-            self.train_data_text[2] + self.val_data_text[2]
-
-    def load_data(self, path, max_seq_len):
-        '''
-        self.train_data_text = load_tsv(os.path.join(path, 'wmt_sample.txt'), max_seq_len,
-                                        s1_idx=0, s2_idx=None, targ_idx=1,
-                                        targ_fn=lambda t: t.split(' '))
-        self.val_data_text = self.train_data_text; self.test_data_text = self.train_data_text
-        '''
-        self.train_data_text = load_tsv(os.path.join(path, 'train.txt'), max_seq_len,
-                                        s1_idx=0, s2_idx=None, targ_idx=1,
-                                        targ_fn=lambda t: t.split(' '))
-
-        self.val_data_text = load_tsv(os.path.join(path, 'valid.txt'), max_seq_len,
-                                      s1_idx=0, s2_idx=None, targ_idx=1,
-                                      targ_fn=lambda t: t.split(' '))
-        self.test_data_text = load_tsv(os.path.join(path, 'test.txt'), max_seq_len,
-                                       s1_idx=0, s2_idx=None, targ_idx=1,
-                                       targ_fn=lambda t: t.split(' '))
-        log.info("\tFinished loading VAE data.")
-
-    def get_metrics(self, reset=False):
-        '''Get metrics specific to the task'''
-        ppl = self.scorer1.get_metric(reset)
-        return {'perplexity': ppl}
-
 class RecastNLITask(PairClassificationTask):
     ''' Task class for NLI Recast Data'''
 
@@ -2335,46 +2339,55 @@ class RecastNLITask(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading recast probing data.")
 
+@register_task('recast-puns', rel_path='DNC/recast_puns_data')
 class RecastPunTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-puns"):
         super(RecastPunTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-ner', rel_path='DNC/recast_ner_data')
 class RecastNERTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-ner"):
         super(RecastNERTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-verbnet', rel_path='DNC/recast_verbnet_data')
 class RecastVerbnetTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-verbnet"):
         super(RecastVerbnetTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-verbcorner', rel_path='DNC/recast_verbcorner_data')
 class RecastVerbcornerTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-verbcorner"):
         super(RecastVerbcornerTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-sentiment', rel_path='DNC/recast_sentiment_data')
 class RecastSentimentTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-sentiment"):
         super(RecastSentimentTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-factuality', rel_path='DNC/recast_factuality_data')
 class RecastFactualityTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-factuality"):
         super(RecastFactualityTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-winogender', rel_path='DNC/manually-recast-winogender')
 class RecastWinogenderTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-winogender"):
         super(RecastWinogenderTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-lexicosyntax', rel_path='DNC/lexicosyntactic_recasted')
 class RecastLexicosynTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-lexicosyn"):
         super(RecastLexicosynTask, self).__init__(path, max_seq_len, name)
 
+@register_task('recast-kg', rel_path='DNC/kg-relations')
 class RecastKGTask(RecastNLITask):
 
     def __init__(self, path, max_seq_len, name="recast-kg"):
@@ -2419,6 +2432,7 @@ class TaggingTask(Task):
         return self.all_labels
 
 
+@register_task('ccg', rel_path='CCG/')
 class CCGTaggingTask(TaggingTask):
     ''' CCG supertagging as a task.
         Using the supertags from CCGbank. '''
