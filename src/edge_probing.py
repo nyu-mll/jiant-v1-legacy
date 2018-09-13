@@ -58,11 +58,12 @@ class EdgeClassifierModule(nn.Module):
     def __init__(self, task, d_inp: int, task_params):
         super(EdgeClassifierModule, self).__init__()
         # Set config options needed for forward pass.
-        self.loss_type = task_params['cls_loss_fn']
+        #  self.loss_type = task_params['cls_loss_fn']
         self.span_pooling = task_params['cls_span_pooling']
         self.cnn_context = task_params['edgeprobe_cnn_context']
         self.is_symmetric = task.is_symmetric
         self.single_sided = task.single_sided
+        self.label_type = task.label_type
 
         self.proj_dim = task_params['d_hid']
         # Separate projection for span1, span2.
@@ -199,14 +200,16 @@ class EdgeClassifierModule(nn.Module):
         Returns:
             probs: [batch_size, num_targets, n_classes]
         """
-        if self.loss_type == 'sigmoid':
+        if self.label_type in ["binary", "multilabel"]:
             return torch.sigmoid(logits)
+        elif self.label_type == "scalar":
+            return logits
         else:
-            raise ValueError("Unsupported loss type '%s' "
-                             "for edge probing." % loss_type)
+            raise ValueError("Unsupported label type '%s' "
+                             "for edge probing." % self.label_type)
 
     def compute_loss(self, logits: torch.Tensor,
-                     labels: torch.Tensor, task: EdgeProbingTask):
+                             labels: torch.Tensor, task: EdgeProbingTask):
         """ Compute loss & eval metrics.
 
         Expect logits and labels to be already "selected" for good targets,
@@ -214,11 +217,32 @@ class EdgeClassifierModule(nn.Module):
 
         Args:
             logits: [total_num_targets, n_classes] Tensor of float scores
-            labels: [total_num_targets, n_classes] Tensor of sparse binary targets
+            labels: [total_num_targets, n_classes] Tensor of targets
 
         Returns:
             loss: scalar Tensor
         """
+        if self.label_type in ["binary", "multilabel"]:
+            return self.compute_sigmoid_loss(logits, labels, task)
+        elif self.label_type == "scalar":
+            return self.compute_scalar_loss(logits, labels, task)
+        else:
+            raise ValueError("Unsupported label type '%s' "
+                             "for edge probing." % self.label_type)
+
+
+    def compute_scalar_loss(self, logits: torch.Tensor,
+                            labels: torch.Tensor, task: EdgeProbingTask):
+        """ Compute loss & eval metrics for scalar tasks."""
+        task.mae_scorer(logits, labels)
+        task.pearson_scorer(logits, labels)
+
+        return F.smooth_l1_loss(logits, labels)
+
+
+    def compute_sigmoid_loss(self, logits: torch.Tensor,
+                             labels: torch.Tensor, task: EdgeProbingTask):
+        """ Compute loss & eval metrics for multilabel and binary tasks."""
         binary_preds = logits.ge(0).long()  # {0,1}
 
         # Matthews coefficient and accuracy computed on {0,1} labels.
@@ -230,9 +254,5 @@ class EdgeClassifierModule(nn.Module):
         binary_scores = torch.stack([-1*logits, logits], dim=2)
         task.f1_scorer(binary_scores, labels)
 
-        if self.loss_type == 'sigmoid':
-            return F.binary_cross_entropy(torch.sigmoid(logits),
-                                          labels.float())
-        else:
-            raise ValueError("Unsupported loss type '%s' "
-                             "for edge probing." % self.loss_type)
+        return F.binary_cross_entropy(torch.sigmoid(logits),
+                                      labels.float())

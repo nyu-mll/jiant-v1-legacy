@@ -23,6 +23,8 @@ from allennlp.training.metrics import CategoricalAccuracy, \
         BooleanAccuracy, F1Measure, Average
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from .allennlp_mods.correlation import Correlation, FastMatthews
+from .allennlp_mods.mean_absolute_error import MeanAbsoluteError
+from .allennlp_mods.pearson_correlation import PearsonCorrelation
 
 # Fields for instance processing
 from allennlp.data import Instance, Token
@@ -367,6 +369,13 @@ class PairClassificationTask(ClassificationTask):
                     'val': "ccg.parse.dev.json",
                     'test': "ccg.parse.test.json",
                }, single_sided=True)
+# Event factuality (it happened v2)
+@register_task('edges-ih2', rel_path='edges/ih2',
+               files_by_split={
+                    'train': "train.conll.json",
+                    'val': "dev.conll.json",
+                    'test': "test.conll.json",
+               }, single_sided=True, label_type="scalar")
 class EdgeProbingTask(Task):
     ''' Generic class for fine-grained edge probing.
 
@@ -407,11 +416,10 @@ class EdgeProbingTask(Task):
                 type and share parameters. Otherwise, we learn a separate
                 projection layer and attention weight for each.
             single_sided: if true, only use span1.
-            label_type: one of {"multilabel", "binary"}
+            label_type: one of {"multilabel", "binary", "scalar"}
         """
         super().__init__(name)
 
-        assert label_file is not None
         assert files_by_split is not None
         self._files_by_split = {
             split: os.path.join(path, fname) + self._tokenizer_suffix
@@ -421,26 +429,33 @@ class EdgeProbingTask(Task):
         self.max_seq_len = max_seq_len
         self.is_symmetric = is_symmetric
         self.single_sided = single_sided
-        assert label_type in {"multilabel", "binary"}
+        assert label_type in {"multilabel", "binary", "scalar"}
         self.label_type = label_type
 
         # see add_task_label_namespace in preprocess.py
         self._label_namespace = self.name + "_labels"
-        if self.label_type == "binary":
+        if self.label_type in ["binary", "scalar"]:
             self.all_labels = tuple()  # empty
             self.n_classes = 1
-        else:
+        else:  # multilabel
+            assert label_file is not None
             self.all_labels = list(utils.load_lines(
                                        os.path.join(path, label_file)))
             self.n_classes = len(self.all_labels)
 
         # Scorers
-        #  self.acc_scorer = CategoricalAccuracy()  # multiclass accuracy
-        self.mcc_scorer = FastMatthews()
-        self.acc_scorer = BooleanAccuracy()  # binary accuracy
-        self.f1_scorer = F1Measure(positive_label=1)  # binary F1 overall
-        self.val_metric = "%s_f1" % self.name  # TODO: switch to MCC?
-        self.val_metric_decreases = False
+        if self.label_type == "scalar":
+            self.mae_scorer = MeanAbsoluteError()
+            self.pearson_scorer = PearsonCorrelation()
+            self.val_metric = "%s_pearson" % self.name
+            self.val_metric_decreases = False
+        else:  # binary or multilabel
+            #  self.acc_scorer = CategoricalAccuracy()  # multiclass accuracy
+            self.mcc_scorer = FastMatthews()
+            self.acc_scorer = BooleanAccuracy()  # binary accuracy
+            self.f1_scorer = F1Measure(positive_label=1)  # binary F1 overall
+            self.val_metric = "%s_f1" % self.name  # TODO: switch to MCC?
+            self.val_metric_decreases = False
 
     def _stream_records(self, filename):
         skip_ctr = 0
@@ -519,6 +534,10 @@ class EdgeProbingTask(Task):
             assert label in [0,1]
             return ArrayField(np.array([label], dtype=np.bool),
                               padding_value=0)
+        elif self.label_type == "scalar":
+            label = float(target_label)
+            return ArrayField(np.array([label], dtype=np.float32),
+                              padding_value=0)
         else:
             raise ValueError("Unsupported label type %s" % self.label_type)
 
@@ -563,12 +582,16 @@ class EdgeProbingTask(Task):
     def get_metrics(self, reset=False):
         '''Get metrics specific to the task'''
         metrics = {}
-        metrics['mcc'] = self.mcc_scorer.get_metric(reset)
-        metrics['acc'] = self.acc_scorer.get_metric(reset)
-        precision, recall, f1 = self.f1_scorer.get_metric(reset)
-        metrics['precision'] = precision
-        metrics['recall'] = recall
-        metrics['f1'] = f1
+        if self.label_type == "scalar":
+            metrics['mae'] = self.mae_scorer.get_metric(reset)
+            metrics['pearson'] = self.pearson_scorer.get_metric(reset)
+        else:
+            metrics['mcc'] = self.mcc_scorer.get_metric(reset)
+            metrics['acc'] = self.acc_scorer.get_metric(reset)
+            precision, recall, f1 = self.f1_scorer.get_metric(reset)
+            metrics['precision'] = precision
+            metrics['recall'] = recall
+            metrics['f1'] = f1
         return metrics
 
 
