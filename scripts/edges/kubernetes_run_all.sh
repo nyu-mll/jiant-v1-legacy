@@ -84,6 +84,7 @@ function kuberun() {
 declare -a ALL_TASKS
 ALL_TASKS+=( "spr1" )
 ALL_TASKS+=( "spr2" )
+ALL_TASKS+=( "ih2" )
 ALL_TASKS+=( "dpr" )
 ALL_TASKS+=( "dep-labeling-ewt" )
 ALL_TASKS+=( "constituent-ontonotes" )
