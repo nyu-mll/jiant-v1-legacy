@@ -195,7 +195,7 @@ class Task():
         ''' Process split text into a list of AllenNLP Instances. '''
         raise NotImplementedError
 
-    def get_metrics(self, reset: bool=False) -> Dict:
+    def get_metrics(self, reset: bool = False) -> Dict:
         ''' Get metrics specific to the task. '''
         raise NotImplementedError
 
@@ -302,17 +302,17 @@ class PairClassificationTask(ClassificationTask):
 # Coreference on OntoNotes corpus. Two labels.
 @register_task('edges-coref-ontonotes', rel_path='edges/ontonotes-coref',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json",
-                    'val': "dev.edges.json",
-                    'test': "test.edges.json",
+                   'train': "train.edges.json",
+                   'val': "dev.edges.json",
+                   'test': "test.edges.json",
                }, is_symmetric=False, label_type="binary")
 # Re-processed version of the above, via AllenNLP data loaders.
 @register_task('edges-coref-ontonotes-conll',
                rel_path='edges/ontonotes-coref-conll',
                label_file="labels.txt", files_by_split={
-                    'train': "coref_conll_ontonotes_en_train.json",
-                    'val': "coref_conll_ontonotes_en_dev.json",
-                    'test': "coref_conll_ontonotes_en_test.json",
+                   'train': "coref_conll_ontonotes_en_train.json",
+                   'val': "coref_conll_ontonotes_en_dev.json",
+                   'test': "coref_conll_ontonotes_en_test.json",
                }, is_symmetric=False, label_type="binary")
 # Entity type labeling on CoNLL 2003.
 @register_task('edges-ner-conll2003', rel_path='edges/ner_conll2003',
@@ -390,11 +390,11 @@ class EdgeProbingTask(Task):
 
     def __init__(self, path: str, max_seq_len: int,
                  name: str,
-                 label_file: str=None,
-                 files_by_split: Dict[str, str]=None,
-                 is_symmetric: bool=False,
-                 single_sided: bool=False,
-                 label_type: str="multilabel"):
+                 label_file: str = None,
+                 files_by_split: Dict[str, str] = None,
+                 is_symmetric: bool = False,
+                 single_sided: bool = False,
+                 label_type: str = "multilabel"):
         """Construct an edge probing task.
 
         path, max_seq_len, and name are passed by the code in preprocess.py;
@@ -436,7 +436,7 @@ class EdgeProbingTask(Task):
             self.n_classes = 1
         else:
             self.all_labels = list(utils.load_lines(
-                                       os.path.join(path, label_file)))
+                os.path.join(path, label_file)))
             self.n_classes = len(self.all_labels)
 
         # Scorers
@@ -521,7 +521,7 @@ class EdgeProbingTask(Task):
                                    skip_indexing=False)
         elif self.label_type == "binary":
             label = int(target_label)
-            assert label in [0,1]
+            assert label in [0, 1]
             return ArrayField(np.array([label], dtype=np.bool),
                               padding_value=0)
         else:
