@@ -20,6 +20,7 @@ def write_json_data(filename: str, records: Iterable[Dict]):
             fd.write(json.dumps(record))
             fd.write("\n")
 
+
 def wrap_singleton_label(item: Union[Sequence, str]):
     ''' Wrap a single label as a list. '''
     if isinstance(item, str):

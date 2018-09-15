@@ -377,9 +377,9 @@ class PairClassificationTask(ClassificationTask):
 # Event factuality (it happened v2)
 @register_task('edges-ih2', rel_path='edges/ih2',
                files_by_split={
-                    'train': "train.conll.json",
-                    'val': "dev.conll.json",
-                    'test': "test.conll.json",
+                   'train': "train.conll.json",
+                   'val': "dev.conll.json",
+                   'test': "test.conll.json",
                }, single_sided=True, label_type="scalar")
 class EdgeProbingTask(Task):
     ''' Generic class for fine-grained edge probing.
