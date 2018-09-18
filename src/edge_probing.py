@@ -14,7 +14,7 @@ from allennlp.modules.span_extractors import \
 
 from typing import Dict, Iterable, List
 
-SPAN_CONSTANT = 10 # move this
+SPAN_WIDTH_CONSTANT = 10 # move this to configs?
 
 class EdgeClassifierModule(nn.Module):
     ''' Build edge classifier components as a sub-module.
@@ -103,7 +103,7 @@ class EdgeClassifierModule(nn.Module):
                                                          task_params)
         if self.detect_spans:
             print (f"max seq len: {self.max_seq_len}")
-            index_array = np.array([[[i, i + j] for j in range(SPAN_CONSTANT)] for i in range(self.max_seq_len)])
+            index_array = np.array([[[i, i + j] for j in range(SPAN_WIDTH_CONSTANT)] for i in range(self.max_seq_len)])
             self.index_array = torch.from_numpy(index_array)
 
     def forward(self, batch: Dict,
@@ -135,6 +135,7 @@ class EdgeClassifierModule(nn.Module):
         out = {}
         batch_size = sent_embs.shape[0]
         seq_len = sent_embs.shape[1]
+        assert seq_len <= self.max_seq_len, f"{seq_len}, {self.max_seq_len}"
         out['n_inputs'] = batch_size
 
         # Apply projection CNN layer for each span.
@@ -147,7 +148,7 @@ class EdgeClassifierModule(nn.Module):
         span_mask = (batch['span1s'][:, :, 0] != -1)  # [batch_size, num_targets] bool
         out['mask'] = span_mask
         if self.detect_spans:
-            total_num_targets = batch_size * seq_len * SPAN_CONSTANT
+            total_num_targets = batch_size * seq_len * SPAN_WIDTH_CONSTANT
         else:
             total_num_targets = span_mask.sum()
         out['n_targets'] = total_num_targets
@@ -158,9 +159,9 @@ class EdgeClassifierModule(nn.Module):
                                                           for span_start_at in self.index_array[:seq_len, :]])).cuda()
             _kw = dict(sequence_mask=sent_mask.long())
             candidate_spans = self.index_array[:seq_len,:].repeat(batch_size, 1, 1, 1).view(batch_size,
-                                                                                            seq_len * SPAN_CONSTANT, -1)
+                                                                                            seq_len * SPAN_WIDTH_CONSTANT, -1)
 
-            flat_index_array_mask = index_array_mask.view(seq_len * SPAN_CONSTANT, 1).byte().cpu()
+            flat_index_array_mask = index_array_mask.view(seq_len * SPAN_WIDTH_CONSTANT, 1).byte().cpu()
             masked_spans = torch.masked_select(candidate_spans, flat_index_array_mask).view(batch_size, -1, 2)
             num_spans = masked_spans.shape[1]
             assert self.single_sided, "Span detection currently only implemented for single_sided"
@@ -170,23 +171,24 @@ class EdgeClassifierModule(nn.Module):
             # this part is in numpy; could possibly be moved to preprocessing
             if 'labels' in batch:
                 label_size = batch['labels'].shape[-1]
-                np_labels = np.zeros([batch_size, seq_len * SPAN_CONSTANT, label_size], dtype=np.uint8)
+                np_labels = np.zeros([batch_size, seq_len * SPAN_WIDTH_CONSTANT, label_size], dtype=np.uint8)
                 for batch_num in range(batch_size):
                     for span_idx, span in enumerate(batch['span1s'][batch_num]):
                         if span_mask[batch_num][span_idx] != 0:
-                            np_labels[batch_num][span[0] * SPAN_CONSTANT + (span[1] - span[0])] = batch['labels'][batch_num][span_idx]
+                            np_labels[batch_num][span[0] * SPAN_WIDTH_CONSTANT + (span[1] - span[0])] = batch['labels'][batch_num][span_idx]
                 labels = torch.masked_select(torch.from_numpy(np_labels),
                                              flat_index_array_mask).view(batch_size, num_spans, -1).cuda()
                 # create a new span mask that uses _all_ of it
                 span_mask = torch.ones([batch_size, num_spans], dtype=torch.uint8)
         elif self.detect_spans and not self.single_sided:
+            # Currently still WIP
             # [batch_size * seq_len * seq_len * 2]
             index_array_mask = torch.from_numpy(np.array([[int(span[1] < seq_len) for span in span_start_at]
                                                           for span_start_at in self.index_array[:seq_len, :]])).cuda()
             _span2_kw = dict(sequence_mask=sent_mask.long())
             candidate_spans = self.index_array[:seq_len,:].repeat(batch_size, 1, 1, 1).view(batch_size,
-                                                                                            seq_len * SPAN_CONSTANT, -1)
-            flat_index_array_mask = index_array_mask.view(seq_len * SPAN_CONSTANT, 1).byte().cpu()
+                                                                                            seq_len * SPAN_WIDTH_CONSTANT, -1)
+            flat_index_array_mask = index_array_mask.view(seq_len * SPAN_WIDTH_CONSTANT, 1).byte().cpu()
             masked_spans = torch.masked_select(candidate_spans, flat_index_array_mask).view(batch_size, -1, 2)
             num_spans = masked_spans.shape[1]
             unique_vals, unique_idxs = np.unique(batch['span1s'], return_index=True, axis=1)
@@ -210,11 +212,11 @@ class EdgeClassifierModule(nn.Module):
             if 'labels' in batch:
                 label_size = batch['labels'].shape[-1]
 
-                np_labels = np.zeros([batch_size, seq_len * SPAN_CONSTANT, label_size], dtype=np.uint8)
+                np_labels = np.zeros([batch_size, seq_len * SPAN_WIDTH_CONSTANT, label_size], dtype=np.uint8)
                 for batch_num in range(batch_size):
                     for span_idx, span in enumerate(batch['span1s'][batch_num]):
                         if span_mask[batch_num][span_idx] != 0:
-                            np_labels[batch_num][span[0] * SPAN_CONSTANT + (span[1] - span[0])] = batch['labels'][batch_num][span_idx]
+                            np_labels[batch_num][span[0] * SPAN_WIDTH_CONSTANT + (span[1] - span[0])] = batch['labels'][batch_num][span_idx]
                 labels = torch.masked_select(torch.from_numpy(np_labels),
                                              flat_index_array_mask).view(batch_size, num_spans, -1).cuda()
                 # create a new span mask that uses _all_ of it

@@ -565,24 +565,24 @@ class EdgeProbingTask(Task):
 # Entity type labeling on CoNLL 2003.
 @register_task('edges-ner-conll2003-sd', rel_path='edges/ner_conll2003',
                label_file="labels.txt", files_by_split={
-                    'train': "CoNLL-2003_train.json" + _tokenizer_suffix,
-                    'val': "CoNLL-2003_dev.json" + _tokenizer_suffix,
-                    'test': "CoNLL-2003_test.json" + _tokenizer_suffix,
+                    'train': "CoNLL-2003_train.json",
+                    'val': "CoNLL-2003_dev.json",
+                    'test': "CoNLL-2003_test.json",
                }, single_sided=True)
 # Entity type labeling on OntoNotes.
 @register_task('edges-ner-ontonotes-sd',
                rel_path='edges/ontonotes-ner',
                label_file="labels.txt", files_by_split={
-                    'train': "ner_ontonotes_en_train.json" + _tokenizer_suffix,
-                    'val': "ner_ontonotes_en_dev.json" + _tokenizer_suffix,
-                    'test': "ner_ontonotes_en_test.json" + _tokenizer_suffix,
+                    'train': "ner_ontonotes_en_train.json",
+                    'val': "ner_ontonotes_en_dev.json",
+                    'test': "ner_ontonotes_en_test.json",
                }, single_sided=True)
 # SRL CoNLL 2012 (OntoNotes), formulated as an edge-labeling task.
 @register_task('edges-srl-conll2012-sd', rel_path='edges/srl_conll2012',
                label_file="labels.txt", files_by_split={
-                    'train': "train.edges.json" + _tokenizer_suffix,
-                    'val': "dev.edges.json" + _tokenizer_suffix,
-                    'test': "test.edges.json" + _tokenizer_suffix,
+                    'train': "train.edges.json",
+                    'val': "dev.edges.json",
+                    'test': "test.edges.json",
                }, is_symmetric=False)
 class SpanDetectionTask(EdgeProbingTask):
     ''' Task class for edge probing
@@ -596,7 +596,7 @@ class SpanDetectionTask(EdgeProbingTask):
                  is_symmetric: bool=False,
                  single_sided: bool=False,
     ):
-        max_seq_len = 200
+        max_seq_len = 275 # Not the best place to override this value
         super(SpanDetectionTask, self).__init__(path, max_seq_len,
                                                 name, label_file,
                                                 files_by_split,

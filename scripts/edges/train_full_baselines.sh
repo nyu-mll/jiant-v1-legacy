@@ -19,16 +19,16 @@ cd $(dirname $0)
 pushd "${PWD%jiant*}/jiant"
 
 # Small tasks
-run_exp "edges-spr2" 100 100
-run_exp "edges-dpr" 100 100
-run_exp "edges-dep-labeling" 200 500
-run_exp "edges-ner-conll2003" 200 250
+# run_exp "edges-spr2" 100 100
+# run_exp "edges-dpr" 100 100
+# run_exp "edges-dep-labeling" 200 500
+# run_exp "edges-ner-conll2003" 200 250
 
-# OntoNotes
-run_exp "edges-srl-conll2012" 200 1000
-run_exp "edges-coref-ontonotes-conll" 200 1000
-run_exp "edges-ner-ontonotes" 200 1000
-run_exp "edges-constituent-ontonotes" 200 1000
+# # OntoNotes
+# run_exp "edges-srl-conll2012" 200 1000
+# run_exp "edges-coref-ontonotes-conll" 200 1000
+# run_exp "edges-ner-ontonotes" 200 1000
+# run_exp "edges-constituent-ontonotes" 200 1000
 
 # run_exp "edges-srl-conll2005"
 # run_exp "edges-coref-ontonotes"
@@ -36,4 +36,8 @@ run_exp "edges-constituent-ontonotes" 200 1000
 # run_exp "edges-ccg-tag"
 
 # Span Detection
-run_exp "edges-srl-conll2012-sd"
+# run_exp "edges-ner-ontonotes-sd" 200 1000
+# run_exp "edges-ner-conll2003-sd" 200 1000
+
+# not ready yet
+# run_exp "edges-srl-conll2012-sd" 200 1000
