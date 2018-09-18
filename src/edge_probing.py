@@ -181,8 +181,18 @@ class EdgeClassifierModule(nn.Module):
                 # create a new span mask that uses _all_ of it
                 span_mask = torch.ones([batch_size, num_spans], dtype=torch.uint8)
         elif self.detect_spans and not self.single_sided:
-            # Currently still WIP
+            # A strong assumption assumption is made that span1 is FIXED for each
+            # sentence (example) that is provided. In other words, span1 can be ignored
+            # in the final label creation step, and only needs to be used once 
             # [batch_size * seq_len * seq_len * 2]
+
+            # First get THE span1_emb (could also be none)
+            _kw = dict(sequence_mask=sent_mask.long(),
+                       span_indices_mask=span_mask.long())
+            span1_emb = self.span_extractors[1](se_proj1, batch['span1s'], **_kw)[:,:1]
+            adj_span_mask = span_mask[:, :1]
+
+            # Now get span2 emb
             index_array_mask = torch.from_numpy(np.array([[int(span[1] < seq_len) for span in span_start_at]
                                                           for span_start_at in self.index_array[:seq_len, :]])).cuda()
             _span2_kw = dict(sequence_mask=sent_mask.long())
@@ -190,38 +200,30 @@ class EdgeClassifierModule(nn.Module):
                                                                                             seq_len * SPAN_WIDTH_CONSTANT, -1)
             flat_index_array_mask = index_array_mask.view(seq_len * SPAN_WIDTH_CONSTANT, 1).byte().cpu()
             masked_spans = torch.masked_select(candidate_spans, flat_index_array_mask).view(batch_size, -1, 2)
-            num_spans = masked_spans.shape[1]
-            unique_vals, unique_idxs = np.unique(batch['span1s'], return_index=True, axis=1)
-            print (batch['span1s'], unique_vals, unique_idxs)
-            extended_span1s = batch['span1s'].repeat(1, num_spans, 1)
-            
-            print (span_mask.size(), unique_idxs.size)
-            print ((span_mask * torch.from_numpy(unique_idxs)).repeat(1, num_spans, 1).long().size())
-            _span1_kw = dict(sequence_mask=sent_mask.long(),
-                             span_indices_mask=(span_mask * torch.from_numpy(unique_idxs)).repeat(1, num_spans, 1).long())
 
-            exit(0)
-            span1_emb = self.span_extractors[1](se_proj1, extended_span1s.cuda(), **_span1_kw)
             span2_emb = self.span_extractors[2](se_proj2,
                                                 masked_spans.cuda(),
                                                 **_span2_kw) # [batch_size * seq_len * SPAN_CONSTANT * emb_size]
-            print (span1_emb.size(), span2_emb.size())
-            exit(0)
-            span_emb = torch.cat([span1_emb, span2_emb], dim=2)
+            num_spans = span2_emb.shape[1]
+            span1_mask = adj_span_mask.repeat(1, num_spans)
+            repeated_span1_emb = span1_emb.repeat(1, num_spans, 1)
+            span_emb = torch.cat([repeated_span1_emb, span2_emb], dim=2)
+
             # this part is in numpy; could possibly be moved to preprocessing
             if 'labels' in batch:
                 label_size = batch['labels'].shape[-1]
 
                 np_labels = np.zeros([batch_size, seq_len * SPAN_WIDTH_CONSTANT, label_size], dtype=np.uint8)
                 for batch_num in range(batch_size):
-                    for span_idx, span in enumerate(batch['span1s'][batch_num]):
+                    for span_idx, span in enumerate(batch['span2s'][batch_num]):
                         if span_mask[batch_num][span_idx] != 0:
                             np_labels[batch_num][span[0] * SPAN_WIDTH_CONSTANT + (span[1] - span[0])] = batch['labels'][batch_num][span_idx]
                 labels = torch.masked_select(torch.from_numpy(np_labels),
                                              flat_index_array_mask).view(batch_size, num_spans, -1).cuda()
-                # create a new span mask that uses _all_ of it
-                span_mask = torch.ones([batch_size, num_spans], dtype=torch.uint8)
-
+                
+                # create a new span mask that uses _all_ of it unless span1 was empty
+                span2_mask = torch.ones([batch_size, num_spans], dtype=torch.uint8).cuda()
+                span_mask = span1_mask * span2_mask
         else:
             _kw = dict(sequence_mask=sent_mask.long(),
                        span_indices_mask=span_mask.long())
