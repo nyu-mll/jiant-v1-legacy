@@ -91,6 +91,10 @@ ALL_TASKS+=( "constituent-ontonotes" )
 ALL_TASKS+=( "ner-ontonotes" )
 ALL_TASKS+=( "srl-conll2012" )
 ALL_TASKS+=( "coref-ontonotes-conll" )
+# Span detection variants
+ALL_TASKS+=( "ner-ontonotes-sd" )
+ALL_TASKS+=( "ner-conll2003-sd" )
+ALL_TASKS+=( "srl-conll2012-sd" )
 echo "All tasks to run: ${ALL_TASKS[@]}"
 
 if [[ $MODE == "delete" ]]; then
