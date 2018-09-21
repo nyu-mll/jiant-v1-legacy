@@ -635,7 +635,7 @@ class SpanDetectionTask(EdgeProbingTask):
         span_idx = 0
         for span, mask_val in zip(_sd_index_array, index_array_mask):
             if mask_val:
-                new_targets.append({'span1': span, 'preds': {}})
+                new_targets.append({'span1': span, 'preds': {}, 'label': []})
                 span2idx[tuple(span)] = span_idx
                 span_idx += 1
         leftover_targets = []
