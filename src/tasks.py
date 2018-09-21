@@ -41,6 +41,7 @@ UNK_TOK_ATOMIC = "UNKNOWN"  # an unk token that won't get split by tokenizers
 
 REGISTRY = {}  # Do not edit manually!
 
+SPAN_WIDTH_CONSTANT = 10 # this should be imported, perhaps
 
 def register_task(name, rel_path, **kw):
     '''Decorator to register a task.
@@ -562,6 +563,14 @@ class EdgeProbingTask(Task):
         metrics['f1'] = f1
         return metrics
 
+
+# Move somewhere else
+_sd_max_seq_len = 300
+_sd_index_array = sorted([[i, i + j] for j in range(SPAN_WIDTH_CONSTANT)
+                          for i in range(_sd_max_seq_len)],
+                         key=lambda x: x[1])
+
+
 # Entity type labeling on CoNLL 2003.
 @register_task('edges-ner-conll2003-sd', rel_path='edges/ner_conll2003',
                label_file="labels.txt", files_by_split={
@@ -596,13 +605,80 @@ class SpanDetectionTask(EdgeProbingTask):
                  is_symmetric: bool=False,
                  single_sided: bool=False,
     ):
-        max_seq_len = 275 # Not the best place to override this value
-        super(SpanDetectionTask, self).__init__(path, max_seq_len,
+        super(SpanDetectionTask, self).__init__(path, _sd_max_seq_len,
                                                 name, label_file,
                                                 files_by_split,
                                                 is_symmetric,
                                                 single_sided,
                                                 detect_spans=True)
+    def _stream_records(self, filename):
+        # don't skip anything
+         for record in utils.load_json_data(filename):
+            yield record
+
+    @staticmethod
+    def merge_preds(record: Dict, preds: Dict) -> Dict:
+        """ Merge predictions into record, in-place.
+
+        List-valued predictions should align to targets,
+        and are attached to the corresponding target entry.
+
+        Non-list predictions are attached to the top-level record.
+
+        This version currently only works for NER
+        """
+        record['preds'] = {}
+        seq_len = len(record['text'].split()) + 2  # account for EOS/SOS tokens
+        index_array_mask = np.array([span[1] < seq_len for span in _sd_index_array])
+        new_targets = []
+        span2idx = {}
+        span_idx = 0
+        for span, mask_val in zip(_sd_index_array, index_array_mask):
+            if mask_val:
+                new_targets.append({'span1': span})
+                span2idx[tuple(span)] = span_idx
+                span_idx += 1
+
+        for target in record['targets']:
+            target['preds'] = {}
+            new_targets[span2idx[tuple(target['span1'])]] = target
+        record['targets'] = new_targets
+        for key, val in preds.items():
+            if isinstance(val, list):
+                assert len(val) == len(record['targets'])
+                for i, target in enumerate(record['targets']):
+                    target['preds'][key] = val[i]
+            else:
+                # non-list predictions, attach to top-level preds
+                record['preds'][key] = val
+        return record
+
+
+    def make_instance(self, record, idx, indexers) -> Type[Instance]:
+        """Convert a single record to an AllenNLP Instance."""
+        tokens = record['text'].split()  # already space-tokenized by Moses
+        tokens = [utils.SOS_TOK] + tokens + [utils.EOS_TOK]
+        text_field = _sentence_to_text_field(tokens, indexers)
+
+        d = {}
+        d["idx"] = MetadataField(idx)
+        d['input1'] = text_field
+        if len(record['targets']) == 0:
+          record['targets'] = [{'span1': (-1, 0), 'span2': (-1, 0), 'label': []}] # label shouldn't matter
+        d['span1s'] = ListField([self._make_span_field(t['span1'], text_field, 1)
+                                 for t in record['targets']])
+        if not self.single_sided:
+            d['span2s'] = ListField([self._make_span_field(t['span2'], text_field, 1)
+                                     for t in record['targets']])
+
+        # Always use multilabel targets, so be sure each label is a list.
+        labels = [utils.wrap_singleton_string(t['label'])
+                  for t in record['targets']]
+        d['labels'] = ListField([MultiLabelField(label_set,
+                                                 label_namespace=self._label_namespace,
+                                                 skip_indexing=False)
+                                 for label_set in labels])
+        return Instance(d)
 
 class PairRegressionTask(RegressionTask):
     ''' Generic sentence pair classification '''

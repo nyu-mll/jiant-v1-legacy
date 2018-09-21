@@ -102,9 +102,12 @@ class EdgeClassifierModule(nn.Module):
                                                          task.n_classes,
                                                          task_params)
         if self.detect_spans:
-            print (f"max seq len: {self.max_seq_len}")
-            index_array = np.array([[[i, i + j] for j in range(SPAN_WIDTH_CONSTANT)] for i in range(self.max_seq_len)])
-            self.index_array = torch.from_numpy(index_array)
+            py_index_list = sorted([[i, i + j] for j in range(SPAN_WIDTH_CONSTANT) for i in range(self.max_seq_len)],
+                                   key=lambda x: x[1])
+            py_index_right = [span[1] for span in py_index_list]
+            self.index_array = torch.from_numpy(np.array(py_index_list)).cuda()
+            self.right_array = torch.from_numpy(np.array(py_index_right)).cuda()
+            self.index_lookup = {tuple(span): i for i, span in enumerate(py_index_list)}
 
     def forward(self, batch: Dict,
                 sent_embs: torch.Tensor,
@@ -148,38 +151,40 @@ class EdgeClassifierModule(nn.Module):
         span_mask = (batch['span1s'][:, :, 0] != -1)  # [batch_size, num_targets] bool
         out['mask'] = span_mask
         if self.detect_spans:
-            total_num_targets = batch_size * seq_len * SPAN_WIDTH_CONSTANT
+            seq_lens = torch.sum(sent_mask, dim=1)
+            index_array_mask = torch.lt(self.right_array, seq_lens.long())
+            total_num_targets = torch.max(torch.sum(index_array_mask, dim=1))
+            targets = self.index_array[:total_num_targets]
+            index_array_mask = index_array_mask[:, :total_num_targets]
         else:
             total_num_targets = span_mask.sum()
         out['n_targets'] = total_num_targets
         out['n_exs'] = total_num_targets  # used by trainer.py
         if self.detect_spans and self.single_sided:
-            # [batch_size * seq_len * seq_len * 2]
-            index_array_mask = torch.from_numpy(np.array([[int(span[1] < seq_len) for span in span_start_at]
-                                                          for span_start_at in self.index_array[:seq_len, :]])).cuda()
-            _kw = dict(sequence_mask=sent_mask.long())
-            candidate_spans = self.index_array[:seq_len,:].repeat(batch_size, 1, 1, 1).view(batch_size,
-                                                                                            seq_len * SPAN_WIDTH_CONSTANT, -1)
-
-            flat_index_array_mask = index_array_mask.view(seq_len * SPAN_WIDTH_CONSTANT, 1).byte().cpu()
-            masked_spans = torch.masked_select(candidate_spans, flat_index_array_mask).view(batch_size, -1, 2)
-            num_spans = masked_spans.shape[1]
+            _kw = dict(sequence_mask=sent_mask.long(),
+                       span_indices_mask=index_array_mask)
+            # masked_spans = torch.masked_select(candidate_spans, flat_index_array_mask).view(batch_size, -1, 2)
+            # num_spans = masked_spans.shape[1]
             assert self.single_sided, "Span detection currently only implemented for single_sided"
             span_emb = self.span_extractors[1](se_proj1,
-                                               masked_spans.cuda(),
-                                               **_kw) # [batch_size * seq_len * SPAN_CONSTANT * emb_size]
+                                               targets,
+                                               **_kw) # [batch_size * total_num_targets * emb_size]
             # this part is in numpy; could possibly be moved to preprocessing
             if 'labels' in batch:
                 label_size = batch['labels'].shape[-1]
-                np_labels = np.zeros([batch_size, seq_len * SPAN_WIDTH_CONSTANT, label_size], dtype=np.uint8)
+                np_labels = np.zeros([batch_size, total_num_targets, label_size], dtype=np.uint8)
                 for batch_num in range(batch_size):
                     for span_idx, span in enumerate(batch['span1s'][batch_num]):
                         if span_mask[batch_num][span_idx] != 0:
-                            np_labels[batch_num][span[0] * SPAN_WIDTH_CONSTANT + (span[1] - span[0])] = batch['labels'][batch_num][span_idx]
-                labels = torch.masked_select(torch.from_numpy(np_labels),
-                                             flat_index_array_mask).view(batch_size, num_spans, -1).cuda()
+                            span_cpu = tuple(span.cpu().numpy())
+                            if span_cpu in self.index_lookup:
+                                np_labels[batch_num][self.index_lookup[span_cpu]] = batch['labels'][batch_num][span_idx]
+                labels = torch.from_numpy(np_labels).cuda()
                 # create a new span mask that uses _all_ of it
-                span_mask = torch.ones([batch_size, num_spans], dtype=torch.uint8)
+                # new span mask should only restrict to those that are relevant based on
+                # individual sequence lengths.
+                span_mask = index_array_mask
+
         elif self.detect_spans and not self.single_sided:
             # A strong assumption assumption is made that span1 is FIXED for each
             # sentence (example) that is provided. In other words, span1 can be ignored
@@ -227,7 +232,6 @@ class EdgeClassifierModule(nn.Module):
         else:
             _kw = dict(sequence_mask=sent_mask.long(),
                        span_indices_mask=span_mask.long())
-            print (sent_mask.size(), span_mask.size(), batch['span1s'].size())
             # span1_emb and span2_emb are [batch_size, num_targets, span_repr_dim]
             span1_emb = self.span_extractors[1](se_proj1, batch['span1s'], **_kw)
             if not self.single_sided:
@@ -249,7 +253,6 @@ class EdgeClassifierModule(nn.Module):
             out['loss'] = self.compute_loss(logits[span_mask],
                                             labels[span_mask],
                                             task)
-            # print (out['loss'])
 
         if predict:
             # Return preds as a list.

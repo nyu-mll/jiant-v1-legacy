@@ -189,11 +189,11 @@ def _write_edge_preds(task: tasks_module.EdgeProbingTask,
                  task.name, split_name)
         records = task.get_split_text(split_name)
         # TODO: update this with more prediction types, when available.
+
         records = (task.merge_preds(r, {'proba': preds_df.at[i, 'preds']})
                    for i, r in enumerate(records))
     else:
         records = (row.to_dict() for _, row in preds_df.iterrows())
-
     with open(preds_file, 'w') as fd:
         for record in records:
             fd.write(json.dumps(record))

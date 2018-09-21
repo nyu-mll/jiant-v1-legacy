@@ -7,7 +7,7 @@ NOTIFY_EMAIL=$1
 
 function run_exp() {
     OVERRIDES="exp_name=train-full-$1, run_name=run"
-    OVERRIDES+=", train_tasks=$1, max_vals=$2, val_interval=$3, elmo_chars_only=0"
+    OVERRIDES+=", train_tasks=$1, max_vals=$2, val_interval=$3, elmo_chars_only=0
     python main.py --config_file config/edgeprobe_train.conf \
         -o "${OVERRIDES}" \
 #        --remote_log --notify "$NOTIFY_EMAIL"
@@ -36,6 +36,6 @@ pushd "${PWD%jiant*}/jiant"
 # run_exp "edges-ccg-tag"
 
 # Span Detection
-# run_exp "edges-ner-ontonotes-sd" 200 1000
+run_exp "edges-ner-ontonotes-sd" 200 1000
 # run_exp "edges-ner-conll2003-sd" 200 1000
 # run_exp "edges-srl-conll2012-sd" 200 1000
