@@ -635,13 +635,18 @@ class SpanDetectionTask(EdgeProbingTask):
         span_idx = 0
         for span, mask_val in zip(_sd_index_array, index_array_mask):
             if mask_val:
-                new_targets.append({'span1': span})
+                new_targets.append({'span1': span, 'preds': {}})
                 span2idx[tuple(span)] = span_idx
                 span_idx += 1
-
+        leftover_targets = []
         for target in record['targets']:
             target['preds'] = {}
-            new_targets[span2idx[tuple(target['span1'])]] = target
+            if tuple(target['span1']) in span2idx:
+                new_targets[span2idx[tuple(target['span1'])]] = target
+            else:
+                leftover_targets.append(target)
+        if leftover_targets:
+            print (leftover_targets)
         record['targets'] = new_targets
         for key, val in preds.items():
             if isinstance(val, list):
@@ -664,7 +669,7 @@ class SpanDetectionTask(EdgeProbingTask):
         d["idx"] = MetadataField(idx)
         d['input1'] = text_field
         if len(record['targets']) == 0:
-          record['targets'] = [{'span1': (-1, 0), 'span2': (-1, 0), 'label': []}] # label shouldn't matter
+          record['targets'] = [{'span1': (-2, -1), 'span2': (-2, -1), 'label': []}] # label shouldn't matter
         d['span1s'] = ListField([self._make_span_field(t['span1'], text_field, 1)
                                  for t in record['targets']])
         if not self.single_sided:

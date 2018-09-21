@@ -177,7 +177,7 @@ class EdgeClassifierModule(nn.Module):
                     for span_idx, span in enumerate(batch['span1s'][batch_num]):
                         if span_mask[batch_num][span_idx] != 0:
                             span_cpu = tuple(span.cpu().numpy())
-                            if span_cpu in self.index_lookup:
+                            if span_cpu != (0, 0) and span_cpu in self.index_lookup: # (0, 0) would never be a span anyway
                                 np_labels[batch_num][self.index_lookup[span_cpu]] = batch['labels'][batch_num][span_idx]
                 labels = torch.from_numpy(np_labels).cuda()
                 # create a new span mask that uses _all_ of it
