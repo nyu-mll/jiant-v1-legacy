@@ -63,17 +63,17 @@ function elmo_random_exp() {
 
 function train_chars_exp() {
     # Trained encoder over ELMo character layer.
-    # Usage: train_chars_exp <task_name> <max_vals> <val_interval>
+    # Usage: train_chars_exp <task_name>
     OVERRIDES="exp_name=train-chars-$1, run_name=run"
-    OVERRIDES+=", train_tasks=$1, max_vals=$2, val_interval=$3"
+    OVERRIDES+=", train_tasks=$1"
     run_exp "config/edgeprobe_train.conf" "${OVERRIDES}"
 }
 
 function train_full_exp() {
     # Trained encoder over full ELMo.
-    # Usage: train_full_exp <task_name> <max_vals> <val_interval>
+    # Usage: train_full_exp <task_name>
     OVERRIDES="exp_name=train-full-$1, run_name=run"
-    OVERRIDES+=", train_tasks=$1, max_vals=$2, val_interval=$3, elmo_chars_only=0"
+    OVERRIDES+=", train_tasks=$1, elmo_chars_only=0"
     run_exp "config/edgeprobe_train.conf" "${OVERRIDES}"
 }
 

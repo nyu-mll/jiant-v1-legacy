@@ -100,6 +100,7 @@ fi
 
 for task in "${ALL_TASKS[@]}"
 do
+    kuberun train-chars-$task  "train_chars_exp edges-$task"
     kuberun elmo-chars-$task "elmo_chars_exp edges-$task"
     kuberun elmo-ortho-$task "elmo_ortho_exp edges-$task 0"
     kuberun elmo-full-$task  "elmo_full_exp edges-$task"
