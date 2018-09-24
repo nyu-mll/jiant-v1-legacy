@@ -47,11 +47,22 @@ To convert the data, run `python convert-dpr.py`
 
 ## Winobias and Winogender (TODO: Patrick)
 
-Lorem ipsum...
+### WinoBias:
 
-## OntoNotes (TODO: Patrick)
+Download the data from [here](https://github.com/uclanlp/corefBias/tree/master/WinoBias/wino/data) (not the conll versions), then run `python extract_winobias.py OUTPUT_FILE_NAME *.{dev, test}`.
 
-Lorem ipsum...
+### WinoGender:
+
+Download all the data from [here](https://github.com/rudinger/winogender-schemas/blob/master/data/all_sentences.tsv) 
+and then run `python extract_windogender.py OUTPUT_FILE_NAME all_sentences.tsv`.
+
+## OntoNotes
+
+Download the conll-formatted OntoNotes data (locally, it is in the bucket gs://jsalt-data/ontonotes). Then run
+
+`python extract_ontonotes_all.py PATH_TO_ONTONOTES/conll-formatted-ontonotes-5.0-12/conll-formatted-ontonotes-5.0/data/{train, development, test} {coref,const,srl,ner}`
+
+which should generate 12 datasets of newline-separated json files in the appropriate format. This requires allennlp and uses their OntoNotes reader.
 
 ## CoNLL 2003 NER
 
