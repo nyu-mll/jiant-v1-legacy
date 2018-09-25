@@ -36,6 +36,7 @@ class EdgeProbingDatasetStats(object):
 
     def __init__(self):
         self._stats = collections.Counter()
+        self._stats['targets.all_labels'] = []
 
     def update(self, record: Dict):
         stats = self._stats
@@ -52,6 +53,7 @@ class EdgeProbingDatasetStats(object):
         stats['targets.max_count'] = max(len(targets), stats['targets.max_count'])
         for target in targets:
             labels = wrap_singleton_label(target['label'])
+            stats['targets.all_labels'].extend(labels)
             stats['targets.label.count'] += len(labels)
             span1 = target.get('span1', [-1, -1])
             stats['targets.span1.length'] += (max(span1) - min(span1))
@@ -79,6 +81,7 @@ class EdgeProbingDatasetStats(object):
         s['targets.mean_count'] = stats['targets.count'] / stats['count']
         s['targets.max_count'] = stats['targets.max_count']
         s['targets.label.count'] = stats['targets.label.count']
+        s['targets.label.unique'] = len(set(stats['targets.all_labels']))
         s['targets.label.mean_count'] = stats['targets.label.count'] / stats['targets.count']
         s['targets.span1.mean_length'] = stats['targets.span1.length'] / stats['targets.count']
         s['targets.span2.mean_length'] = stats['targets.span2.length'] / stats['targets.count']
