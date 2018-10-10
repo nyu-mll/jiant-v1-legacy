@@ -1,51 +1,43 @@
+import sys
+import os
+import json
+import collections
+
+import logging as log
+log.basicConfig(format='%(asctime)s: %(message)s',
+                datefmt='%m/%d %I:%M:%S %p', level=log.INFO)
+
+import numpy as np
+
 from allennlp.data.dataset_readers.dataset_utils import Ontonotes
 from allennlp.data.dataset_readers.dataset_utils.span_utils import bio_tags_to_spans
-import sys
-import numpy as np
-import json
- # from ptb_process import sent_to_dict
 
-TYPE = sys.argv[3] # fill in with "ner"/coref/const/srl"
+import utils
+from tqdm import tqdm
 
-ontonotes = Ontonotes()
-file_path = sys.argv[1] # e.g. test/train/development/conll-test: /nfs/jsalt/home/pitrack/ontonotes/ontonotes/conll-formatted-ontonotes-5.0-12/conll-formatted-ontonotes-5.0/data/development
-out_file = open(sys.argv[2], 'w+')
-ontonotes_reader = ontonotes.dataset_iterator(file_path=sys.argv[1])
+from typing import Tuple, List, Dict
 
-counter = []
-num_span_pairs = 0
-num_entities = 0
-skip_counter = 0
+def _incl_to_excl(span: Tuple[int,int]):
+    return (span[0], span[1]+1)
 
-def jsonify(spans, sentence, two_targets=False, frame=""):
-    global num_span_pairs
-    new_entry = {}
-    new_entry["text"] = " ".join(sentence.words)
-    def correct(span):
-        global num_span_pairs
-        num_span_pairs += 1
-        # spans are of form (label, (begin, end)) (inclusive)
-        # and get converted to (right-exclusive)
-        #   {"span1": [begin, end], "label": label}
-        if two_targets:
-            return {"span1": [span[1][0], span[1][1] + 1],
-                    "span2": [span[2][0], span[2][1] + 1],
-                    "label": span[0]}
-        else:
-            return {"span1": [span[1][0], span[1][1] + 1],
-                    "label": span[0]}
-    new_entry["targets"] = [correct(span) for span in spans]
-    new_entry["source"] = "{} {} {}".format(sentence.document_id, sentence.sentence_id, frame)
-    return new_entry
+def _make_target(label: List[str], span1: Tuple[int,int], 
+                 span2: Tuple[int,int]=None):
+    t = {"span1": _incl_to_excl(span1),
+         "label": label}
+    if span2 is not None:
+        t["span2"] = _incl_to_excl(span2)
+    return t
 
-def get_ners(sentence):
-    global counter
-    
-    spans = bio_tags_to_spans(sentence.named_entities)
-    counter.append(len(spans))
-    return spans
+def make_record(spans, sentence):
+    record = {}
+    record["info"] = {"document_id": sentence.document_id,
+                      "sentence_id": sentence.sentence_id}
 
-def sent_to_dict(sentence):
+    record["text"] = " ".join(sentence.words)
+    record["targets"] = [_make_target(*s) for s in spans]
+    return record
+
+def constituents_to_record(parse_tree):
     '''Function converting Tree object to dictionary compatible with common JSON format
      copied from ptb_process.py so it doesn't have dependencies
     '''
@@ -54,18 +46,17 @@ def sent_to_dict(sentence):
     adverbials = ['BNF', 'DIR', 'EXT', 'LOC', 'MNR', 'PRP', 'TMP']
     miscellaneous = ['CLR', 'CLF', 'HLN', 'TTL']
     punctuations = ['-LRB-', '-RRB-', '-LCB-', '-RCB-', '-LSB-', '-RSB-']
-    json_d = {}
 
-    text = ""
-    for word in sentence.flatten():
-        text += word + " "
-    json_d["text"] = text
+    record = {}
+    record["text"] = " ".join(parse_tree.flatten())
+    record["targets"] = []
 
-    max_height = sentence.height()
-    for i, leaf in enumerate(sentence.subtrees(lambda t: t.height() == 2)): #modify the leafs by adding their index in the sentence
+    max_height = parse_tree.height()
+    for i, leaf in enumerate(parse_tree.subtrees(lambda t: t.height() == 2)): 
+        #modify the leafs by adding their index in the parse_tree
         leaf[0] = (leaf[0], str(i))
-    targets = []
-    for index, subtree in enumerate(sentence.subtrees()):
+    
+    for index, subtree in enumerate(parse_tree.subtrees()):
         assoc_words = subtree.leaves()
         assoc_words = [(i, int(j)) for i, j in assoc_words]
         assoc_words.sort(key=lambda elem: elem[1])
@@ -81,59 +72,34 @@ def sent_to_dict(sentence):
             fxn_tgs = tmp_tag_list[2:-1] if tmp_tag_list[-1].isdigit() else tmp_tag_list[2:]
         if subtree.label() in punctuations: #Case when we have one of the strange punctions, such as round brackets
             label, fxn_tgs = subtree.label(), []
-        targets.append({"span1":[int(assoc_words[0][1]), int(assoc_words[-1][1]) + 1], "label": label, \
-                        "info": {"height": subtree.height() - 1, "depth": find_depth(sentence, subtree), \
-                        "form_function_discrepancies": list(set(fxn_tgs).intersection(set(form_function_discrepancies))), \
-                        "grammatical_rule": list(set(fxn_tgs).intersection(set(grammatical_rule))), \
-                        "adverbials": list(set(fxn_tgs).intersection(set(adverbials))), \
-                        "miscellaneous": list(set(fxn_tgs).intersection(set(miscellaneous)))}})
-    json_d["targets"] = targets
-    
-    json_d["info"] = {"source": "PTB"}
-    
-    return json_d
+        target = {"span1": [int(assoc_words[0][1]), int(assoc_words[-1][1]) + 1], 
+                  "label": label}
 
+        fxn_tgs = set(fxn_tgs)
+        target["info"] = {
+            "height": subtree.height() - 1, 
+            #  "depth": find_depth(parse_tree, subtree),
+            "form_function_discrepancies": list(fxn_tgs.intersection(form_function_discrepancies)),
+            "grammatical_rule": list(fxn_tgs.intersection(grammatical_rule)),
+            "adverbials": list(fxn_tgs.intersection(adverbials)),
+            "miscellaneous": list(fxn_tgs.intersection(miscellaneous))
+        }
+        record["targets"].append(target)
 
+    return record
 
-def nltk_tree_to_spans(nltk_tree):
-    # Input: nltk.tree
-    # Output: List[(Str, (Int, Int))] of labelled spans
-    # where the first element of the tuple is a string
-    # and the second is a [begin, end) tuple specifying the span
-    span_dict = sent_to_dict(nltk_tree)
-    return span_dict
-    
-
-def get_consts(sentence):
-    global counter, skip_counter
-    try:
-        span_dict = nltk_tree_to_spans(sentence.parse_tree)
-    except Exception as e:
-        skip_counter += 1
-        return jsonify([], sentence)
-    counter.append(len(span_dict['targets']))
-    span_dict["source"] = "{} {}".format(sentence.document_id, sentence.sentence_id)
-    return span_dict
 
 def find_links(span_list):
-  pairs = []
-  for i, span_1 in enumerate(span_list):
-    for span_2 in span_list[i+1:]:
-        pairs.append((str(int(span_1[0] == span_2[0])),
-                      span_1[1],
-                      span_2[1]))
-  return pairs
+    pairs = []
+    for i, span1 in enumerate(span_list):
+        for span2 in span_list[i+1:]:
+            pairs.append((str(int(span1[0] == span2[0])),
+                          span1[1],
+                          span2[1]))
+    return pairs
 
 
-def get_corefs(sentence):
-    global counter
-    spans = find_links(list(sentence.coref_spans))
-    counter.append(len(spans))
-    return spans
-
-def get_srls(sentence):
-    global counter
-    sentence_targets = []
+def get_frames(sentence):
     for frame, bio_tags in sentence.srl_frames:
         frame_targets = []
         spans = bio_tags_to_spans(bio_tags)
@@ -148,38 +114,77 @@ def get_srls(sentence):
             print (frame, bio_tags)
         for span2_tag, span2 in other_spans:
             frame_targets.append((span2_tag, head_span, span2))
-        sentence_targets.append(frame_targets)
-        counter.append(len(other_spans) + 1)
-    return sentence_targets
-    
+        yield frame_targets
 
-sent_counter = 0
-for sentence in ontonotes_reader:
-    sent_counter += 1
-    # returns dict of spans, right-exclusive, STRING labeled with
-    # named entity label
-    if TYPE == "ner":
-        spans = get_ners(sentence)
-        out_file.write(json.dumps(jsonify(spans, sentence, two_targets=False)))
-    elif TYPE == "const":
-        spans_dict = get_consts(sentence)
-        out_file.write(json.dumps(spans_dict))
-    elif TYPE == "coref":
-        spans = get_corefs(sentence)
-        num_entities += len(sentence.coref_spans)
-        out_file.write(json.dumps(jsonify(spans, sentence, two_targets=True)))
-    elif TYPE == "srl":
-        srls = get_srls(sentence)
-        for frame in srls:
-            out_file.write(json.dumps(jsonify(frame, sentence, two_targets=True, frame=frame)))
-            out_file.write("\n")
-    if TYPE != "srl":
-        out_file.write("\n")
+def process_task_split(ontonotes_reader, task: str, stats: collections.Counter):
+    for sentence in ontonotes_reader:
+        if task == "ner":
+            spans = bio_tags_to_spans(sentence.named_entities)
+            yield make_record(spans, sentence)
+        elif task == "const":
+            if sentence.parse_tree is not None:
+                record = constituents_to_record(sentence.parse_tree)
+                record["info"] = {"document_id": sentence.document_id,
+                                     "sentence_id": sentence.sentence_id}
+                yield record
+            else:
+                stats['missing_tree'] += 1
+                yield make_record([], sentence)
+        elif task == "coref":
+            spans = find_links(list(sentence.coref_spans))
+            yield make_record(spans, sentence)
+            stats['num_entities'] += len(sentence.coref_spans)
+        elif task == "srl":
+            for frame_spans in get_frames(sentence):
+                yield make_record(frame_spans, sentence)
+                stats['frames'] += 1
+        else:
+            raise ValueError(f"Unrecognized task '{task}'")
 
-print ("num entities:{}".format(sum(counter)))
-print ("some stats mn|std|md: {} {} {}".format(np.mean(counter), np.std(counter), np.median(counter)))
-print ("hist: {}".format(np.histogram(counter)))
-print ("num sents: {}".format(sent_counter))
-print ("num_span_pairs: {}".format(num_span_pairs))
-print ("also num ents: {}".format(num_entities))
-print ("skipped: {}".format(skip_counter))
+        stats['sentences'] += 1
+
+
+def main(args):
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ontonotes', type=str, required=True,
+            help="Path to OntoNotes, e.g. /path/to/conll-formatted-ontonotes-5.0")
+    parser.add_argument('--tasks', type=str, nargs="+",
+                        help="Tasks, one or more of {const, coref, ner, srl}.")
+    parser.add_argument('--splits', type=str, nargs="+",
+            default=["train", "development", "test", "conll-2012-test"],
+            help="Splits, one or more of {train, development, test, conll-2012-test}.")
+    parser.add_argument('-o', dest="output_dir", type=str, default=".",
+                        help="Output directory for JSON files.")
+    args = parser.parse_args(args)
+
+    if not os.path.isdir(args.output_dir):
+        os.mkdir(args.output_dir)
+
+    import pandas as pd
+    pd.options.display.float_format = '{:.2f}'.format
+
+    # Load OntoNotes reader.
+    ontonotes = Ontonotes()
+    for split in args.splits:
+        for task in args.tasks:
+            source_path = os.path.join(args.ontonotes, "data", split)
+            ontonotes_reader = ontonotes.dataset_iterator(file_path=source_path)
+
+            log.info("Processing split '%s' for task '%s'", split, task)
+            target_fname = os.path.join(args.output_dir, f"{task}.{split}.json")
+            ontonotes_stats = collections.Counter()
+            converted_records = process_task_split(tqdm(ontonotes_reader),
+                                                   task, ontonotes_stats)
+
+            stats = utils.EdgeProbingDatasetStats()
+            converted_records = stats.passthrough(converted_records)
+            utils.write_json_data(target_fname, converted_records)
+            log.info("Wrote examples to %s", target_fname)
+            log.info(stats.format())
+            log.info(str(pd.Series(ontonotes_stats, dtype=object)))
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
+    sys.exit(0)
