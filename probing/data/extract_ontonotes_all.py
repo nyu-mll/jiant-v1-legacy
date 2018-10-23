@@ -20,7 +20,7 @@ from typing import Tuple, List, Dict
 def _incl_to_excl(span: Tuple[int,int]):
     return (span[0], span[1]+1)
 
-def _make_target(label: List[str], span1: Tuple[int,int], 
+def _make_target(label: List[str], span1: Tuple[int,int],
                  span2: Tuple[int,int]=None):
     t = {"span1": _incl_to_excl(span1),
          "label": label}
@@ -52,10 +52,10 @@ def constituents_to_record(parse_tree):
     record["targets"] = []
 
     max_height = parse_tree.height()
-    for i, leaf in enumerate(parse_tree.subtrees(lambda t: t.height() == 2)): 
+    for i, leaf in enumerate(parse_tree.subtrees(lambda t: t.height() == 2)):
         #modify the leafs by adding their index in the parse_tree
         leaf[0] = (leaf[0], str(i))
-    
+
     for index, subtree in enumerate(parse_tree.subtrees()):
         assoc_words = subtree.leaves()
         assoc_words = [(i, int(j)) for i, j in assoc_words]
@@ -72,12 +72,12 @@ def constituents_to_record(parse_tree):
             fxn_tgs = tmp_tag_list[2:-1] if tmp_tag_list[-1].isdigit() else tmp_tag_list[2:]
         if subtree.label() in punctuations: #Case when we have one of the strange punctions, such as round brackets
             label, fxn_tgs = subtree.label(), []
-        target = {"span1": [int(assoc_words[0][1]), int(assoc_words[-1][1]) + 1], 
+        target = {"span1": [int(assoc_words[0][1]), int(assoc_words[-1][1]) + 1],
                   "label": label}
 
         fxn_tgs = set(fxn_tgs)
         target["info"] = {
-            "height": subtree.height() - 1, 
+            "height": subtree.height() - 1,
             #  "depth": find_depth(parse_tree, subtree),
             "form_function_discrepancies": list(fxn_tgs.intersection(form_function_discrepancies)),
             "grammatical_rule": list(fxn_tgs.intersection(grammatical_rule)),
