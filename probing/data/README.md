@@ -198,11 +198,37 @@ Follow [this](https://www.ldc.upenn.edu/language-resources/data/obtaining) to ob
 
 For choice of train/dev/test, we followed [Klein *et al*](http://ilpubs.stanford.edu:8091/~klein/unlexicalized-parsing.pdf).  Note that there is a discrepency in the size of our dev set (first 20 files in section 22 of WSJ section of the Penn treebank), which has 427 sentences compared to 393 as described in Klein *et al*.
 
-## Universal Dependencies (TODO: Tom)
+## Universal Dependencies
 
 Tasks: `edges-dep-labeling-ewt`
 
-**TODO(Tom):** fill this in.
+Download the EWT corpus for Universal Dependencies from [here](https://github.com/UniversalDependencies/UD_English-EWT/tree/master). The specific files that you need are `en_ewt-ud-dev.conllu`, `en_ewt-ud-test.conllu`, and `en_ewt-ud-train.conllu`.
+
+Run the following three lines (you may need to modify the paths to the downloaded `.conllu` files):
+```
+python ud_to_json.py UD_English-EWT/en_ewt-ud-dev.conllu
+python ud_to_json.py UD_English-EWT/en_ewt-ud-test.conllu
+python ud_to_json.py UD_English-EWT/en_ewt-ud-train.conllu
+```
+You should now see files named `en_ewt-ud-dev.json`, `en_ewt-ud-test.json`, and `en_ewt-ud-train.json` in the directory where the original data files were downloaded. Here is an example of one of the entries in the resulting file:
+
+```
+{
+  "text": "This only serves their purposes .", 
+  "targets": [
+    {"span1": [0, 1], "span2": [2, 3], "label": "nsubj"}, 
+    {"span1": [1, 2], "span2": [2, 3], "label": "advmod"}, 
+    {"span1": [2, 3], "span2": [2, 3], "label": "root"}, 
+    {"span1": [3, 4], "span2": [4, 5], "label": "nmod:poss"}, 
+    {"span1": [4, 5], "span2": [2, 3], "label": "obj"}, 
+    {"span1": [5, 6], "span2": [2, 3], "label": "punct"}
+  ], 
+  "info": {"source": "UD_English-EWT"}
+}
+```
+
+Each element of `targets` represents one dependency arc. For example, the first element shows that there is an arc between the span going from index 0 to index 1 (i.e. the word "This") and the span going from index 2 to index 3 (i.e. the word "serves"), and that dependency arc has the label "nsubj." The task is to provide the correct labels for all of these dependency arcs.
+
 
 ## CCG Tagging & Parsing (TODO: Tom)
 
