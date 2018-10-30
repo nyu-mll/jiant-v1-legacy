@@ -230,7 +230,36 @@ You should now see files named `en_ewt-ud-dev.json`, `en_ewt-ud-test.json`, and 
 Each element of `targets` represents one dependency arc. For example, the first element shows that there is an arc between the span going from index 0 to index 1 (i.e. the word "This") and the span going from index 2 to index 3 (i.e. the word "serves"), and that dependency arc has the label "nsubj." The task is to provide the correct labels for all of these dependency arcs.
 
 
-## CCG Tagging & Parsing (TODO: Tom)
+## CCG Tagging
 
-Lorem ipsum...
+Download CCGBank from the [Linguistic Data Consortium](https://catalog.ldc.upenn.edu/LDC2005T13). 
+
+Move the script `ccg_proc_tag.py` into the directory `ccgbank_1_1/data/AUTO` within the CCGBank download. Then, in that directory, run:
+```
+python ccg_proc_tag.py
+```
+
+This will create the files `ccg.tag.dev.json`, `ccg.tag.test.json`, and `ccg.tag.train.json`. Here is an example entry from one of these files:
+```
+{
+  "text": "The play is filled with intrigue , dishonesty and injustice .", 
+  "targets": [
+    {"span1": [0, 1], "label": "NP[nb]/N"}, 
+    {"span1": [1, 2], "label": "N"}, 
+    {"span1": [2, 3], "label": "(S[dcl]\\NP)/(S[pss]\\NP)"}, 
+    {"span1": [3, 4], "label": "(S[pss]\\NP)/PP"}, 
+    {"span1": [4, 5], "label": "PP/NP"}, 
+    {"span1": [5, 6], "label": "N"}, 
+    {"span1": [6, 7], "label": ","}, 
+    {"span1": [7, 8], "label": "N"}, 
+    {"span1": [8, 9], "label": "conj"}, 
+    {"span1": [9, 10], "label": "N"}, 
+    {"span1": [10, 11], "label": "."}
+  ], 
+  "info": {"source": "ccgbank"}
+}
+```
+
+Each span is a single word labeled with its CCG supertag.
+
 
