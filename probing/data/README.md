@@ -202,14 +202,12 @@ For choice of train/dev/test, we followed [Klein *et al*](http://ilpubs.stanford
 
 Tasks: `edges-dep-labeling-ewt`
 
-Download the EWT corpus for Universal Dependencies from [here](https://github.com/UniversalDependencies/UD_English-EWT/tree/master). The specific files that you need are `en_ewt-ud-dev.conllu`, `en_ewt-ud-test.conllu`, and `en_ewt-ud-train.conllu`.
+Run:
+```
+./get_ud_data.sh $JIANT_DATA_DIR/edges/dep_ewt
+```
 
-Run the following three lines (you may need to modify the paths to the downloaded `.conllu` files):
-```
-python ud_to_json.py UD_English-EWT/en_ewt-ud-dev.conllu
-python ud_to_json.py UD_English-EWT/en_ewt-ud-test.conllu
-python ud_to_json.py UD_English-EWT/en_ewt-ud-train.conllu
-```
+This downloads the UD treebank and converts the conllu format to the edge probing format.
 You should now see files named `en_ewt-ud-dev.json`, `en_ewt-ud-test.json`, and `en_ewt-ud-train.json` in the directory where the original data files were downloaded. Here is an example of one of the entries in the resulting file:
 
 ```
@@ -261,5 +259,3 @@ This will create the files `ccg.tag.dev.json`, `ccg.tag.test.json`, and `ccg.tag
 ```
 
 Each span is a single word labeled with its CCG supertag.
-
-
