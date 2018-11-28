@@ -15,7 +15,7 @@ from . import preprocess
 from typing import List, Sequence, Iterable, Tuple, Dict
 
 LOG_INTERVAL = 30
-
+import ipdb
 
 def _coerce_list(preds) -> List:
     if isinstance(preds, torch.Tensor):
@@ -58,6 +58,7 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
         generator = iterator(dataset, num_epochs=1, shuffle=False, cuda_device=cuda_device)
         for batch_idx, batch in enumerate(generator):
             out = model.forward(task, batch, predict=True)
+            ipdb.set_trace()
             # We don't want mnli-diagnostic to affect the micro and macro average.
             # Accuracy of mnli-diagnostic is hardcoded to 0.
             if task.name != "mnli-diagnostic":
