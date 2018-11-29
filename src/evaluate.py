@@ -13,9 +13,9 @@ from .tasks import tasks as tasks_module
 from . import preprocess
 
 from typing import List, Sequence, Iterable, Tuple, Dict
+#import ipdb 
 
 LOG_INTERVAL = 30
-import ipdb
 
 def _coerce_list(preds) -> List:
     if isinstance(preds, torch.Tensor):
@@ -58,7 +58,7 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
         generator = iterator(dataset, num_epochs=1, shuffle=False, cuda_device=cuda_device)
         for batch_idx, batch in enumerate(generator):
             out = model.forward(task, batch, predict=True)
-            ipdb.set_trace()
+            #ipdb.set_trace()
             # We don't want mnli-diagnostic to affect the micro and macro average.
             # Accuracy of mnli-diagnostic is hardcoded to 0.
             if task.name != "mnli-diagnostic":
@@ -67,8 +67,10 @@ def evaluate(model, tasks: Sequence[tasks_module.Task], batch_size: int,
             if 'preds' not in out:
                 continue
             preds = _coerce_list(out['preds'])
+            logits = _coerce_list(out['logits'])
+            logits = [','.join(['%f'%e for e in l]) for l in logits]
             assert isinstance(preds, list), "Convert predictions to list!"
-            cols = {"preds": preds}
+            cols = {"preds": preds, 'logits': logits}
             if task.name in IDX_REQUIRED_TASK_NAMES:
                 assert 'idx' in batch, (f"'idx' field missing from batches "
                                         "for task {task.name}!")

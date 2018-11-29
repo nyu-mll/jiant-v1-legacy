@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import codecs
 import random
 import types
 import logging as log
@@ -120,7 +121,7 @@ def params_from_file(config_files: Union[str, Iterable[str]],
     if isinstance(config_files, str):
         config_files = [config_files]
     for config_file in config_files:
-        with open(config_file) as fd:
+        with codecs.open(config_file, encoding='utf-8') as fd:
             log.info("Loading config from %s", config_file)
             config_string += fd.read()
             config_string += '\n'
