@@ -418,7 +418,6 @@ class SamplingMultiTaskTrainer:
             scaling_method,
             str(scaling_weights))
 
-        log.info("Beginning training. Stopping metric: %s", stop_metric)
         all_tr_metrics = {}
         log.info("Beginning training. Stopping metric: %s", stop_metric)
         while not should_stop:

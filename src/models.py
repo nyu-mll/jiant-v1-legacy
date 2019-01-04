@@ -428,6 +428,7 @@ def get_task_specific_params(args, task_name):
     params = {}
     params['cls_type'] = _get_task_attr("classifier")
     params['d_hid'] = _get_task_attr("classifier_hid_dim")
+    params['project'] = _get_task_attr("project")
     params['d_proj'] = _get_task_attr("d_proj")
     params['shared_pair_attn'] = args.shared_pair_attn
     if args.shared_pair_attn:
@@ -493,9 +494,12 @@ def build_pair_sentence_module(task, d_inp, model, vocab, params):
     if params["attn"]:
         pooler = Pooler.from_params(params["d_hid_attn"], params["d_hid_attn"], project=False)
         d_out = params["d_hid_attn"] * 2
-    else:
-        pooler = Pooler.from_params(d_inp, params["d_proj"], project=True)
+    elif params["project"]:
+        pooler = Pooler(d_inp, project=True, d_proj=params["d_proj"])
         d_out = params["d_proj"]
+    else:
+        pooler = Pooler(d_inp, project=False)
+        d_out = d_inp
 
     if params["shared_pair_attn"]:
         if not hasattr(model, "pair_attn"):

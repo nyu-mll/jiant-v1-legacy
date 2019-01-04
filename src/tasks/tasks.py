@@ -1374,6 +1374,7 @@ class RTETask(PairClassificationTask):
 
 
 @register_task('qnli', rel_path='QNLI/')
+@register_task('qnliv2', rel_path='QNLIv2/')
 class QNLITask(PairClassificationTask):
     '''Task class for SQuAD NLI'''
 
