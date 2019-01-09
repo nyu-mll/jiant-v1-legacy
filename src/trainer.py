@@ -70,6 +70,10 @@ def build_trainer(params, model, run_dir, metric_should_decrease=True):
         # AMSGrad is a flag variant of Adam, not its own object.
         opt_params = Params({'type': params['optimizer'], 'lr': params['lr'],
                              'weight_decay': 0, 'amsgrad': True})
+    elif params['optimizer'] == 'adam-old':
+        # AMSGrad is a flag variant of Adam, not its own object.
+        opt_params = Params({'type': 'adam', 'lr': params['lr'],
+                             'weight_decay': 0, 'amsgrad': False})
     else:
         opt_params = Params({'type': params['optimizer'], 'lr': params['lr'],
                              'weight_decay': 0})

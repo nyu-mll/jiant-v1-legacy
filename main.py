@@ -155,7 +155,6 @@ def main(cl_arguments):
     start_time = time.time()
     model = build_model(args, vocab, word_embs, tasks)
     log.info('\tFinished building model in %.3fs', time.time() - start_time)
-    import ipdb; ipdb.set_trace()
 
     # Check that necessary parameters are set for each step. Exit with error if not.
     steps_log = []
