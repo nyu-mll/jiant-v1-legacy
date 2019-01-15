@@ -208,6 +208,7 @@ class OpenAIEmbedderModule(nn.Module):
         # handling of "." (index 3) gets mapped to what the OpenAI model
         # expects (index 1).
         ids[ids == 0] = FILL_ID + 2
+        ids[ids == 1] = 2 # NOTE(Alex): I added this to handle <UNK>s
         ids -= 2
 
         # Generate positional indices.

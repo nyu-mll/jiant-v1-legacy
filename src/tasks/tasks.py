@@ -1398,6 +1398,50 @@ class QNLITask(PairClassificationTask):
         self.test_data_text = te_data
         log.info("\tFinished loading QNLI.")
 
+@register_task('qnliv2-openai', rel_path='QNLIv2/')
+class OpenAIQNLITask(PairClassificationTask):
+    '''Task class for SQuAD NLI'''
+
+    def __init__(self, path, max_seq_len, name="squad"):
+        super(OpenAIQNLITask, self).__init__(name, 2)
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.train_data_text[1] + \
+            self.val_data_text[0] + self.val_data_text[1]
+
+    def load_data(self, path, max_seq_len):
+        '''Load the data'''
+        targ_map = {'not_entailment': 0, 'entailment': 1}
+
+        def proc_sent(sent):
+            ''' Add SOS/EOS '''
+            return [utils.SOS_TOK] + sent[:(max_seq_len - 2)] + [utils.EOS_TOK]
+
+        def dirty_load_tsv(path, use_targ=True):
+            ''' Simple loader '''
+            sents1, sents2, targs = [], [], []
+            with codecs.open(path, 'r', 'utf-8', errors='ignore') as data_fh:
+                data_fh.readline()
+                for row_idx, row in enumerate(data_fh):
+                    row = row.strip().split('\t')
+                    sents1.append(proc_sent(row[1].split()))
+                    sents2.append(proc_sent(row[2].split()))
+                    targ = targ_map[row[3]] if use_targ else 0
+                    targs.append(targ)
+                return sents1, sents2, targs
+
+        tr_data = dirty_load_tsv(os.path.join(path, "train.openai.tsv"))
+        val_data = dirty_load_tsv(os.path.join(path, "dev.openai.tsv"))
+        te_data = dirty_load_tsv(os.path.join(path, 'test.openai.tsv'),
+                                 use_targ=False)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading QNLI.")
+
+    @property
+    def tokenizer_name(self):
+        return "OpenAI.BPE"
+
 
 @register_task('qnli-alt', rel_path='QNLI/')
 class QNLIAltTask(QNLITask):
