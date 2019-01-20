@@ -417,11 +417,9 @@ def build_module(task, model, d_sent, d_emb, vocab, embedder, args):
 
 def get_task_specific_params(args, task_name):
     ''' Search args for parameters specific to task.
-
     Args:
         args: main-program args, a config.Params object
         task_name: (string)
-
     Returns:
         AllenNLP Params object of task-specific params.
     '''
@@ -554,14 +552,12 @@ class MultiTaskModel(nn.Module):
     def forward(self, task, batch, predict=False):
         '''
         Pass inputs to correct forward pass
-
         Args:
             - task (tasks.Task): task for which batch is drawn
             - batch (Dict[str:Dict[str:Tensor]]): dictionary of (field, indexing) pairs,
                 where indexing is a dict of the index namespace and the actual indices.
             - predict (Bool): passed to task specific forward(). If true, forward()
                 should return predictions.
-
         Returns:
             - out: dictionary containing task outputs and loss if label was in batch
         '''
@@ -842,7 +838,11 @@ class MultiTaskModel(nn.Module):
 
         return out
 
+<<<<<<< HEAD
   def _tagger_forward(self, batch: dict, task: TaggingTask, predict: bool) -> dict:
+=======
+    def _tagger_forward(self, batch: dict, task: TaggingTask, predict: bool) -> dict:
+>>>>>>> f8eb5f890d047aeeb264397c72b78b7bb42a5d80
         '''
             This function is the specific task-component forward func
             Args:
@@ -1023,10 +1023,8 @@ class MultiTaskModel(nn.Module):
 
     def get_elmo_mixing_weights(self, tasks=[]):
         ''' Get elmo mixing weights from text_field_embedder. Gives warning when fails.
-
         args:
            - tasks (List[Task]): list of tasks that we want to get  ELMo scalars for.
-
         returns:
             - params Dict[str:float]: dictionary maybe layers to scalar params
         '''

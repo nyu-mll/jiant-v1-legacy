@@ -60,12 +60,10 @@ def process_single_pair_task_split(split, indexers, is_pair=True, classification
     '''
     Convert a dataset of sentences into padded sequences of indices. Shared
     across several classes.
-
     Args:
         - split (list[list[str]]): list of inputs (possibly pair) and outputs
         - pair_input (int)
         - tok2idx (dict)
-
     Returns:
         - instances (list[Instance]): a list of AllenNLP Instances with fields
     '''
@@ -102,12 +100,10 @@ def process_single_pair_task_split(split, indexers, is_pair=True, classification
 
 class Task(object):
     '''Generic class for a task
-
     Methods and attributes:
         - load_data: load dataset from a path and create splits
         - truncate: truncate data to be at most some length
         - get_metrics:
-
     Outside the task:
         - process: pad and indexify data given a mapping
         - optimizer
@@ -155,14 +151,12 @@ class Task(object):
 
     def get_split_text(self, split: str):
         ''' Get split text, typically as list of columns.
-
         Split should be one of 'train', 'val', or 'test'.
         '''
         return getattr(self, '%s_data_text' % split)
 
     def get_num_examples(self, split_text):
         ''' Return number of examples in the result of get_split_text.
-
         Subclass can override this if data is not stored in column format.
         '''
         return len(split_text[0])
@@ -922,6 +916,7 @@ class Wiki103Classification(PairClassificationTask):
 
     def get_split_text(self, split: str):
         ''' Get split text as iterable of records.
+
         Split should be one of 'train', 'val', or 'test'.
         '''
         return self.load_data(self.files_by_split[split])

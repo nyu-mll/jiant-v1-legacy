@@ -295,6 +295,45 @@ def load_diagnostic_tsv(
             'ix_to_knowledge_dic': ix_to_knowledge_dic
             }
 
+def finalize_targs_BPE(targs, new, old, old_tokenizer_func):
+    """
+    new should be the BPE-tokenized new function.
+    This function aligns the tags with BPE tokenizations
+    This simply copies the neighbor's CCG tag.
+    """
+    old = old_tokenizer_func(old)
+    new= new[1:]
+    new = new[:-1]
+    new_toks = [s.replace("</w>", "") for s in new]
+    old_toks = [s.lower() for s in old]
+    c_index = len(targs) - 1
+    curr_targ = targs[c_index]
+    next_expected_tok = old_toks[c_index-1] # the second to last one
+    new_targs = [curr_targ]
+    current_tok_up_to_now = ""
+    for i in range(len(new_toks) - 2, -1, -1):
+        # tech -fcoused, and here right nowself.
+        # experience desig, mappingselself.
+        # build the backend for the experience designself.
+        current_tok_up_to_now = "%s%s" % (new_toks[i], current_tok_up_to_now)
+        if current_tok_up_to_now != next_expected_tok:
+
+            # bpe tokenization changed t
+            new_targs.append(curr_targ)
+        else:
+            # update since it finally caugh
+            # the final final one is due to thisself
+            # 10 minute chatself
+            c_index -= 1
+            current_tok_up_to_now = ""
+            curr_targ = targs[c_index]
+            new_targs.append(curr_targ)
+            next_expected_tok = old_toks[c_index-1]
+
+    targ_final = [str(int(t)+EOS_INDEX) for t in new_targs]
+    targ_final = [str(EOS_INDEX)] + targ_final + [str(SOS_INDEX)]
+    targ_final.reverse()
+    return targ_final
 
 def finalize_targs_BPE(targs, new, old, old_tokenizer_func):
     """
@@ -357,6 +396,7 @@ def load_tsv(
     with codecs.open(data_file, 'r', 'utf-8', errors='ignore') as data_fh:
         for _ in range(skip_rows):
             data_fh.readline()
+        import pdb; pdb.set_trace()
         for row_idx, row in enumerate(data_fh):
             try:
                 row = row.strip().split(delimiter)
@@ -393,6 +433,7 @@ def load_tsv(
                 targs.append(targ)
 
             except Exception as e:
+                import pdb; pdb.set_trace()
                 print(e, " file: %s, row: %d" % (data_file, row_idx))
                 continue
 
