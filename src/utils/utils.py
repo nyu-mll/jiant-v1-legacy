@@ -295,6 +295,45 @@ def load_diagnostic_tsv(
             'ix_to_knowledge_dic': ix_to_knowledge_dic
             }
 
+def finalize_targs_BPE(targs, new, old, old_tokenizer_func):
+    """
+    new should be the BPE-tokenized new function.
+    This function aligns the tags with BPE tokenizations
+    This simply copies the neighbor's CCG tag.
+    """
+    old = old_tokenizer_func(old)
+    new= new[1:]
+    new = new[:-1]
+    new_toks = [s.replace("</w>", "") for s in new]
+    old_toks = [s.lower() for s in old]
+    c_index = len(targs) - 1
+    curr_targ = targs[c_index]
+    next_expected_tok = old_toks[c_index-1] # the second to last one
+    new_targs = [curr_targ]
+    current_tok_up_to_now = ""
+    for i in range(len(new_toks) - 2, -1, -1):
+        # tech -fcoused, and here right nowself.
+        # experience desig, mappingselself.
+        # build the backend for the experience designself.
+        current_tok_up_to_now = "%s%s" % (new_toks[i], current_tok_up_to_now)
+        if current_tok_up_to_now != next_expected_tok:
+
+            # bpe tokenization changed t
+            new_targs.append(curr_targ)
+        else:
+            # update since it finally caugh
+            # the final final one is due to thisself
+            # 10 minute chatself
+            c_index -= 1
+            current_tok_up_to_now = ""
+            curr_targ = targs[c_index]
+            new_targs.append(curr_targ)
+            next_expected_tok = old_toks[c_index-1]
+
+    targ_final = [str(int(t)+EOS_INDEX) for t in new_targs]
+    targ_final = [str(EOS_INDEX)] + targ_final + [str(SOS_INDEX)]
+    targ_final.reverse()
+    return targ_final
 
 def load_tsv(
         data_file,
@@ -308,9 +347,10 @@ def load_tsv(
         skip_rows=0,
         delimiter='\t',
         filter_idx=None,
-        filter_value=None):
+        filter_value=None,
+        tagging = True):
     '''Load a tsv
-
+    Shift every CCG tag up by 1, so 0 is SOS and 1 is EOS.
     To load only rows that have a certain value for a certain column, like genre in MNLI, set filter_idx and filter_value.'''
     sent1s, sent2s, targs, idxs = [], [], [], []
     with codecs.open(data_file, 'r', 'utf-8', errors='ignore') as data_fh:
@@ -324,7 +364,6 @@ def load_tsv(
                 sent1 = process_sentence(row[s1_idx], max_seq_len)
                 if (targ_idx is not None and not row[targ_idx]) or not len(sent1):
                     continue
-
                 if targ_idx is not None:
                     if targ_map is not None:
                         targ = targ_map[row[targ_idx]]
@@ -334,7 +373,11 @@ def load_tsv(
                         targ = int(row[targ_idx])
                 else:
                     targ = 0
-
+                if tagging:
+                    targ = finalize_targs_BPE(targ, sent1, row[s1_idx], moses_tokenizer)
+                assert len(sent1) == len(targ)
+                # from the targ, and the sent,
+                # fil in the holes here for CCG.
                 if s2_idx is not None:
                     sent2 = process_sentence(row[s2_idx], max_seq_len)
                     if not len(sent2):
@@ -442,7 +485,6 @@ def get_dropout_mask(dropout_probability, tensor_for_masking):
     dropout_probability : float, required.
         Probability of dropping a dimension of the input.
     tensor_for_masking : torch.Variable, required.
-
 
     Returns
     -------

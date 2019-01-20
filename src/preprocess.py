@@ -95,7 +95,6 @@ def del_field_tokens(instance):
     ''' Save memory by deleting the tokens that will no longer be used.
     Only works if Instances have fields 'input1' and 'input2'.
     All other fields will keep their tokens in memory.
-
     Args:
         instance: AllenNLP Instance. Modified in-place.
     '''

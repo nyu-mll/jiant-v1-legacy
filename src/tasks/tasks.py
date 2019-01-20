@@ -922,6 +922,7 @@ class Wiki103Classification(PairClassificationTask):
 
     def get_split_text(self, split: str):
         ''' Get split text as iterable of records.
+
         Split should be one of 'train', 'val', or 'test'.
         '''
         return self.load_data(self.files_by_split[split])
@@ -1003,7 +1004,7 @@ class DisSentTask(PairClassificationTask):
 
     def get_split_text(self, split: str):
         ''' Get split text as iterable of records.
-
+        
         Split should be one of 'train', 'val', or 'test'.
         '''
         return self.load_data(self.files_by_split[split])
