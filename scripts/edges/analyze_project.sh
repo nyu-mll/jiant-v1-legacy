@@ -14,7 +14,7 @@
 #     vocab/
 #   (...)
 #
-# Will create <project_dir>/scores.tsv as output.
+# Will create <project_dir>/scores.tsv and <project_dir>/scalars.tsv as output.
 
 PROJECT_DIR=$1
 
