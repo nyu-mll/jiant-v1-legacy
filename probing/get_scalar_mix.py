@@ -39,8 +39,8 @@ def get_mix_scalars(checkpoint_path: str) -> Dict[str, Dict[str, float]]:
     data = torch.load(checkpoint_path, map_location=torch.device('cpu'))
     # Find prefixes by matching names.
     gamma_regex = r'^(.+\.scalar_mix(_\d+)?\.)gamma$'
-    prefixes = [m.group(1) 
-                for m in (re.match(gamma_regex, key) for key in data) 
+    prefixes = [m.group(1)
+                for m in (re.match(gamma_regex, key) for key in data)
                 if m]
     # Extract scalar set for each prefix
     ret = {}
