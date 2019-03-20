@@ -1495,3 +1495,39 @@ class CCGTaggingTask(TaggingTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info('\tFinished loading CCGTagging data.')
+
+@register_task('qiq', rel_path='QIQ/')
+class QQPTask(SingleClassificationTask):
+    ''' Quora Insincere Question classification '''
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, n_classes=2, **kw)
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+        self.scorer2 = F1Measure(1)
+        self.val_metric = "%s_acc_f1" % name
+        self.val_metric_decreases = False
+
+    def load_data(self, path, max_seq_len):
+        '''Process the dataset located at data_file.'''
+        tr_data = load_tsv(self._tokenizer_name, os.path.join(path, "train.csv"),
+                           max_seq_len=max_seq_len, delimiter=',',
+                           s1_idx=1, s2_idx=None, label_idx=2, label_fn=int, skip_rows=1)
+        val_data = load_tsv(self._tokenizer_name, os.path.join(path, "val.csv"),
+                            max_seq_len=max_seq_len, delimiter=',',
+                            s1_idx=1, s2_idx=None, label_idx=2, label_fn=int, skip_rows=1)
+        te_data = load_tsv(self._tokenizer_name, os.path.join(path, 'test.csv'),
+                           max_seq_len=max_seq_len, delimiter=',',
+                           s1_idx=1, s2_idx=None, has_labels=False, return_indices=True, skip_rows=1)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading Quora Insincere Questions data.")
+
+    def get_metrics(self, reset=False):
+        '''Get metrics specific to the task'''
+        acc = self.scorer1.get_metric(reset)
+        pcs, rcl, f1 = self.scorer2.get_metric(reset)
+        return {'acc_f1': (acc + f1) / 2, 'accuracy': acc, 'f1': f1,
+                'precision': pcs, 'recall': rcl}
+
