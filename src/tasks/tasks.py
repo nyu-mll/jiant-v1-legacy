@@ -1495,3 +1495,26 @@ class CCGTaggingTask(TaggingTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info('\tFinished loading CCGTagging data.')
+
+@register_task('qwf', rel_path='QWF')
+class QWFTask(SingleClassificationTask):
+    ''' Query Wellfordness Task (Faruqui and Das, 2018) '''
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        ''' '''
+        super().__init__(name, n_classes=2, **kw)
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+
+    def load_data(self, path, max_seq_len):
+        ''' Load data '''
+        tr_data = load_tsv(self._tokenizer_name, os.path.join(path, 'train.tsv'), max_seq_len,
+                s1_idx=0, s2_idx=None, label_idx=1, label_fn=lambda x: int(x >= 0.8), skip_rows=0)
+        val_data = load_tsv(self._tokenizer_name, os.path.join(path, 'dev.tsv'), max_seq_len,
+                s1_idx=0, s2_idx=None, label_idx=1, label_fn=lambda x: int(x >= 0.8), skip_rows=0)
+        te_data = load_tsv(self._tokenizer_name, os.path.join(path, 'test.tsv'), max_seq_len,
+                s1_idx=0, s2_idx=None, label_idx=1, label_fn=lambda x: int(x >= 0.8), skip_rows=0)
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading Query Wellformedness data.")
