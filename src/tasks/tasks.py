@@ -1505,7 +1505,7 @@ class QQPTask(SingleClassificationTask):
         self.load_data(path, max_seq_len)
         self.sentences = self.train_data_text[0] + self.val_data_text[0]
         self.scorer2 = F1Measure(1)
-        self.val_metric = "%s_acc_f1" % name
+        self.val_metric = "%s_f1" % name
         self.val_metric_decreases = False
 
     def load_data(self, path, max_seq_len):
@@ -1528,6 +1528,5 @@ class QQPTask(SingleClassificationTask):
         '''Get metrics specific to the task'''
         acc = self.scorer1.get_metric(reset)
         pcs, rcl, f1 = self.scorer2.get_metric(reset)
-        return {'acc_f1': (acc + f1) / 2, 'accuracy': acc, 'f1': f1,
-                'precision': pcs, 'recall': rcl}
+        return {'accuracy': acc, 'f1': f1, 'precision': pcs, 'recall': rcl}
 
