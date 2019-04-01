@@ -1497,6 +1497,7 @@ class CCGTaggingTask(TaggingTask):
         log.info('\tFinished loading CCGTagging data.')
 
 @register_task('qiq', rel_path='QIQ/')
+@register_task('qiq-balanced', rel_path='QIQ_balanced/')
 class QQPTask(SingleClassificationTask):
     ''' Quora Insincere Question classification '''
 
