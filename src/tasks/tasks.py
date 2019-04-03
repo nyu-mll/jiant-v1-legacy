@@ -361,7 +361,7 @@ class PairOrdinalRegressionTask(RegressionTask):
                                               classification=False)
     def update_metrics():
         # currently don't support metrics for regression task
-        # TODO(Yada): support them! 
+        # TODO(Yada): support them!
         return
 
 class SequenceGenerationTask(Task):
@@ -383,7 +383,7 @@ class SequenceGenerationTask(Task):
 
     def update_metrics():
         # currently don't support metrics for regression task
-        # TODO(Yada): support them! 
+        # TODO(Yada): support them!
         return
 
 
@@ -1126,7 +1126,7 @@ class JOCITask(PairOrdinalRegressionTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info("\tFinished loading JOCI data.")
-        
+
 
 @register_task('wiki103_classif', rel_path='WikiText103/')
 class Wiki103Classification(PairClassificationTask):
@@ -1597,3 +1597,36 @@ class CCGTaggingTask(TaggingTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info('\tFinished loading CCGTagging data.')
+
+@register_task('doc', rel_path='DOC/')
+class DOCTask(PairClassificationTask):
+    ''' Discovering Ongoing Coversations. '''
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        ''' Init task. '''
+        super().__init__(name, n_classes=2, **kw)
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.val_data_text[0] + \
+                         self.train_data_text[1] + self.val_data_text[1]
+
+    def load_data(self, path, max_seq_len):
+        '''Process the dataset located at each data file.
+           The target needs to be split into tokens because
+           it is a sequence (one tag per input token). '''
+        def _load_split(data_file):
+            sent1s, sent2s, labels = [], [], []
+            data = json.load(open(data_file, "r", encoding="utf-8"))
+            for ex_idx, ex in data.items():
+                sent1s.append(process_sentence(self._tokenizer_name, ex["sent1"], max_seq_len))
+                sent2s.append(process_sentence(self._tokenizer_name, ex["sent2"], max_seq_len))
+                labels.append(ex["label"])
+            return [sent1s, sent2s, labels]
+
+        tr_data = _load_split(os.path.join(path, "train.json"))
+        val_data = _load_split(os.path.join(path, "dev.json"))
+        te_data = _load_split(os.path.join(path, "test.json"))
+
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info('\tFinished loading Discovering Ongoing Conversation data.')
