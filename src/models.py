@@ -32,7 +32,8 @@ from .preprocess import parse_task_list_arg, get_tasks
 from .tasks.tasks import CCGTaggingTask, ClassificationTask, CoLATask, CoLAAnalysisTask, \
     GroundedSWTask, GroundedTask, MultiNLIDiagnosticTask, PairClassificationTask, \
     PairOrdinalRegressionTask, PairRegressionTask, RankingTask, \
-    RegressionTask, SequenceGenerationTask, SingleClassificationTask, SSTTask, STSBTask, \
+    RegressionTask, SequenceGenerationTask, \
+    SingleRegressionTask, SingleClassificationTask, \
     TaggingTask, WeakGroundedTask, JOCITask
 from .tasks.lm import LanguageModelingTask
 from .tasks.mt import MTTask, RedditSeq2SeqTask, Wiki103Seq2SeqTask
@@ -422,7 +423,7 @@ def build_task_specific_modules(
         These include decoders, linear layers for linear models.
      '''
     task_params = model._get_task_params(task.name)
-    if isinstance(task, SingleClassificationTask):
+    if isinstance(task, (SingleClassificationTask, SingleRegressionTask)):
         module = build_single_sentence_module(task=task, d_inp=d_sent,
                                               use_bert=model.use_bert, params=task_params)
         setattr(model, '%s_mdl' % task.name, module)
@@ -664,7 +665,7 @@ class MultiTaskModel(nn.Module):
                 self.utilization(get_batch_utilization(batch['input1']))
             elif 'input' in batch:
                 self.utilization(get_batch_utilization(batch['input']))
-        if isinstance(task, SingleClassificationTask):
+        if isinstance(task, (SingleClassificationTask, SingleRegressionTask)):
             out = self._single_sentence_forward(batch, task, predict)
         elif isinstance(task, MultiNLIDiagnosticTask):
             out = self._pair_sentence_MNLI_diagnostic_forward(
@@ -733,9 +734,15 @@ class MultiTaskModel(nn.Module):
                 labels = batch['labels']
             else:
                 labels = batch['labels'].squeeze(-1)
-            out['loss'] = F.cross_entropy(logits, labels)
-            tagmask = batch.get('tagmask', None)
-            task.update_metrics(logits, labels, tagmask=tagmask)
+            if isinstance(task, SingleRegressionTask):
+                logits = logits.squeeze(-1) if len(logits.size()) > 1 else logits
+                out['loss'] = F.mse_loss(logits, labels)
+                tagmask = batch.get('tagmask', None)
+                task.update_metrics(logits.data.cpu().numpy(), labels.data.cpu().numpy(), tagmask=tagmask)
+            else:
+                out['loss'] = F.cross_entropy(logits, labels)
+                tagmask = batch.get('tagmask', None)
+                task.update_metrics(logits, labels, tagmask=tagmask)
 
         if predict:
             if isinstance(task, RegressionTask):
@@ -853,7 +860,7 @@ class MultiTaskModel(nn.Module):
                 labels_np = labels.data.cpu().numpy()
                 task.scorer1(mean_squared_error(logits_np, labels_np))
                 task.scorer2(logits_np, labels_np)
-            elif isinstance(task, STSBTask):
+            elif isinstance(task, PairRegressionTask):
                 logits = logits.squeeze(-1) if len(logits.size()
                                                    ) > 1 else logits
                 out['loss'] = F.mse_loss(logits, labels)

@@ -30,7 +30,8 @@ def load_tsv(
         has_labels=True,
         filter_value=None,
         tag_vocab=None,
-        tag2idx_dict=None
+        tag2idx_dict=None,
+        quoting=csv.QUOTE_NONE
 ):
     '''
     Load a tsv.
@@ -63,7 +64,7 @@ def load_tsv(
                        names=col_indices,
                        header=None,
                        skiprows=skip_rows,
-                       quoting=csv.QUOTE_NONE,
+                       quoting=quoting,
                        encoding='utf-8')
     if filter_idx:
         rows = rows[rows[filter_idx] == filter_value]

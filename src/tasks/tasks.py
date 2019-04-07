@@ -14,6 +14,7 @@ import copy
 import itertools
 import json
 import logging as log
+import csv
 import os
 
 import numpy as np
@@ -314,8 +315,29 @@ class PairClassificationTask(ClassificationTask):
         return process_single_pair_task_split(split, indexers, is_pair=True)
 
 
+class SingleRegressionTask(RegressionTask):
+    ''' Generic single sentence regression '''
+
+    def __init__(self, name, **kw):
+        super().__init__(name, **kw)
+        self.n_classes = 1
+        self.scorer1= Average()
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_mse" % self.name
+        self.val_metric_decreases = True
+
+    def get_metrics(self, reset=False):
+        '''Get metrics specific to the task'''
+        mse = self.scorer1.get_metric(reset)
+        return {'mse': mse}
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        ''' Process split text into a list of AllenNLP Instances. '''
+        return process_single_pair_task_split(split, indexers, is_pair=False,
+                                              classification=False)
+
 class PairRegressionTask(RegressionTask):
-    ''' Generic sentence pair classification '''
+    ''' Generic sentence pair regression '''
 
     def __init__(self, name, **kw):
         super().__init__(name, **kw)
@@ -334,6 +356,7 @@ class PairRegressionTask(RegressionTask):
         ''' Process split text into a list of AllenNLP Instances. '''
         return process_single_pair_task_split(split, indexers, is_pair=True,
                                               classification=False)
+
 class PairOrdinalRegressionTask(RegressionTask):
     ''' Generic sentence pair ordinal regression.
         Currently just doing regression but added new class
@@ -361,7 +384,7 @@ class PairOrdinalRegressionTask(RegressionTask):
                                               classification=False)
     def update_metrics():
         # currently don't support metrics for regression task
-        # TODO(Yada): support them! 
+        # TODO(Yada): support them!
         return
 
 class SequenceGenerationTask(Task):
@@ -383,7 +406,7 @@ class SequenceGenerationTask(Task):
 
     def update_metrics():
         # currently don't support metrics for regression task
-        # TODO(Yada): support them! 
+        # TODO(Yada): support them!
         return
 
 
@@ -1127,7 +1150,7 @@ class JOCITask(PairOrdinalRegressionTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info("\tFinished loading JOCI data.")
-        
+
 
 @register_task('wiki103_classif', rel_path='WikiText103/')
 class Wiki103Classification(PairClassificationTask):
@@ -1598,3 +1621,50 @@ class CCGTaggingTask(TaggingTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info('\tFinished loading CCGTagging data.')
+
+
+@register_task('empathy', rel_path='Empathy/')
+@register_task('distress', rel_path='Empathy/', distress=True)
+class EmpatheticReactionTask(SingleRegressionTask):
+    ''' Empathetic reaction prediction task. '''
+
+    def __init__(self, path, max_seq_len, name, distress=False, **kw):
+        ''' '''
+        super().__init__(name, **kw)
+        self.predict_distress = distress
+        self.load_data(path, max_seq_len)
+        self.sentences = self.train_data_text[0] + self.val_data_text[1]
+        self.scorer1 = Correlation("pearson")
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_pearson" % name
+        self.val_metric_decreases = False
+
+    def load_data(self, path, max_seq_len):
+        ''' Process the dataset located at path.  '''
+        trg_idx = 4 if self.predict_distress else 3
+        tr_data = load_tsv(self._tokenizer_name, os.path.join(path, "train.csv"),
+                           max_seq_len, s1_idx=7, s2_idx=None, label_idx=trg_idx,
+                           label_fn=lambda x: float(x)/7, delimiter=',',
+                           quoting=csv.QUOTE_ALL, skip_rows=1)
+        val_data = load_tsv(self._tokenizer_name, os.path.join(path, "dev.csv"),
+                           max_seq_len, s1_idx=7, s2_idx=None, label_idx=trg_idx,
+                           label_fn=lambda x: float(x)/7, delimiter=',',
+                           quoting=csv.QUOTE_ALL, skip_rows=1)
+        te_data = load_tsv(self._tokenizer_name, os.path.join(path, "test.csv"),
+                           max_seq_len, s1_idx=7, s2_idx=None, label_idx=trg_idx,
+                           label_fn=lambda x: float(x)/7, delimiter=',',
+                           quoting=csv.QUOTE_ALL, skip_rows=1)
+
+        self.train_data_text = tr_data
+        self.val_data_text = val_data
+        self.test_data_text = te_data
+        log.info("\tFinished loading MRPC data.")
+
+    def get_metrics(self, reset=False):
+        '''Get metrics specific to the task'''
+        corr = self.scorer1.get_metric(reset)
+        return {'pearson': corr}
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        ''' Process split text into a list of AllenNLP Instances. '''
+        return process_single_pair_task_split(split, indexers, is_pair=False, classification=False)
