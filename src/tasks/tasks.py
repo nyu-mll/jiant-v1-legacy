@@ -1600,6 +1600,7 @@ class CCGTaggingTask(TaggingTask):
         log.info('\tFinished loading CCGTagging data.')
 
 @register_task('doc', rel_path='DOC/')
+@register_task('doc-balanced', rel_path='DOC_balanced/')
 class DOCTask(PairClassificationTask):
     ''' Discovering Ongoing Coversations. '''
 
@@ -1607,6 +1608,9 @@ class DOCTask(PairClassificationTask):
         ''' Init task. '''
         super().__init__(name, n_classes=2, **kw)
         self.load_data(path, max_seq_len)
+        self.scorer2 = F1Measure(1)
+        self.scorers = [self.scorer1, self.scorer2]
+        self.val_metric = "%s_f1" % name
         self.sentences = self.train_data_text[0] + self.val_data_text[0] + \
                          self.train_data_text[1] + self.val_data_text[1]
 
@@ -1616,8 +1620,8 @@ class DOCTask(PairClassificationTask):
            it is a sequence (one tag per input token). '''
         def _load_split(data_file):
             sent1s, sent2s, labels = [], [], []
-            data = json.load(open(data_file, "r", encoding="utf-8"))
-            for ex_idx, ex in data.items():
+            data = json.load(open(data_file, "r", encoding="utf-8"))["data"]
+            for ex in data:
                 sent1s.append(process_sentence(self._tokenizer_name, ex["sent1"], max_seq_len))
                 sent2s.append(process_sentence(self._tokenizer_name, ex["sent2"], max_seq_len))
                 labels.append(ex["label"])
@@ -1631,3 +1635,10 @@ class DOCTask(PairClassificationTask):
         self.val_data_text = val_data
         self.test_data_text = te_data
         log.info('\tFinished loading Discovering Ongoing Conversation data.')
+
+    def get_metrics(self, reset=False):
+        '''Get metrics specific to the task'''
+        acc = self.scorer1.get_metric(reset)
+        pcs, rcl, f1 = self.scorer2.get_metric(reset)
+        return {'accuracy': acc, 'f1': f1, 'precision': pcs, 'recall': rcl}
+
