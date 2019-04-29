@@ -1744,7 +1744,7 @@ class CommitmentTask(PairClassificationTask):
 
         tr_data = _load_data(os.path.join(path, "train.jsonl"))
         val_data = _load_data(os.path.join(path, "val.jsonl"))
-        te_data = _load_data(os.path.join(path, "test_ANS.jsonl"))
+        te_data = _load_data(os.path.join(path, "test.jsonl"))
 
         self.train_data_text = tr_data
         self.val_data_text = val_data
