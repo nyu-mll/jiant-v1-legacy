@@ -56,7 +56,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bow_glove, run_name = bow_glove_cola, load_eval_checkpoint =  \"$JIANT_PROJECT_PREFIX/npi_bow_glovenone/run_bow_glovenone_cola/model_state_cola_best.th\", sent_enc = \"bow\", allow_missing_task_map = 1, bert_model_name = \"\", word_embs = \"glove\", skip_embs = 0, tokenizer = \"MosesTokenizer\""
 
 #load bow_glove+all npi, train and eval on all probing tasks
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bow_glove, run_name = bow_glove_npiALL, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bow_glovenone/run_bow_glovenone_all_cola_npi/model_state_all_cola_npi_best.th\", sent_enc = \"bow\", allow_missing_task_map = 1, bert_model_name = \"\", word_embs = \"glove\", skip_embs = 0, tokenizer = \"MosesTokenizer\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bow_glove, run_name = bow_glove_all_cola_npi, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bow_glovenone/run_bow_glovenone_all_cola_npi/model_state_all_cola_npi_best.th\", sent_enc = \"bow\", allow_missing_task_map = 1, bert_model_name = \"\", word_embs = \"glove\", skip_embs = 0, tokenizer = \"MosesTokenizer\""
 
 #load bow_glove+all npi with adv being held out, train and eval on adv probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bow_glove, run_name = bow_glove_hd_cola_npi_adv, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bow_glovenone/run_bow_glovenone_hd_cola_npi_adv/model_state_hd_cola_npi_adv_best.th\", target_tasks = \"npi_adv_li,npi_adv_sc,npi_adv_pr\", sent_enc = \"bow\", allow_missing_task_map = 1, bert_model_name = \"\", word_embs = \"glove\", skip_embs = 0, tokenizer = \"MosesTokenizer\""
@@ -102,7 +102,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_cond, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_cond_best.th\", target_tasks = \"npi_cond_li,npi_cond_sc,npi_cond_pr\""
 
 #load bertccg+all npi with negdet being held out, train and eval on negdet probing tasks
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_negdet, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_negdet_best.th\", target_tasks = \"npi_negdet_li,npi_negsent_sc,npi_negsent_pr\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_negdet, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_negdet_best.th\", target_tasks = \"npi_negdet_li,npi_negdet_sc,npi_negdet_pr\""
 
 #load bertccg+all npi with negsent being held out, train and eval on negsent probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_negsent, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_negsent_best.th\", target_tasks = \"npi_negsent_li,npi_negsent_sc,npi_negsent_pr\""
@@ -119,7 +119,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 #load bertccg+all npi with quessmp being held out, train and eval on quessmp probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_quessmp, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_quessmp_best.th\", target_tasks = \"npi_quessmp_li,npi_quessmp_sc,npi_quessmp_pr\""
 
-#load bertccg+all npi with quessmp being held out, train and eval on sup probing tasks
+#load bertccg+all npi with sup being held out, train and eval on sup probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_sup, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_sup_best.th\", target_tasks = \"npi_sup_li,npi_sup_sc,npi_sup_pr\""
 
 
@@ -139,7 +139,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_hd_cola_npi_cond, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_hd_cola_npi_cond_best.th\", target_tasks = \"npi_cond_li,npi_cond_sc,npi_cond_pr\""
 
 #load bertmnli+all npi with negdet being held out, train and eval on negdet probing tasks
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_hd_cola_npi_negdet, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_hd_cola_npi_negdet_best.th\", target_tasks = \"npi_negdet_li,npi_negsent_sc,npi_negsent_pr\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_hd_cola_npi_negdet, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_hd_cola_npi_negdet_best.th\", target_tasks = \"npi_negdet_li,npi_negdet_sc,npi_negdet_pr\""
 
 #load bertmnli+all npi with negsent being held out, train and eval on negsent probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_hd_cola_npi_negsent, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_hd_cola_npi_negsent_best.th\", target_tasks = \"npi_negsent_li,npi_negsent_sc,npi_negsent_pr\""

@@ -21,7 +21,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_cond, load_eval_checkpoint = \"/scratch/yc2552/exp/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_cond_best.th\", target_tasks = \"npi_cond_li,npi_cond_sc,npi_cond_pr\""
 
 #load bertccg+all npi with negdet being held out, train and eval on negdet probing tasks
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_negdet, load_eval_checkpoint = \"/scratch/yc2552/exp/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_negdet_best.th\", target_tasks = \"npi_negdet_li,npi_negsent_sc,npi_negsent_pr\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_negdet, load_eval_checkpoint = \"/scratch/yc2552/exp/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_negdet_best.th\", target_tasks = \"npi_negdet_li,npi_negdet_sc,npi_negdet_pr\""
 
 #load bertccg+all npi with negsent being held out, train and eval on negsent probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_hd_cola_npi_negsent, load_eval_checkpoint = \"/scratch/yc2552/exp/npi_bertccg/run_bertccg_model/model_state_hd_cola_npi_negsent_best.th\", target_tasks = \"npi_negsent_li,npi_negsent_sc,npi_negsent_pr\""
