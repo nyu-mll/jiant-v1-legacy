@@ -2,12 +2,12 @@
 #SBATCH --time=48:00:00
 #SBATCH --mem=50000
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=ccg
+#SBATCH --job-name=mnli
 #SBATCH --output=slurm_%j.out
 
 
 #load bertmnli plain, train and eval on all probing tasks (MAY HAVE TO SUPPLY MODEL NAME MANUALLY)
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_plain, load_target_train_checkpoint = \"/scratch/yc2552/exp/npi_bertmnli/run_bertmnli_model/model_state_pretrain_epoch_83.best_macro.th\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_plain, load_target_train_checkpoint = \"/scratch/yc2552/exp/npi_bertmnli/run_bertmnli_model/model_state_pretrain_epoch_83.best_macro.th\", allow_untrained_encoder_parameters = 1"
 
 #load bertmnli+cola, train and eval on all probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_cola, load_eval_checkpoint = \"/scratch/yc2552/exp/npi_bertmnli/run_bertmnli_model/model_state_cola_best.th\""

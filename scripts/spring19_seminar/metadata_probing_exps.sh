@@ -87,7 +87,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 
 
 #load bertcgg plain, train and eval on all probing tasks (MAY HAVE TO SUPPLY MODEL NAME MANUALLY)
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_plain, load_target_train_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_main_epoch_??.best_macro.th\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_plain, load_target_train_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_main_epoch_??.best_macro.th\", allow_untrained_encoder_parameters = 1"
 
 #load bertcgg+cola, train and eval on all probing tasks 
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertccg, run_name = bertccg_cola, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertccg/run_bertccg_model/model_state_cola_best.th\""
@@ -124,7 +124,7 @@ python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --ov
 
 
 #load bertmnli plain, train and eval on all probing tasks (MAY HAVE TO SUPPLY MODEL NAME MANUALLY)
-python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_plain, load_target_train_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_main_epoch_??.best_macro.th\""
+python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_plain, load_target_train_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_main_epoch_??.best_macro.th\", allow_untrained_encoder_parameters = 1"
 
 #load bertmnli+cola, train and eval on all probing tasks
 python main.py --config_file config/spring19_seminar/npi_probing_tasks.conf --overrides "exp_name=NPI_probing_bertmnli, run_name = bertmnli_cola, load_eval_checkpoint = \"$JIANT_PROJECT_PREFIX/npi_bertmnli/run_bertmnli_model/model_state_cola_best.th\""
