@@ -5,7 +5,7 @@ import os
 
 result_path = "/scratch/sfw268/seminar/env1"
 
-outfile = open(os.path.join(result_path, 'results.tsv'), 'w')
+outfile = open(os.path.join('probing_results.tsv'), 'w')
 
 for folder in os.listdir(result_path):
     exps = [x for x in os.listdir(os.path.join(result_path, folder)) if x not in ['vocab', 'results.tsv', 'tasks', 'preproc', 'embs.pkl']]
