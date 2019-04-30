@@ -467,7 +467,7 @@ class SSTTask(SingleClassificationTask):
 @register_task('cola_npi_ques', rel_path='NPI/splits/questions')
 @register_task('cola_npi_quessmp', rel_path='NPI/splits/simplequestions')
 @register_task('cola_npi_qnt', rel_path='NPI/splits/quantifiers')
-@register_task('cola_npi_sup', rel_path='NPI/splits/npi_superlatives')
+@register_task('cola_npi_sup', rel_path='NPI/splits/superlatives')
 @register_task('all_cola_npi', rel_path='NPI/combs/all_env')
 @register_task('hd_cola_npi_adv', rel_path='NPI/combs/minus_adverbs')
 @register_task('hd_cola_npi_cond', rel_path='NPI/combs/minus_conditionals')
