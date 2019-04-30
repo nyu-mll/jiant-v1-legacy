@@ -15,5 +15,5 @@ for folder in os.listdir(result_path):
             infile = open(os.path.join(result_path, folder, exp, result), 'r').readlines()
             preds = [x.split("\t")[1] for x in infile]
             labels = [x.split("\t")[4][0] for x in infile]
-            outfile.write(folder+'\t'+exp+'\t'+result+'\t'+matthews_corrcoef(preds, labels)+'\n')
+            outfile.write(folder+'\t'+exp+'\t'+result+'\t'+str(matthews_corrcoef(preds, labels))+'\n')
 
