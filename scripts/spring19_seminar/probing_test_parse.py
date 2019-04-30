@@ -6,6 +6,5 @@ import os
 result_path = "/scratch/sfw268/seminar/env1"
 
 for file in os.listdir(result_path):
-    exps = os.listdir(os.path.join(result_path, file))
+    exps = [x for x in os.listdir(os.path.join(result_path, file)) if x not in ['vocab', 'results.tsv', 'tasks', 'preproc']]
     print(exps)
-
