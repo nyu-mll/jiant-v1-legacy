@@ -6,5 +6,6 @@ import os
 result_path = "/scratch/sfw268/seminar/env1"
 
 for file in os.listdir(result_path):
-    print(file)
+    exps = os.listdir(os.path.join(result_path, file))
+    print(exps)
 
