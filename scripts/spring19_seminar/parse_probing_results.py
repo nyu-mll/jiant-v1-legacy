@@ -23,34 +23,30 @@ for x in results:
     x = x.split('\t')
     print(x)
     if len(x) > 2:
-        results_dict[x[0]] = results_dict.get(x[0], {}) 
-        results_dict[x[0]][x[1]] = results_dict[x[0]].get(x[1], {}) 
-        results_dict[x[0]][x[1]][x[3]] = results_dict[x[0]][x[1]].get(x[3], {}) 
-        results_dict[x[0]][x[1]][x[3]][x[2]] = results_dict[x[0]][x[1]][x[3]].get(x[2], x[4]) 
+        results_dict[x[0]] = results_dict.get(x[0], {})
+        results_dict[x[0]][x[1]] = results_dict[x[0]].get(x[1], {})
+        results_dict[x[0]][x[1]][x[3]] = results_dict[x[0]][x[1]].get(x[3], {})
+        results_dict[x[0]][x[1]][x[3]][x[2]] = results_dict[x[0]][x[1]][x[3]].get(x[2], x[4])
 
 outfile = open("parsed_results.txt", "w")
 outfile.write("model")
-#probing_type
+# probing_type
 for p in sorted(results_dict['bow']['plain'].keys()):
-    #data set
-    for d in sorted(results_dict['bow']['plain'][p].keys()):    
-        outfile.write("\t"+p+"_"+d)
+    # data set
+    for d in sorted(results_dict['bow']['plain'][p].keys()):
+        outfile.write("\t" + p + "_" + d)
 
 outfile.write("\n")
 
-#model
+# model
 for m in sorted(results_dict.keys()):
-    #fine-tune
+    # fine-tune
     for f in sorted(results_dict[m].keys()):
-        outfile.write(m+'_'+f)
-        #probing_type
+        outfile.write(m + '_' + f)
+        # probing_type
         for p in sorted(results_dict[m][f].keys()):
-            #data set
+            # data set
             for d in sorted(results_dict[m][f][p].keys()):
-                outfile.write("\t"+str(round(float(results_dict[m][f][p][d]), 3)))
+                outfile.write("\t" + str(round(float(results_dict[m][f][p][d]), 3)))
 
         outfile.write("\n")
-
-
-
-

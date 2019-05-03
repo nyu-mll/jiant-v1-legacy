@@ -30,6 +30,7 @@ from src import evaluate
 # handling.
 EMAIL_NOTIFIER = None
 
+
 def handle_arguments(cl_arguments):
     parser = argparse.ArgumentParser(description='')
     # Configuration files
@@ -85,6 +86,8 @@ def _run_background_tensorboard(logdir, port):
 
 # TODO(Yada): Move logic for checkpointing finetuned vs frozen pretrained tasks
 # from here to trainer.py.
+
+
 def get_best_checkpoint_path(run_dir):
     """ Look in run_dir for model checkpoint to load.
     Hierarchy is
@@ -109,6 +112,7 @@ def get_best_checkpoint_path(run_dir):
         return pre_target_train[0]
 
     return ""
+
 
 def evaluate_and_write(args, model, tasks, splits_to_write):
     """ Evaluate a model on dev and/or test, then write predictions """
@@ -252,7 +256,8 @@ def main(cl_arguments):
         # Train on train tasks #
         log.info("Training...")
         stop_metric = pretrain_tasks[0].val_metric if len(pretrain_tasks) == 1 else 'macro_avg'
-        should_decrease = pretrain_tasks[0].val_metric_decreases if len(pretrain_tasks) == 1 else False
+        should_decrease = pretrain_tasks[0].val_metric_decreases if len(
+            pretrain_tasks) == 1 else False
         trainer, _, opt_params, schd_params = build_trainer(args, [], model,
                                                             args.run_dir,
                                                             should_decrease, phase="pretrain")
@@ -310,9 +315,10 @@ def main(cl_arguments):
             elmo_scalars = [(n, p) for n, p in model.named_parameters() if
                             "scalar_mix" in n and "scalar_mix_0" not in n]
             # Fails when sep_embs_for_skip is 0 and elmo_scalars has nonzero length.
-            assert_for_log(not elmo_scalars or args.sep_embs_for_skip,
-                           "Error: ELMo scalars loaded and will be updated in do_target_task_training but "
-                           "they should not be updated! Check sep_embs_for_skip flag or make an issue.")
+            assert_for_log(
+                not elmo_scalars or args.sep_embs_for_skip,
+                "Error: ELMo scalars loaded and will be updated in do_target_task_training but "
+                "they should not be updated! Check sep_embs_for_skip flag or make an issue.")
 
         for task in target_tasks:
             # Skip mnli-diagnostic
@@ -325,20 +331,28 @@ def main(cl_arguments):
             if args.transfer_paradigm == "finetune":
                 # Train both the task specific models as well as sentence encoder.
                 to_train = [(n, p) for n, p in model.named_parameters() if p.requires_grad]
-            else: # args.transfer_paradigm == "frozen":
+            else:  # args.transfer_paradigm == "frozen":
                 # Only train task-specific module.
                 pred_module = getattr(model, "%s_mdl" % task.name)
                 to_train = [(n, p) for n, p in pred_module.named_parameters() if p.requires_grad]
                 to_train += elmo_scalars
 
-            trainer, _, opt_params, schd_params = build_trainer(args, [task.name, 'target_train'],  model,
+            trainer, _, opt_params, schd_params = build_trainer(args, [task.name, 'target_train'], model,
                                                                 args.run_dir,
                                                                 task.val_metric_decreases, phase="target_train")
-            _ = trainer.train(tasks=[task], stop_metric=task.val_metric, batch_size=args.batch_size,
-                              n_batches_per_pass=1, weighting_method=args.weighting_method,
-                              scaling_method=args.scaling_method, train_params=to_train,
-                              optimizer_params=opt_params, scheduler_params=schd_params,
-                              shared_optimizer=args.shared_optimizer, load_model=False, phase="target_train")
+            _ = trainer.train(
+                tasks=[task],
+                stop_metric=task.val_metric,
+                batch_size=args.batch_size,
+                n_batches_per_pass=1,
+                weighting_method=args.weighting_method,
+                scaling_method=args.scaling_method,
+                train_params=to_train,
+                optimizer_params=opt_params,
+                scheduler_params=schd_params,
+                shared_optimizer=args.shared_optimizer,
+                load_model=False,
+                phase="target_train")
 
             # Now that we've trained a model, revert to the normal checkpoint logic for this task.
             if task.name in task_names_to_avoid_loading:
@@ -355,8 +369,13 @@ def main(cl_arguments):
 
                 # Reload the original best model from before target-task training.
                 pre_finetune_path = get_best_checkpoint_path(args.run_dir)
-                load_model_state(model, pre_finetune_path, args.cuda, skip_task_models=[], strict=strict)
-            else: # args.transfer_paradigm == "frozen":
+                load_model_state(
+                    model,
+                    pre_finetune_path,
+                    args.cuda,
+                    skip_task_models=[],
+                    strict=strict)
+            else:  # args.transfer_paradigm == "frozen":
                 # Load the current overall best model.
                 # Save the best checkpoint from that target task training to be
                 # specific to that target task.
@@ -369,7 +388,7 @@ def main(cl_arguments):
         splits_to_write = evaluate.parse_write_preds_arg(args.write_preds)
         if args.transfer_paradigm == "finetune":
             for task in target_tasks:
-                if task.name == 'mnli-diagnostic': # we'll load mnli-diagnostic during mnli
+                if task.name == 'mnli-diagnostic':  # we'll load mnli-diagnostic during mnli
                     continue
 
                 finetune_path = os.path.join(args.run_dir, "model_state_%s_best.th" % task.name)

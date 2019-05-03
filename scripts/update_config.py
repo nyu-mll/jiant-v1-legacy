@@ -4,15 +4,15 @@ Require one argument: path_to_file.
 '''
 
 import sys
-from src.utils import config # use symlink from scripts to src
+from src.utils import config  # use symlink from scripts to src
 
 # Mapping - key: old name, value: new name
-name_dict = {'task_patience':'lr_patience',
-               'do_train': 'do_pretrain',
-               'train_for_eval':'do_target_task_training',
-               'do_eval': 'do_full_eval',
-               'train_tasks':'pretrain_tasks',
-               'eval_tasks':'target_tasks'}
+name_dict = {'task_patience': 'lr_patience',
+             'do_train': 'do_pretrain',
+             'train_for_eval': 'do_target_task_training',
+             'do_eval': 'do_full_eval',
+             'train_tasks': 'pretrain_tasks',
+             'eval_tasks': 'target_tasks'}
 
 path = sys.argv[1]
 params = config.params_from_file(path)
