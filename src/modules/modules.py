@@ -29,7 +29,7 @@ from allennlp.nn.util import add_positional_features, add_sentence_boundary_toke
 from ..bert.utils import BertEmbedderModule
 from ..tasks.tasks import PairClassificationTask, PairRegressionTask
 from ..utils import utils
-from ..utils.utils import MaskedMultiHeadSelfAttention
+from ..utils.utils import MaskedMultiHeadSelfAttention, load_model_state
 from .onlstm.ON_LSTM import ONLSTMStack
 from .prpn.PRPN import PRPN
 from ..preprocess import build_tasks
@@ -99,7 +99,10 @@ class SentenceEncoder(Model):
             teacher_model = build_model(original_args ,vocab, word_embs, tasks)
             original_args.sent_enc = tmp_enc
             original_args.exp_name = expp
-            original_args.run_name = runn;import pdb;pdb.set_trace()
+            original_args.run_name = runn
+            macro_best = glob.glob(os.path.join(clargs.run_dir,
+                                                "model_state_main_epoch*"))
+            load_model_state(teacher_model,macro_best[-1],original_args.cuda)
             self.teacher_model=teacher_model
         self.pad_idx = vocab.get_token_index(vocab._padding_token)
         self.skip_embs = skip_embs

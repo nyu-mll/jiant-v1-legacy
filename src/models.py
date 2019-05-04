@@ -271,7 +271,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
         d_emb, embedder, cove_layer = build_embeddings(args, vocab, tasks, pretrained_embs)
     d_sent_input = args.d_hid
 
-    #sent_encoder = build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer);import pdb;pdb.set_trace()
+    #sent_encoder = build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer)
 
     sent_encoder, d_sent_output = build_sent_encoder(
         args, vocab, d_emb, tasks, embedder, cove_layer
@@ -852,7 +852,7 @@ class MultiTaskModel(nn.Module):
         elif isinstance(task, SpanClassificationTask):
             out = self._span_forward(batch, task, predict)
         else:
-            import pdb;pdb.set_trace();raise ValueError("Task-specific components not found!")
+            raise ValueError("Task-specific components not found!")
         return out
 
     def _get_task_params(self, task_name):
@@ -1262,15 +1262,16 @@ class MultiTaskModel(nn.Module):
         # a training example only once.
         out["n_exs"] = b_size * seq_len - n_pad
         outt = self.sent_encoder.teacher_model(task,batch)
-        sent, mask = self.sent_encoder(batch["input"], task);import pdb;pdb.set_trace()
+        sent, mask = self.sent_encoder(batch["input"], task)
         sent = sent.masked_fill(1 - mask.byte(), 0)
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         logits = hid2voc(sent).view(b_size * seq_len, -1)
         out["logits"] = logits
         trg_fwd = batch["targs"]["words"].view(-1)
         assert logits.size(0) == trg_fwd.size(0), "Number of logits and targets differ!"
-        out["loss"] = F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
-        task.scorer1(out["loss"].item())
+        out["lossx"] = F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
+        out["loss"] = nn.KLDivLoss()(logits, outt['logits'][:outt['logits'].shape[0]/2])
+        task.scorer1(out["lossx"].item())
         return out
 
     def _multiple_choice_reading_comprehension_forward(self, batch, task, predict):
