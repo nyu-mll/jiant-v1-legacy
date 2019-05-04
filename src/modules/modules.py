@@ -32,7 +32,8 @@ from ..utils import utils
 from ..utils.utils import MaskedMultiHeadSelfAttention
 from .onlstm.ON_LSTM import ONLSTMStack
 from .prpn.PRPN import PRPN
-
+from src.preprocess import build_tasks
+from src.models import build_model
 
 class NullPhraseLayer(nn.Module):
     """ Dummy phrase layer that does nothing. Exists solely for API compatibility. """
@@ -68,7 +69,9 @@ class SentenceEncoder(Model):
         dropout=0.2,
         mask_lstms=True,
         sep_embs_for_skip=False,
+        teacher_path=None,
         initializer=InitializerApplicator(),
+        original_args=None
     ):
         super(SentenceEncoder, self).__init__(vocab)
 
@@ -83,6 +86,21 @@ class SentenceEncoder(Model):
 
         self._phrase_layer = phrase_layer
         self._cove_layer = cove_layer
+        if teacher_path:#case of knowledge distillation
+            tmp_enc = original_args.sent_enc
+            original_args.sent_enc = "rnn"
+            expp = original_args.exp_name
+            runn = original_args.run_name
+            original_args.exp_name = "ELMOWSJ" 
+            original_args.run_name = "rand0"
+            print("----------LOADING DISTILLATION TEACHER MODEL------------")
+            pretrain_tasks, target_tasks, vocab, word_embs=build_tasks(original_args)
+            tasks = sorted(set(pretrain_tasks + target_tasks), key=lambda x: x.name)
+            teacher_model = build_model(original_args vocab, word_embs, tasks)
+            original_args.sent_enc = tmp_enc
+            original_args.exp_name = expp
+            original_args.run_name = runn
+            self.teacher_model=teacher_model
         self.pad_idx = vocab.get_token_index(vocab._padding_token)
         self.skip_embs = skip_embs
         self.sep_embs_for_skip = sep_embs_for_skip

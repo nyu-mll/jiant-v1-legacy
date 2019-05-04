@@ -155,6 +155,8 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             dropout=args.dropout,
             sep_embs_for_skip=args.sep_embs_for_skip,
             cove_layer=cove_layer,
+            teacher=args.teacher_path,
+            original_args=args 
         )
         d_sent = args.d_word
         log.info("Using PRPN sentence encoder!")
@@ -1259,8 +1261,8 @@ class MultiTaskModel(nn.Module):
         # No of examples: only left to right, every unit in the sequence length is
         # a training example only once.
         out["n_exs"] = b_size * seq_len - n_pad
-        sent, mask = self.sent_encoder(batch["input"], task)
         import pdb;pdb.set_trace()
+        sent, mask = self.sent_encoder(batch["input"], task)
         sent = sent.masked_fill(1 - mask.byte(), 0)
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         logits = hid2voc(sent).view(b_size * seq_len, -1)
