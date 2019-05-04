@@ -158,10 +158,10 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
         )
         d_sent = args.d_word
         log.info("Using PRPN sentence encoder!")
-    elif any(isinstance(task, LanguageModelingTask) for task in tasks) or args.sent_enc == "bilm":
+    elif args.sent_enc!="transformer" and any(isinstance(task, LanguageModelingTask) for task in tasks) or args.sent_enc == "bilm" :
         assert_for_log(args.sent_enc in ["rnn", "bilm"], "Only RNNLM supported!")
-        if args.elmo:
-            assert_for_log(args.elmo_chars_only, "LM with full ELMo not supported")
+        # if args.elmo:
+        #     assert_for_log(args.elmo_chars_only, "LM with full ELMo not supported")
         bilm = BiLMEncoder(d_emb, args.d_hid, args.d_hid, args.n_layers_enc)
         sent_encoder = SentenceEncoder(
             vocab,
@@ -173,7 +173,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             sep_embs_for_skip=args.sep_embs_for_skip,
             cove_layer=cove_layer,
         )
-        d_sent = 2 * args.d_hid
+        d_sent = args.d_hid
         log.info("Using BiLM architecture for shared encoder!")
     elif args.sent_enc == "bow":
         sent_encoder = BoWSentEncoder(vocab, embedder)
@@ -208,6 +208,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             cove_layer=cove_layer,
             sep_embs_for_skip=args.sep_embs_for_skip,
         )
+        d_sent = args.d_hid
         log.info("Using Transformer architecture for shared encoder!")
     elif args.sent_enc == "none":
         # Expose word representation layer (GloVe, ELMo, etc.) directly.
@@ -1259,6 +1260,7 @@ class MultiTaskModel(nn.Module):
         # a training example only once.
         out["n_exs"] = b_size * seq_len - n_pad
         sent, mask = self.sent_encoder(batch["input"], task)
+        import pdb;pdb.set_trace()
         sent = sent.masked_fill(1 - mask.byte(), 0)
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         logits = hid2voc(sent).view(b_size * seq_len, -1)

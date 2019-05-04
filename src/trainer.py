@@ -112,7 +112,7 @@ def build_trainer(
     opt_params = Params(opt_params)
 
     if "transformer" in params["sent_enc"]:
-        assert False, "Transformer is not yet tested, still in experimental stage :-("
+        #assert False, "Transformer is not yet tested, still in experimental stage :-("
         schd_params = Params(
             {
                 "type": "noam",
