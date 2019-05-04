@@ -271,7 +271,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
         d_emb, embedder, cove_layer = build_embeddings(args, vocab, tasks, pretrained_embs)
     d_sent_input = args.d_hid
 
-    sent_encoder = build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer)
+    #sent_encoder = build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer);import pdb;pdb.set_trace()
 
     sent_encoder, d_sent_output = build_sent_encoder(
         args, vocab, d_emb, tasks, embedder, cove_layer
@@ -852,7 +852,7 @@ class MultiTaskModel(nn.Module):
         elif isinstance(task, SpanClassificationTask):
             out = self._span_forward(batch, task, predict)
         else:
-            raise ValueError("Task-specific components not found!")
+            import pdb;pdb.set_trace();raise ValueError("Task-specific components not found!")
         return out
 
     def _get_task_params(self, task_name):
@@ -1261,8 +1261,8 @@ class MultiTaskModel(nn.Module):
         # No of examples: only left to right, every unit in the sequence length is
         # a training example only once.
         out["n_exs"] = b_size * seq_len - n_pad
-        import pdb;pdb.set_trace()
-        sent, mask = self.sent_encoder(batch["input"], task)
+        outt = self.sent_encoder.teacher_model(task,batch)
+        sent, mask = self.sent_encoder(batch["input"], task);import pdb;pdb.set_trace()
         sent = sent.masked_fill(1 - mask.byte(), 0)
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         logits = hid2voc(sent).view(b_size * seq_len, -1)
