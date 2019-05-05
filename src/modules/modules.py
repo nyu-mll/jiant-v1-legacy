@@ -104,7 +104,10 @@ class SentenceEncoder(Model):
             macro_best = glob.glob(os.path.join("/misc/vlgscratch4/BowmanGroup/anhad/klproject/jiant/ELMOWSJ/rand0",
                                                 "model_state_*"))
             load_model_state(teacher_model,macro_best[-1],original_args.cuda,strict=False)
-            self.teacher_model=teacher_model;[param.requires_grad=False for param in self.teacher_model.parameters()];import pdb;pdb.set_trace()
+            self.teacher_model=teacher_model;
+            for param in self.teacher_model.parameters():
+                param.requires_grad=False
+            import pdb;pdb.set_trace()
         self.pad_idx = vocab.get_token_index(vocab._padding_token)
         self.skip_embs = skip_embs
         self.sep_embs_for_skip = sep_embs_for_skip
