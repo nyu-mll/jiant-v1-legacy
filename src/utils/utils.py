@@ -66,7 +66,7 @@ def load_model_state(model, state_path, gpu_id, skip_task_models=[], strict=True
     )
 
     for name, param in model.named_parameters():
-        # Make sure no trainable params are missing.
+        #import pdb;pdb.set_trace()
         if param.requires_grad:
             if strict:
                 assert_for_log(

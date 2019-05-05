@@ -32,9 +32,10 @@ from ..utils import utils
 from ..utils.utils import MaskedMultiHeadSelfAttention, load_model_state
 from .onlstm.ON_LSTM import ONLSTMStack
 from .prpn.PRPN import PRPN
+import os
 from ..preprocess import build_tasks
 #from ..models import build_model
-
+import glob
 class NullPhraseLayer(nn.Module):
     """ Dummy phrase layer that does nothing. Exists solely for API compatibility. """
 
@@ -91,7 +92,7 @@ class SentenceEncoder(Model):
             original_args.sent_enc = "rnn"
             expp = original_args.exp_name
             runn = original_args.run_name
-            original_args.exp_name = "ELMOWSJ" 
+            original_args.exp_name = "ELMOWSJ";original_args.d_hid = 1150;original_args.n_layers_enc=3;original_args.dropout=0.3;original_args.d_word=400
             original_args.run_name = "rand0";original_args.teacher_path=None
             print("----------LOADING DISTILLATION TEACHER MODEL------------")
             pretrain_tasks, target_tasks, vocab, word_embs=build_tasks(original_args)
@@ -99,11 +100,11 @@ class SentenceEncoder(Model):
             teacher_model = build_model(original_args ,vocab, word_embs, tasks)
             original_args.sent_enc = tmp_enc
             original_args.exp_name = expp
-            original_args.run_name = runn
-            macro_best = glob.glob(os.path.join(clargs.run_dir,
-                                                "model_state_main_epoch*"))
-            load_model_state(teacher_model,macro_best[-1],original_args.cuda)
-            self.teacher_model=teacher_model
+            original_args.run_name = runn;original_args.d_word=800;original_args.d_hid=1200
+            macro_best = glob.glob(os.path.join("/misc/vlgscratch4/BowmanGroup/anhad/klproject/jiant/ELMOWSJ/rand0",
+                                                "model_state_*"))
+            load_model_state(teacher_model,macro_best[-1],original_args.cuda,strict=False)
+            self.teacher_model=teacher_model;[param.requires_grad=False for param in self.teacher_model.parameters()];import pdb;pdb.set_trace()
         self.pad_idx = vocab.get_token_index(vocab._padding_token)
         self.skip_embs = skip_embs
         self.sep_embs_for_skip = sep_embs_for_skip

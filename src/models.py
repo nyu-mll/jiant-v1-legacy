@@ -123,7 +123,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             args.n_layers_highway,
             onlayer.onlayer,
             skip_embs=args.skip_embs,
-            dropout=args.dropout,
+            dropout=args.dropout,original_args=args,teacher=args.teacher_path,
             sep_embs_for_skip=args.sep_embs_for_skip,
             cove_layer=cove_layer,
         )
@@ -1270,7 +1270,7 @@ class MultiTaskModel(nn.Module):
         trg_fwd = batch["targs"]["words"].view(-1)
         assert logits.size(0) == trg_fwd.size(0), "Number of logits and targets differ!"
         out["lossx"] = F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
-        out["loss"] = nn.KLDivLoss()(logits, outt['logits'][:outt['logits'].shape[0]/2])
+        out["loss"] = nn.KLDivLoss()(F.log_softmax(logits), F.softmax(outt['logits'][:int(outt['logits'].shape[0]/2)]))*0.2 + 0.8*F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
         task.scorer1(out["lossx"].item())
         return out
 
