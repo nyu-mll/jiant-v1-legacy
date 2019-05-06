@@ -1270,7 +1270,7 @@ class MultiTaskModel(nn.Module):
         trg_fwd = batch["targs"]["words"].view(-1)
         assert logits.size(0) == trg_fwd.size(0), "Number of logits and targets differ!"
         out["lossx"] = F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
-        out["loss"] = nn.KLDivLoss()(F.log_softmax(logits), F.softmax(outt['logits'][:int(outt['logits'].shape[0]/2)]))*0.2 + 0.8*F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
+        out["loss"] = nn.KLDivLoss()(F.log_softmax(logits), F.softmax(outt['logits'][:int(outt['logits'].shape[0]/2)]))*20# + 0.8*F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
         task.scorer1(out["lossx"].item())
         return out
 

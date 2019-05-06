@@ -87,7 +87,7 @@ class SentenceEncoder(Model):
 
         self._phrase_layer = phrase_layer
         self._cove_layer = cove_layer
-        if teacher:#case of knowledge distillation
+        if False:#teacher:#case of knowledge distillation
             tmp_enc = original_args.sent_enc
             original_args.sent_enc = "rnn"
             expp = original_args.exp_name
@@ -107,7 +107,7 @@ class SentenceEncoder(Model):
             self.teacher_model=teacher_model;
             for param in self.teacher_model.parameters():
                 param.requires_grad=False
-            import pdb;pdb.set_trace()
+            #import pdb;pdb.set_trace()
         self.pad_idx = vocab.get_token_index(vocab._padding_token)
         self.skip_embs = skip_embs
         self.sep_embs_for_skip = sep_embs_for_skip
