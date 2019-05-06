@@ -60,6 +60,7 @@ To exactly reproduce experiments from [the ELMo's Friends paper](https://arxiv.o
 
 For the [edge probing paper](https://openreview.net/forum?id=SJzSgnRcKX), see the [probing/](probing/) directory.
 
+For the [function word probing paper](https://arxiv.org/abs/1904.11544), use [this branch](https://github.com/nyu-mll/jiant/tree/naacl_probingpaper/) and refer to the instructions in [this directory](https://github.com/nyu-mll/jiant/tree/naacl_probingpaper/scripts/fwords).
 
 ## License
 
