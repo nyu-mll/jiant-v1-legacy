@@ -106,6 +106,24 @@ def load_from_tf_checkpoint(model, ckpt_path: str):
         assert init_value.shape == p.shape
         p.data = init_value
 
+class LMHead(nn.Module):
+    """ Language Model Head for the transformer """
+
+    def __init__(self, model, cfg, trunc_and_reshape=False):
+        super(LMHead, self).__init__()
+        self.n_embd = cfg.n_embd
+        embed_shape = model.embed.weight.shape
+        self.decoder = nn.Linear(embed_shape[1], embed_shape[0], bias=False)
+        self.decoder.weight = model.embed.weight # Tied weights
+        self.trunc_and_reshape = trunc_and_reshape  # XD
+
+    def forward(self, h):
+        # Truncated Language modeling logits (we remove the last token)
+        h_trunc = h[:, :-1].contiguous().view(-1, self.n_embd) \
+            if self.trunc_and_reshape else h  # XD
+        lm_logits = self.decoder(h_trunc)
+        return lm_logits
+
 
 class TransformerModel(nn.Module):
     """ Transformer model.
@@ -164,12 +182,31 @@ class TransformerModel(nn.Module):
             return 2 * self.n_embd
         else:
             return self.n_embd
+class LMModel(nn.Module):
+    """ Transformer with language model head only """
+    def __init__(self, cfg, vocab=40990, n_ctx=512, return_probs=False):
+        super(LMModel, self).__init__()
+        self.transformer = TransformerModel(cfg, vocab=vocab, n_ctx=n_ctx)
+        self.lm_head = LMHead(self.transformer, cfg, trunc_and_reshape=False)
+        self.return_probs = return_probs
+        if self.return_probs:
+            pos_emb_mask = torch.zeros(1, 1, vocab)
+            pos_emb_mask[:, :, -n_ctx:] = -1e12
+            self.register_buffer('pos_emb_mask', pos_emb_mask)
 
+
+    def forward(self, x):
+        h = self.transformer(x)
+        lm_logits = self.lm_head(h)
+        if self.return_probs:
+            lm_logits = F.softmax(lm_logits + self.pos_emb_mask, dim=-1)
+        return lm_logits
 
 class OpenAIEmbedderModule(nn.Module):
     def __init__(self, args, n_special=3, n_ctx=512):
         super(OpenAIEmbedderModule, self).__init__()
         self.model_cfg = model_pytorch.DEFAULT_CONFIG
+        n_special = 3
         self.n_special = n_special  # number of special tokens
         self.n_ctx = n_ctx  # max context width (seq len)
 
@@ -198,10 +235,11 @@ class OpenAIEmbedderModule(nn.Module):
             log.info("Loading OpenAI transformer model from %s", loader_args["path"])
             model_pytorch.load_openai_pretrained_model(self.model, **loader_args)
         log.info("Loaded OpenAI transformer model.")
+        self.lm_pred = LMHead(self.model, self.model_cfg)
 
         # Set trainability of this module.
         for param in self.model.parameters():
-            param.requires_grad = bool(args.transfer_paradigm == "finetune")
+            param.requires_grad = True#bool(args.transfer_paradigm == "finetune")
 
         # Configure scalar mixing, ELMo-style.
         if args.openai_embeddings_mode == "mix":
@@ -236,7 +274,6 @@ class OpenAIEmbedderModule(nn.Module):
         """
         assert "openai_bpe_pretokenized" in sent
         var_ids = sent["openai_bpe_pretokenized"]
-
         # Model has fixed, learned positional component :(, so we must pass a
         # block of exactly n_ctx length.
         ids = torch.zeros(var_ids.size()[0], self.n_ctx, dtype=var_ids.dtype, device=var_ids.device)
@@ -264,12 +301,12 @@ class OpenAIEmbedderModule(nn.Module):
         x = torch.stack([ids, pos_ids], dim=2)
         # h is [batch_size, n_ctx, d_emb]
         h = self.model(x)
-
         # Truncate back to the original ids length, for compatiblity with the
         # rest of our embedding models. This only drops padding
         # representations.
+        #import pdb;pdb.set_trace()
         h_trunc = h[:, : var_ids.size()[1], :]
-        return h_trunc
+        return self.lm_pred(h_trunc)
 
     def get_output_dim(self):
         return self.model.get_output_dim()

@@ -47,7 +47,7 @@ class PRPN(nn.Module):
         # Feedforward layers
 
         self.embedder = embedder
-        dim = self.embedder.token_embedder_words.weight.shape
+        dim = self.embedder.weight.shape
 
         self._phrase_layer = phrase_layer
 

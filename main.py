@@ -383,6 +383,7 @@ def main(cl_arguments):
     # Build model
     log.info("Building model...")
     start_time = time.time()
+    #import pdb;pdb.set_trace()
     model = build_model(args, vocab, word_embs, tasks)
     log.info("Finished building model in %.3fs", time.time() - start_time)
 

@@ -76,7 +76,7 @@ class SentenceEncoder(Model):
             self._highway_layer = lambda x: x
         else:
             self._text_field_embedder = text_field_embedder
-            d_emb = text_field_embedder.get_output_dim()
+            d_emb = text_field_embedder.weight.shape[1]
             self._highway_layer = TimeDistributed(Highway(d_emb, num_highway_layers))
 
         self._phrase_layer = phrase_layer
@@ -119,7 +119,7 @@ class SentenceEncoder(Model):
 
         # General sentence embeddings (for sentence encoder).
         # Skip this for probing runs that don't need it.
-        if not isinstance(self._phrase_layer, NullPhraseLayer):
+        if False:#not isinstance(self._phrase_layer, NullPhraseLayer):
             if isinstance(self._text_field_embedder, BertEmbedderModule):
                 word_embs_in_context = self._text_field_embedder(sent, is_pair_task=is_pair_task)
 
@@ -144,7 +144,7 @@ class SentenceEncoder(Model):
             task_word_embs_in_context = None
 
         # Make sure we're embedding /something/
-        assert (word_embs_in_context is not None) or (task_word_embs_in_context is not None)
+        # assert (word_embs_in_context is not None) or (task_word_embs_in_context is not None)
 
         if self._cove_layer is not None:
             # Slightly wasteful as this repeats the GloVe lookup internally,
@@ -179,12 +179,12 @@ class SentenceEncoder(Model):
         # The rest of the model
         sent_mask = util.get_text_field_mask(sent).float()
         sent_lstm_mask = sent_mask if self._mask_lstms else None
-        if word_embs_in_context is not None:
+        if True:#word_embs_in_context is not None:
             if isinstance(self._phrase_layer, ONLSTMStack) or isinstance(self._phrase_layer, PRPN):
                 # The ONLSTMStack or PRPN takes the raw words as input and computes
                 # embeddings separately.
                 sent_enc, _ = self._phrase_layer(
-                    torch.transpose(sent["words"], 0, 1), sent_lstm_mask
+                    torch.transpose(sent["openai_bpe_pretokenized"], 0, 1), sent_lstm_mask
                 )
                 sent_enc = torch.transpose(sent_enc, 0, 1)
             else:

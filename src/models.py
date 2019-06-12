@@ -128,7 +128,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
         )
         d_sent = args.d_word
         log.info("Using ON-LSTM sentence encoder!")
-    elif args.sent_enc == "prpn":
+    elif args.sent_enc == "prpn" or args.sent_enc == "gpt_prpn":
         prpnlayer = PRPNPhraseLayer(
             vocab,
             args.d_word,
@@ -156,7 +156,36 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             cove_layer=cove_layer,
         )
         d_sent = args.d_word
-        log.info("Using PRPN sentence encoder!")
+        log.info("Using PRPN sentence encoder!") 
+    elif args.sent_enc == "gpt_prpn":
+        prpnlayer = PRPNPhraseLayer(
+            vocab,
+            args.d_word,
+            args.d_hid,
+            args.n_layers_enc,
+            args.n_slots,
+            args.n_lookback,
+            args.resolution,
+            args.dropout,
+            args.idropout,
+            args.rdropout,
+            args.res,
+            embedder,
+            args.batch_size,
+        )
+        # The 'prpn' acts as a phrase layer module for the larger SentenceEncoder module.
+        sent_encoder = SentenceEncoder(
+            vocab,
+            embedder,
+            args.n_layers_highway,
+            prpnlayer.prpnlayer,
+            skip_embs=args.skip_embs,
+            dropout=args.dropout,
+            sep_embs_for_skip=args.sep_embs_for_skip,
+            cove_layer=cove_layer,
+        )
+        d_sent = args.d_word
+        log.info("Using PRPN sentence encoder!")   
     elif any(isinstance(task, LanguageModelingTask) for task in tasks) or args.sent_enc == "bilm":
         assert_for_log(args.sent_enc in ["rnn", "bilm"], "Only RNNLM supported!")
         if args.elmo:
@@ -236,7 +265,17 @@ def build_model(args, vocab, pretrained_embs, tasks):
     """
 
     # Build embeddings.
-    if args.openai_transformer:
+    if args.sent_enc=="gpt_prpn":
+        from .openai_transformer_lm.utils import OpenAIEmbedderModule
+
+        log.info("Using OpenAI transformer as teacher...")
+        cove_layer = None
+        # Here, this uses openAIEmbedder.
+        teacher_gpt = OpenAIEmbedderModule(args)
+        # d_emb = embedder_o.get_output_dim()
+        d_emb, embedder, cove_layer = build_embeddings(args, vocab, tasks, pretrained_embs)
+        embedder = teacher_gpt.model.embed
+    elif args.openai_transformer:
         # Note: incompatible with other embedders, but logic in preprocess.py
         # should prevent these from being enabled anyway.
         from .openai_transformer_lm.utils import OpenAIEmbedderModule
@@ -245,6 +284,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
         cove_layer = None
         # Here, this uses openAIEmbedder.
         embedder = OpenAIEmbedderModule(args)
+
         d_emb = embedder.get_output_dim()
     elif args.bert_model_name:
         # Note: incompatible with other embedders, but logic in preprocess.py
@@ -266,10 +306,10 @@ def build_model(args, vocab, pretrained_embs, tasks):
         # Default case, used for ELMo, CoVe, word embeddings, etc.
         d_emb, embedder, cove_layer = build_embeddings(args, vocab, tasks, pretrained_embs)
     d_sent_input = args.d_hid
-
     sent_encoder, d_sent_output = build_sent_encoder(
         args, vocab, d_emb, tasks, embedder, cove_layer
     )
+    sent_encoder.teacher_lm = teacher_gpt
     # d_task_input is the input dimension of the task-specific module
     # set skip_emb = 1 if you want to concatenate the encoder input with encoder output to pass
     # into task specific module.
@@ -315,13 +355,13 @@ def build_embeddings(args, vocab, tasks, pretrained_embs=None):
     token_embedders = {}
     # Word embeddings
     n_token_vocab = vocab.get_vocab_size("tokens")
-    if args.word_embs != "none":
+    if args.word_embs != "none" or args.sent_enc=="gpt_prpn":
         if args.word_embs in ["glove", "fastText"] and pretrained_embs is not None:
             word_embs = pretrained_embs
             assert word_embs.size()[0] == n_token_vocab
             d_word = word_embs.size()[1]
             log.info("\tUsing pre-trained word embeddings: %s", str(word_embs.size()))
-        elif args.word_embs == "scratch":
+        elif args.sent_enc=="gpt_prpn" or args.word_embs == "scratch":
             log.info("\tTraining word embeddings from scratch.")
             d_word = args.d_word
             word_embs = nn.Embedding(n_token_vocab, d_word).weight
@@ -508,7 +548,7 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
         setattr(model, "%s_mdl" % task.name, module)
     elif isinstance(task, LanguageModelingParsingTask):
         # The LM Parsing task does not support embeddings that use skip_embs.
-        hid2voc = build_lm(task, d_sent, args)
+        hid2voc = build_lm(task, d_sent, embedder.weight.shape[0])
         setattr(model, "%s_hid2voc" % task.name, hid2voc)
         setattr(model, "%s_mdl" % task.name, hid2voc)
     elif isinstance(task, LanguageModelingTask):
@@ -704,9 +744,9 @@ def build_pair_sentence_module(task, d_inp, model, params):
     return module
 
 
-def build_lm(task, d_inp, args):
+def build_lm(task, d_inp, arg_d):
     """ Build LM components (just map hidden states to vocab logits) """
-    hid2voc = nn.Linear(d_inp, args.max_word_v_size)
+    hid2voc = nn.Linear(d_inp, arg_d)
     return hid2voc
 
 
@@ -1073,8 +1113,10 @@ class MultiTaskModel(nn.Module):
         trg_bwd = batch["targs_b"]["words"].view(-1)
         targs = torch.cat([trg_fwd, trg_bwd], dim=0)
         assert logits.size(0) == targs.size(0), "Number of logits and targets differ!"
-        out["loss"] = F.cross_entropy(logits, targs, ignore_index=pad_idx)
-        task.scorer1(out["loss"].item())
+        alpha = 20
+        out["loss"] = nn.KLDivLoss()(F.log_softmax(logits), F.softmax(kk)) * alpha
+        out["lossx"] = F.cross_entropy(kk, trg_fwd, ignore_index=pad_idx)
+        task.scorer1(out["lossx"].item())
         if predict:
             pass
         return out
@@ -1127,9 +1169,15 @@ class MultiTaskModel(nn.Module):
         """
 
         out = {}
+        batch['targs']['words'] = batch['targs']['openai_bpe_pretokenized']
+        batch['targs_b']['words'] = batch['targs_b']['openai_bpe_pretokenized']
         assert_for_log(
             "targs" in batch and "words" in batch["targs"], "Batch missing target words!"
         )
+        N_VOCAB = 40478
+        FILL_ID = N_VOCAB
+        batch['targs']['openai_bpe_pretokenized'][batch['targs']['openai_bpe_pretokenized'] == 0] = FILL_ID + 2
+        batch['targs']['openai_bpe_pretokenized']-=2
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token, "tokens")
         b_size, seq_len = batch["targs"]["words"].size()
         # pad_idx is the token used to pad till max_seq_len
@@ -1143,8 +1191,12 @@ class MultiTaskModel(nn.Module):
         logits = hid2voc(sent).view(b_size * seq_len, -1)
         out["logits"] = logits
         trg_fwd = batch["targs"]["words"].view(-1)
+        kk = self.sent_encoder.teacher_lm(batch['input']).view(b_size * seq_len, -1)
         assert logits.size(0) == trg_fwd.size(0), "Number of logits and targets differ!"
-        out["loss"] = F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx)
+        alpha = 20
+        #import pdb;pdb.set_trace()
+        out["loss"] = nn.KLDivLoss()(F.log_softmax(logits), F.softmax(kk)) * alpha
+        out["loss"] = F.cross_entropy(kk, trg_fwd, ignore_index=pad_idx)
         task.scorer1(out["loss"].item())
         return out
 

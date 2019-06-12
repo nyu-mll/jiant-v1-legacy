@@ -100,6 +100,7 @@ class LanguageModelingTask(SequenceGenerationTask):
                 "targs": sentence_to_text_field(sent_[1:] + [sent_[0]], self.target_indexer),
                 "targs_b": sentence_to_text_field([sent_[-1]] + sent_[:-1], self.target_indexer),
             }
+            import pdb;pdb.set_trace()
             return Instance(d)
 
         for sent in split:

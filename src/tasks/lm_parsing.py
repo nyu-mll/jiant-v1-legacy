@@ -17,21 +17,17 @@ from .lm import LanguageModelingTask
 from .registry import register_task
 from .tasks import sentence_to_text_field
 
+from .tasks import (
+    UNK_TOK_ALLENNLP,
+    UNK_TOK_ATOMIC,
+    SequenceGenerationTask,
+    atomic_tokenize,
+    sentence_to_text_field,
+)
+
+
 
 class LanguageModelingParsingTask(LanguageModelingTask):
-    def count_examples(self):
-        """Computes number of samples.
-        Every example is made up of sentences concatenated together, capped by max_seq_len.
-        """
-        example_counts = {}
-        for split, split_path in self.files_by_split.items():
-            arr = [line.strip().split() + ["<EOS>"] for line in open(split_path)]
-            allf = 0
-            for x in arr:
-                allf += len(x)
-            example_counts[split] = int(math.ceil(allf / self.max_seq_len))
-        self.example_counts = example_counts
-
     def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
         """Process a language modeling split by indexing and creating fields.
         Args:
@@ -46,8 +42,8 @@ class LanguageModelingParsingTask(LanguageModelingTask):
             in the input for each direction """
             d = {}
             d["input"] = sentence_to_text_field(sent[:-1], indexers)
-            d["targs"] = sentence_to_text_field(sent[1:], self.target_indexer)
-            d["targs_b"] = sentence_to_text_field([sent[-1]] + sent[:-2], self.target_indexer)
+            d["targs"] = sentence_to_text_field(sent[1:], indexers)
+            d["targs_b"] = sentence_to_text_field([sent[-1]] + sent[:-2], indexers)
             return Instance(d)
 
         for sent in split:
@@ -61,22 +57,28 @@ class WSJLanguageModelling(LanguageModelingParsingTask):
     """
 
     def get_data_iter(self, path):
-        """Load data file, tokenize text and concat sentences to create long term dependencies.
-        Args:
-            path: (str) data file path
-        """
-        seq_len = self.max_seq_len
-        tokens = []
+        """ Rather than return a whole list of examples, stream them """
+        nonatomics_toks = [UNK_TOK_ALLENNLP, "<unk>"]
         with open(path) as txt_fh:
             for row in txt_fh:
                 toks = row.strip()
                 if not toks:
                     continue
-                toks_v = toks.split()
-                toks = toks.split() + ["<EOS>"]
-                tokens += toks
-            for i in range(0, len(tokens), seq_len):
-                yield tokens[i : i + seq_len]
+                # WikiText103 preprocesses unknowns as '<unk>'
+                # which gets tokenized as '@', '@', 'UNKNOWN', ...
+                # We replace to avoid that
+                sent = atomic_tokenize(
+                    toks,
+                    UNK_TOK_ATOMIC,
+                    nonatomics_toks,
+                    self.max_seq_len,
+                    tokenizer_name=self._tokenizer_name,
+                )
+                # we also filtering out headers (artifact of the data)
+                # which are processed to have multiple = signs
+                if sent.count("=") >= 2 or len(toks) < self.min_seq_len + 2:
+                    continue
+                yield sent
 
 
 @register_task("toronto_lm", rel_path="toronto/")
