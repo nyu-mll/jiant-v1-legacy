@@ -3,6 +3,7 @@ import codecs
 import collections
 import math
 import os
+import pandas
 from typing import Iterable, List, Sequence, Type
 
 from allennlp.data import Instance
@@ -163,6 +164,51 @@ class RedditSeq2SeqTask(MTTask):
         for sent1, sent2 in split:
             yield _make_instance(sent1, sent2)
 
+@register_task("morph-seg", rel_path="morph-seq")
+class MorphSegmentationTask(MTTask):
+    def __init__(self, path, max_seq_len, max_targ_v_size, name, language_name, **kw):
+        super().__init__(path, max_seq_len, max_targ_v_size, name, **kw)
+        # hey = pd.read_csv("mexicanero-train", sep="\t")
+        self._label_namespace = None
+        self.target_indexer = {"words":  SingleIdTokenIndexer}
+        self.files_by_split = {
+            "train": os.path.join(path, language_name + "-train.tsv"),
+            "val": os.path.join(path, language_name + "-dev.tsv"),
+            "test": os.path.join(path, language_name + "-test.tsv"),
+        }
+        self._iters_by_split = {"train": None, "val": None, "test": None}
+        # TODO: Make a namespace for segmentation,separate from the input vocaublary
+
+    def load_data(self):
+        for split in self.files_by_split.keys():
+            dataset = pd.read_csv(self.files_by_split[split], sep="\t", names= ["input", "metadata", "label", "misc"])
+            self._iters_by_split[split] = list(dataset[["input", "label"]].T.to_dict().values())
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a language modeling split.
+
+        Split is a single list of sentences here.
+        """
+
+        def _make_instance(record):
+            d = {
+                "input": sentence_to_text_field(record["input"], indexers),
+                "targs": sentence_to_text_field(record["label"], self.target_indexer),
+            }
+            return Instance(d)
+
+        for record in self._iters_by_split[split]:
+            yield _make_instance(prev_sent, sent)
+
+    def get_sentences(self):
+            def get_sentences(self) -> Iterable[Sequence[str]]:
+        """ Yield sentences, used to compute vocabulary. """
+        for split, iter in self._iters_by_split.items():
+            # Don't use test set for vocab building.
+            if split.startswith("test"):
+                continue
+            for record in iter:
+                yield record["input"].split()
 
 @register_task("wiki2_s2s", rel_path="WikiText2/", max_targ_v_size=0)
 @register_task("wiki103_s2s", rel_path="WikiText103/", max_targ_v_size=0)
