@@ -558,7 +558,11 @@ def main(cl_arguments):
     if args.do_full_eval:
         log.info("Evaluating...")
         splits_to_write = evaluate.parse_write_preds_arg(args.write_preds)
-        if args.do_target_task_training or (args.load_model and not args.do_pretrain):
+        diagnostic = False
+        for task in target_tasks:
+            if "diagnostic" in task.name:
+                diagnostic = True
+        if args.do_target_task_training or (args.load_model and not args.do_pretrain) or diagnostic:
             # If we either do target task training, or if we only evaluate
             # without pretraining or target task training
             # then we evaluate on the target tasks.
