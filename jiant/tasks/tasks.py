@@ -2340,9 +2340,10 @@ class SpanClassificationTask(Task):
         example["labels"] = ListField(
             [
                 MultiLabelField(
-                    [str(record["label"])],
+                    [record["label"]],
                     label_namespace=self._label_namespace,
-                    skip_indexing=False,
+                    skip_indexing=True,
+                    num_labels=self.n_classes,
                 )
             ]
         )
@@ -2744,6 +2745,7 @@ class WinogradCoreferenceTask(SpanClassificationTask):
         )
         self.n_classes = 2
         self.val_metric = "%s_acc" % self.name
+        self._label_namespace = self.name + "_tags"
 
     def load_data(self):
         iters_by_split = collections.OrderedDict()
@@ -2753,11 +2755,10 @@ class WinogradCoreferenceTask(SpanClassificationTask):
                     self.tokenizer_name, filename, has_labels=False
                 )
             else:
-                iters_by_split[split] = load_span_data(self.tokenizer_name, filename)
+                iters_by_split[split] = load_span_data(
+                    self.tokenizer_name, filename, label_fn=lambda x: 0 if x is False else 1
+                )
         self._iters_by_split = iters_by_split
-
-    def get_all_labels(self):
-        return ["False", "True"]
 
     def update_metrics(self, logits, labels, tagmask=None):
         logits, labels = logits.detach(), labels.detach()
