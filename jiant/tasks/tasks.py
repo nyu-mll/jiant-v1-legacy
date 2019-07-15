@@ -2763,6 +2763,53 @@ class WinogradCoreferenceTask(SpanClassificationTask):
         }
         return collected_metrics
 
+@register_task("ehr-section-prediction", rel_path="ehr-section")
+class EHRSectionPrediction(SingleClassificationTask):
+    def __init__(self, path, max_seq_len, name, **kw):
+        super(EHRSectionPrediction, self).__init__(name, n_classes=2, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def load_data(self):
+        """ Load data """
+        self.train_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "section_train.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=5,
+            s2_idx=None,
+            quote_level=2,
+            label_idx=4,
+            skip_rows=1,
+        )
+        self.val_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "section_val.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=5,
+            s2_idx=None,
+            quote_level=2,
+            label_idx=4,
+            skip_rows=1,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "section_test.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=5,
+            s2_idx=None,
+            has_labels=False,
+            quote_level=2,
+            return_indices=True,
+            skip_rows=1,
+        )
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+        log.info("\tFinished loading SST data.")
+
 
 @register_task("boolq", rel_path="BoolQ")
 class BooleanQuestionTask(PairClassificationTask):
