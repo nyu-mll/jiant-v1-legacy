@@ -2776,6 +2776,11 @@ class EHRSectionPrediction(SingleClassificationTask):
 
     def load_data(self):
         """ Load data """
+        targ_map = {"history of present illness": 0, "chief complaint": 1, \
+        "past medical history": 2, "discharge status": 3, "discharge condition": 4 , "social history": 5, "family history": 5, \
+        "physical exam": 6, "hospital course": 7, "discharge medications": 8, "discharge disposition": 9, "discharge diagnosis": 10, \
+         "discharge instructions": 11}
+
         self.train_data_text = load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "section_train.tsv"),
@@ -2784,6 +2789,7 @@ class EHRSectionPrediction(SingleClassificationTask):
             s2_idx=None,
             quote_level=2,
             label_idx=4,
+            label_fn=targ_map.__getitem__,
             skip_rows=1,
         )
         self.val_data_text = load_tsv(
@@ -2793,6 +2799,7 @@ class EHRSectionPrediction(SingleClassificationTask):
             s1_idx=5,
             s2_idx=None,
             quote_level=2,
+            label_fn=targ_map.__getitem__,
             label_idx=4,
             skip_rows=1,
         )
