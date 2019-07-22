@@ -224,7 +224,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
         # Here, this uses openAIEmbedder.
         embedder = OpenAIEmbedderModule(args)
         d_emb = embedder.get_output_dim()
-    elif args.input_module.startswith("bert"):
+    elif args.input_module.startswith("bert") or args.input_module == "bio-bert":
         # Note: incompatible with other embedders, but logic in preprocess.py
         # should prevent these from being enabled anyway.
         from .bert.utils import BertEmbedderModule
@@ -713,7 +713,7 @@ def build_qa_module(task, d_inp, use_bert, params):
     return SingleClassifier(pooler, classifier)
 
 
-class MultiTaskModel(nn.Module):
+class MultiTaskModel(nn.DataParallel):
     """
     Giant model with task-specific components and a shared word and sentence encoder.
     This class samples the tasks passed in pretrained_tasks, and adds task specific components
