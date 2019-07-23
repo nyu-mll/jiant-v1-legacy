@@ -257,6 +257,11 @@ def build_model(args, vocab, pretrained_embs, tasks):
     model = MultiTaskModel(args, sent_encoder, vocab)
     build_task_modules(args, tasks, model, d_task_input, d_emb, embedder, vocab)
     model = model.cuda() if args.cuda >= 0 else model
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+        model = nn.DataParallel(model)
+
     log.info("Model specification:")
     log.info(model)
     param_count = 0
@@ -746,6 +751,7 @@ class MultiTaskModel(nn.Module):
         Returns:
             - out: dictionary containing task outputs and loss if label was in batch
         """
+        print("\tIn Model: input size", len(batch))
         if self.utilization is not None:
             if "input1" in batch:
                 self.utilization(get_batch_utilization(batch["input1"]))
