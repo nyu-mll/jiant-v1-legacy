@@ -498,6 +498,8 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
         setattr(model, "%s_mdl" % task.name, hid2voc)
     elif isinstance(task, LanguageModelingTask):
         d_sent = args.d_hid + (args.skip_embs * d_emb)
+
+
         hid2voc = build_lm(task, d_sent, args)
         setattr(model, "%s_hid2voc" % task.name, hid2voc)
     elif isinstance(task, SpanClassificationTask):
@@ -1014,6 +1016,12 @@ class MultiTaskModel(nn.Module):
 
         # Forward and backward logits and targs
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
+        # stagger
+        forward_output, backward_output = bi_output[:-2, :, :hidden_size], bi_output[2:, :, hidden_size:]
+        staggered_output = torch.cat((forward_output, backward_output), dim=-1)
+
+        linear = nn.Linear(hidden_size * 2, output_size)
+
         logits_fwd = hid2voc(fwd).view(b_size * seq_len, -1)
         logits_bwd = hid2voc(bwd).view(b_size * seq_len, -1)
         logits = torch.cat([logits_fwd, logits_bwd], dim=0)
