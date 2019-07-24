@@ -17,7 +17,8 @@ from jiant.tasks.tasks import (
     atomic_tokenize,
     sentence_to_text_field,
 )
-
+from jiant.utils.data_loaders import load_tsv
+import logging as log
 
 class LanguageModelingTask(SequenceGenerationTask):
     """Generic language modeling task
@@ -96,9 +97,9 @@ class LanguageModelingTask(SequenceGenerationTask):
             to avoid issues with needing to strip extra tokens
             in the input for each direction """
             d = {
-                "input": sentence_to_text_field(sent_, indexers),
-                "targs": sentence_to_text_field(sent_[1:] + [sent_[0]], self.target_indexer),
-                "targs_b": sentence_to_text_field([sent_[-1]] + sent_[:-1], self.target_indexer),
+                "input": sentence_to_text_field(sent_[:-1], indexers),
+                "targs": sentence_to_text_field(sent_[1:-1], self.target_indexer),
+                "section_name": sentence_to_text_field(sent_[-1], self.target_indexer)
             }
             return Instance(d)
 
@@ -122,6 +123,84 @@ class LanguageModelingTask(SequenceGenerationTask):
             path = self.files_by_split[split]
             for sent in self.get_data_iter(path):
                 yield sent
+
+@register_task("ehr-lm", rel_path="ehr-lm")
+class EHRSectionPrediction(LanguageModelingTask):
+    def __init__(self, path, max_seq_len, name, **kw):
+        super(EHRSectionPrediction, self).__init__( path, max_seq_len, name, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+        self.files_by_split = {
+            "train": os.path.join(path, "section_train.tsv"),
+            "val": os.path.join(path, "section_val.tsv"),
+            "test": os.path.join(path, "section_test.tsv"),
+        }
+
+    def load_data(self):
+        """ Load data """
+
+        self.train_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "section_train.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=5,
+            s2_idx=None,
+            quote_level=2,
+            label_idx=4,
+            skip_rows=1,
+        )
+        self.val_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "section_val.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=5,
+            s2_idx=None,
+            quote_level=2,
+            label_idx=4,
+            skip_rows=1,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "section_test.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=5,
+            s2_idx=None,
+            has_labels=True, # the labels is the section mapping
+            quote_level=2,
+            return_indices=True,
+            label_idx=4,
+            skip_rows=1,
+        )
+        self.train_data_text = [self.train_data_text[0], self.train_data_text[2]]
+        self.val_data_text = [self.train_data_text[0], self.val_data_text[2]]
+        self.test_data_text = [self.train_data_text[0], self.test_data_text[2]]
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+        for split in ["train", "val", "test"]:
+            dataset = getattr(self, "%s_data_text" % split)
+            dataset = [x + [y] for x,y in zip(dataset[0], dataset[1])]
+            setattr(self, "%s_data_text" % split, dataset)
+        log.info("\tFinished loading EHR data.")
+
+    def get_split_text(self, split: str):
+        """ Get split text, typically as list of columns.
+
+        Split should be one of 'train', 'val', or 'test'.
+        """
+        return getattr(self, "%s_data_text" % split)
+
+    def get_sentences(self) -> Iterable[Sequence[str]]:
+            """ Yield sentences, used to compute vocabulary. """
+            for split in self.files_by_split:
+                if split.startswith("test"):
+                    continue
+                dataset = getattr(self, "%s_data_text" % split)
+
+                for record in dataset:
+                    yield record
 
 
 # TODO: restructure LM task hierarchy
