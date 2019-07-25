@@ -98,7 +98,7 @@ class LanguageModelingTask(SequenceGenerationTask):
             in the input for each direction """
             d = {
                 "input": sentence_to_text_field(sent_[:-1], indexers),
-                "targs": sentence_to_text_field(sent_[1:-1], self.target_indexer),
+                "targs": sentence_to_text_field(sent_[1:-2], self.target_indexer),
                 "section_name": sentence_to_text_field(sent_[-1], self.target_indexer)
             }
             return Instance(d)

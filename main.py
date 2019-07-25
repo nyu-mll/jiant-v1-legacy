@@ -280,12 +280,12 @@ def evaluate_and_write(args, model, tasks, splits_to_write):
     val_results, val_preds = evaluate.evaluate(model, tasks, args.batch_size, args.cuda, "val")
     if "val" in splits_to_write:
         evaluate.write_preds(
-            tasks, val_preds, args.run_dir, "val", strict_glue_format=args.write_strict_glue_format
+            tasks, val_preds, args.run_dir, "val", strict_glue_format=args.write_strict_glue_format, vocab = model.vocab
         )
     if "test" in splits_to_write:
         _, te_preds = evaluate.evaluate(model, tasks, args.batch_size, args.cuda, "test")
         evaluate.write_preds(
-            tasks, te_preds, args.run_dir, "test", strict_glue_format=args.write_strict_glue_format
+            tasks, te_preds, args.run_dir, "test", strict_glue_format=args.write_strict_glue_format, vocab=model.vocab
         )
 
     run_name = args.get("run_name", os.path.basename(args.run_dir))

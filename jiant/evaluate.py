@@ -21,6 +21,7 @@ from jiant.tasks.tasks import (
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
 )
+from jiant.tasks.lm import LanguageModelingTask
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask
 from jiant.tasks.edge_probing import EdgeProbingTask
 
@@ -145,7 +146,7 @@ def evaluate(
 
 
 def write_preds(
-    tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False
+    tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False, vocab=None
 ) -> None:
     for task in tasks:
         if task.name not in all_preds:
@@ -205,6 +206,10 @@ def write_preds(
             # currently this only catches superglue-diagnostic
             _write_diagnostics_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format
+            )
+        elif isinstance(task, LanguageModelingTask):
+            _write_lm_preds(
+                task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format, vocab=vocab
             )
         else:
             log.warning("Task '%s' not supported by write_preds().", task.name)
@@ -348,6 +353,24 @@ def _write_boolq_preds(
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
 
+def _write_lm_preds(
+    task: str, 
+    preds_df: pd.DataFrame, 
+    pred_dir: str,
+    split_name: str,
+    vocab: str,
+    strict_glue_format: bool = False,
+):  
+    preds_file = _get_pred_filename(task.name, pred_dir, split_name, strict_glue_format)
+    with open(preds_file, "w", encoding="utf-8") as preds_fh:
+        for row_idx, row in preds_df.iterrows():
+            if strict_glue_format:
+                labels = list(map(lambda x: [vocab.get_token_from_index(s) for s in x], row["preds"]))
+                out_d = {"idx": row["idx"], "label": pred_map[row["preds"]]}
+            else:
+                row["preds"] = list(map(lambda x: [vocab.get_token_from_index(s) for s in x], row["preds"]))
+                out_d = row.to_dict()
+            preds_fh.write("{0}\n".format(json.dumps(out_d)))
 
 def _write_commitment_preds(
     task: str,

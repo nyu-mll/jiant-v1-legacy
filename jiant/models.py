@@ -498,8 +498,8 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
         setattr(model, "%s_mdl" % task.name, hid2voc)
     elif isinstance(task, LanguageModelingTask):
         d_sent = args.d_hid + (args.skip_embs * d_emb)
-
-
+        if task.name == "ehr-lm":
+            d_sent *= 2
         hid2voc = build_lm(task, d_sent, args)
         setattr(model, "%s_hid2voc" % task.name, hid2voc)
     elif isinstance(task, SpanClassificationTask):
@@ -732,7 +732,7 @@ class MultiTaskModel(nn.Module):
         self.sent_encoder = sent_encoder
         self.vocab = vocab
         self.utilization = Average() if args.track_batch_utilization else None
-        self.elmo = args.input_module == "elmo"
+        self.elmo = args.input_module == "elmo" 
         self.use_bert = bool(args.input_module.startswith("bert"))
         self.sep_embs_for_skip = args.sep_embs_for_skip
 
@@ -1009,31 +1009,27 @@ class MultiTaskModel(nn.Module):
         # Split encoder outputs by direction
         split = int(self.sent_encoder._phrase_layer.get_output_dim() / 2)
         fwd, bwd = sent[:, :, :split], sent[:, :, split : split * 2]
+        # split by the 2nd dimension
         if split * 2 < sent.size(2):  # skip embeddings
+            import pdb; pdb.set_trace()
             out_embs = sent[:, :, split * 2 :]
             fwd = torch.cat([fwd, out_embs], dim=2)
             bwd = torch.cat([bwd, out_embs], dim=2)
 
         # Forward and backward logits and targs
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
-        # stagger
-        forward_output, backward_output = bi_output[:-2, :, :hidden_size], bi_output[2:, :, hidden_size:]
-        staggered_output = torch.cat((forward_output, backward_output), dim=-1)
-
-        linear = nn.Linear(hidden_size * 2, output_size)
-
-        logits_fwd = hid2voc(fwd).view(b_size * seq_len, -1)
-        logits_bwd = hid2voc(bwd).view(b_size * seq_len, -1)
-        logits = torch.cat([logits_fwd, logits_bwd], dim=0)
+        # stagger, maybe we have to get the hidden_size. 
+        fwd, bwd  = fwd[:, :-2, :], bwd[:, 2:, :]
+        staggered_output = torch.cat((fwd, bwd), dim=-1)
+        logits = hid2voc(staggered_output) # output is [1, seq_len, d_out]
         out["logits"] = logits
-        trg_fwd = batch["targs"]["words"].view(-1)
-        trg_bwd = batch["targs_b"]["words"].view(-1)
-        targs = torch.cat([trg_fwd, trg_bwd], dim=0)
+        targs = batch["targs"]["words"]
         assert logits.size(0) == targs.size(0), "Number of logits and targets differ!"
-        out["loss"] = F.cross_entropy(logits, targs, ignore_index=pad_idx)
+        out["loss"] = F.cross_entropy(logits[0], targs[0], ignore_index=pad_idx) # must index 0 to get dimensions [seq_len, d_out]
         task.scorer1(out["loss"].item())
         if predict:
-            pass
+            # you should get a 
+            out["preds"] = logits.argmax(dim=2)
         return out
 
     def _mc_forward(self, batch, task, predict):
