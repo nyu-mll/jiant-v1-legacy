@@ -365,10 +365,10 @@ def _write_lm_preds(
     with open(preds_file, "w", encoding="utf-8") as preds_fh:
         for row_idx, row in preds_df.iterrows():
             if strict_glue_format:
-                labels = list(map(lambda x: [vocab.get_token_from_index(s) for s in x], row["preds"]))
+                labels = list(map(lambda x: vocab.get_token_from_index(x), row["preds"]))
                 out_d = {"idx": row["idx"], "label": pred_map[row["preds"]]}
             else:
-                row["preds"] = list(map(lambda x: [vocab.get_token_from_index(s) for s in x], row["preds"]))
+                row["preds"] = list(map(lambda x: vocab.get_token_from_index(x), row["preds"]))
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
 

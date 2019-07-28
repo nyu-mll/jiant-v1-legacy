@@ -37,6 +37,7 @@ class SentenceEncoder(Model):
         dropout=0.2,
         mask_lstms=True,
         sep_embs_for_skip=False,
+        append_to_input=False, 
         initializer=InitializerApplicator(),
     ):
         super(SentenceEncoder, self).__init__(vocab)
@@ -48,6 +49,8 @@ class SentenceEncoder(Model):
         else:
             self._text_field_embedder = text_field_embedder
             d_emb = text_field_embedder.get_output_dim()
+            if append_to_input:
+                d_emb *= 2
             self._highway_layer = TimeDistributed(Highway(d_emb, num_highway_layers))
 
         self._phrase_layer = phrase_layer
@@ -66,7 +69,7 @@ class SentenceEncoder(Model):
 
         initializer(self)
 
-    def forward(self, sent, task, reset=True):
+    def forward(self, sent, task, reset=True, to_append=None, append_to_input=False):
         # pylint: disable=arguments-differ
         """
         Args:
@@ -93,9 +96,13 @@ class SentenceEncoder(Model):
         if not isinstance(self._phrase_layer, NullPhraseLayer):
             if isinstance(self._text_field_embedder, BertEmbedderModule):
                 word_embs_in_context = self._text_field_embedder(sent, is_pair_task=is_pair_task)
-
+                secition_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
             else:
                 word_embs_in_context = self._text_field_embedder(sent)
+                section_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
+            section_type = section_type.expand(-1, len(word_embs_in_context[0]), -1)# expand to seq_len
+            # then concatenate
+            word_embs_in_context = torch.cat((word_embs_in_context, section_type), 1)
             word_embs_in_context = self._highway_layer(word_embs_in_context)
         else:
             word_embs_in_context = None

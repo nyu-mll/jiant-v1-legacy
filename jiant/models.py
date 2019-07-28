@@ -974,6 +974,64 @@ class MultiTaskModel(nn.Module):
         task.scorer1(logits, targs)
         return out
 
+    def  _section_conditional_lm_forward(self, batch, task):
+        """Forward pass for LM model
+        Args:
+            batch: indexed input data
+            task: (Task obejct)
+            predict: (boolean) predict mode (not supported)
+        return:
+            out: (dict)
+                - 'logits': output layer, dimension: [batchSize * timeSteps * 2, outputDim]
+                            first half: [:batchSize*timeSteps, outputDim] is output layer from
+                                forward layer
+                            second half: [batchSize*timeSteps:, outputDim] is output layer from
+                                backward layer
+                - 'loss': size average CE loss
+        """
+        out = {}
+        sent_encoder = self.sent_encoder
+        assert_for_log(
+            isinstance(sent_encoder._phrase_layer, BiLMEncoder),
+            "Not using LM for language modeling task!",
+        )
+        assert_for_log(
+            "targs" in batch and "words" in batch["targs"], "Batch missing target words!"
+        )
+
+        pad_idx = self.vocab.get_token_index(self.vocab._padding_token, "tokens")
+        b_size, seq_len = batch["targs"]["words"].size()
+        n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
+        out["n_exs"] = (b_size * seq_len - n_pad) * 2
+
+        sent, mask = sent_encoder(batch["input"], task,  to_append = batch["sentence"], append_to_input=True)
+        sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
+
+        # Split encoder outputs by direction
+        split = int(self.sent_encoder._phrase_layer.get_output_dim() / 2)
+        fwd, bwd = sent[:, :, :split], sent[:, :, split : split * 2]
+        # split by the 2nd dimension
+        if split * 2 < sent.size(2):  # skip embeddings
+            out_embs = sent[:, :, split * 2 :]
+            fwd = torch.cat([fwd, out_embs], dim=2)
+            bwd = torch.cat([bwd, out_embs], dim=2)
+
+        # Forward and backward logits and targs
+        hid2voc = getattr(self, "%s_hid2voc" % task.name)
+        # stagger, maybe we have to get the hidden_size. 
+        fwd, bwd  = fwd[:, :-2, :], bwd[:, 2:, :]
+        staggered_output = torch.cat((fwd, bwd), dim=-1)
+        logits = hid2voc(staggered_output) # output is [1, seq_len, d_out]
+        out["logits"] = logits
+        targs = batch["targs"]["words"]
+        assert logits.size(0) == targs.size(0), "Number of logits and targets differ!"
+        out["loss"] = F.cross_entropy(logits[0], targs[0], ignore_index=pad_idx) # must index 0 to get dimensions [seq_len, d_out]
+        task.scorer1(out["loss"].item())
+        if predict:
+            # you should get a 
+            out["preds"] = logits.argmax(dim=2)
+        return out
+
     def _lm_forward(self, batch, task, predict):
         """Forward pass for LM model
         Args:
@@ -1011,7 +1069,6 @@ class MultiTaskModel(nn.Module):
         fwd, bwd = sent[:, :, :split], sent[:, :, split : split * 2]
         # split by the 2nd dimension
         if split * 2 < sent.size(2):  # skip embeddings
-            import pdb; pdb.set_trace()
             out_embs = sent[:, :, split * 2 :]
             fwd = torch.cat([fwd, out_embs], dim=2)
             bwd = torch.cat([bwd, out_embs], dim=2)
@@ -1065,6 +1122,7 @@ class MultiTaskModel(nn.Module):
             out["preds"] = logits.argmax(dim=-1)
 
         return out
+
 
     def _lm_only_lr_forward(self, batch, task):
         """Only left to right pass for LM model - non-bidirectional models.
