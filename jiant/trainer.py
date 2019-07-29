@@ -578,7 +578,7 @@ class SamplingMultiTaskTrainer:
                 assert_for_log(
                     "loss" in output_dict, "Model must return a dict containing a 'loss' key"
                 )
-                loss = output_dict["loss"]  # optionally scale loss
+                loss = output_dict["loss"].sum()  # optionally scale loss
 
                 loss *= scaling_weights[task.name]
 
@@ -623,8 +623,8 @@ class SamplingMultiTaskTrainer:
                 )
                 task_info["last_log"] = time.time()
 
-                if self._model.utilization is not None:
-                    batch_util = self._model.utilization.get_metric()
+                if self._model.module.utilization is not None:
+                    batch_util = self._model.module.utilization.get_metric()
                     log.info("TRAINING BATCH UTILIZATION: %.3f", batch_util)
 
             # Validation
@@ -653,8 +653,8 @@ class SamplingMultiTaskTrainer:
                         n_batches_since_val,
                         n_batches_since_val / task_info["n_tr_batches"],
                     )
-                if self._model.utilization is not None:
-                    batch_util = self._model.utilization.get_metric(reset=True)
+                if self._model.module.utilization is not None:
+                    batch_util = self._model.module.utilization.get_metric(reset=True)
                     log.info("TRAINING BATCH UTILIZATION: %.3f", batch_util)
 
                 # Validate
@@ -674,7 +674,7 @@ class SamplingMultiTaskTrainer:
                 if self._TB_dir is not None:
                     self._metrics_to_tensorboard_val(n_step, all_val_metrics)
                 log.info(f"Global learning rate: {self._optimizer.param_groups[0]['lr']}")
-                elmo_params = self._model.get_elmo_mixing_weights(tasks)
+                elmo_params = self._model.module.get_elmo_mixing_weights(tasks)
                 if elmo_params:  # log ELMo mixing weights
                     for task_name, task_params in elmo_params.items():
                         log.info("ELMo mixing weights for {}:".format(task_name))
@@ -822,9 +822,9 @@ class SamplingMultiTaskTrainer:
             batch_num += 1
             with torch.no_grad():
                 out = self._forward(batch, task=task)
-            loss = out["loss"]
+            loss = out["loss"].sum()
             all_val_metrics["%s_loss" % task.name] += loss.data.cpu().numpy()
-            n_examples += out["n_exs"]
+            n_examples += out["n_exs"].sum()
 
             # log
             if time.time() - task_info["last_log"] > self._log_interval:

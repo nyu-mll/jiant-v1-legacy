@@ -260,7 +260,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-        model = nn.DataParallel(model)
+        model = nn.DataParallel(model).cuda()
 
     log.info("Model specification:")
     log.info(model)
@@ -751,7 +751,6 @@ class MultiTaskModel(nn.Module):
         Returns:
             - out: dictionary containing task outputs and loss if label was in batch
         """
-        print("\tIn Model: input size", len(batch))
         if self.utilization is not None:
             if "input1" in batch:
                 self.utilization(get_batch_utilization(batch["input1"]))
@@ -813,7 +812,7 @@ class MultiTaskModel(nn.Module):
         classifier = self._get_classifier(task)
         logits = classifier(word_embs_in_context, sent_mask)
         out["logits"] = logits
-        out["n_exs"] = get_batch_size(batch)
+        out["n_exs"] = torch.Tensor(get_batch_size(batch)).cuda()
 
         if "labels" in batch:  # means we should compute loss
             if batch["labels"].dim() == 0:
@@ -896,7 +895,7 @@ class MultiTaskModel(nn.Module):
             else:
                 logits = classifier(sent1, sent2, mask1, mask2)
         out["logits"] = logits
-        out["n_exs"] = get_batch_size(batch)
+        out["n_exs"] = torch.Tensor(get_batch_size(batch)).cuda()
         tagmask = batch.get("tagmask", None)
         if "labels" in batch:
             labels = batch["labels"]

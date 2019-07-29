@@ -449,7 +449,7 @@ def load_model_for_target_train_run(args, ckpt_path, model, strict, task):
             "they should not be updated! Check sep_embs_for_skip flag or make an issue.",
         )
         # Only train task-specific module
-        pred_module = getattr(model, "%s_mdl" % task.name)
+        pred_module = getattr(model.module, "%s_mdl" % task.name)
         to_train = [(n, p) for n, p in pred_module.named_parameters() if p.requires_grad]
         to_train += elmo_scalars
     return to_train
@@ -562,7 +562,7 @@ def main(cl_arguments):
         # Evaluate on target_tasks.
         for task in target_tasks:
             # Find the task-specific best checkpoint to evaluate on.
-            task_to_use = model._get_task_params(task.name).get("use_classifier", task.name)
+            task_to_use = model.module._get_task_params(task.name).get("use_classifier", task.name)
             ckpt_path = get_best_checkpoint_path(args, "eval", task_to_use)
             assert ckpt_path is not None
             load_model_state(model, ckpt_path, args.cuda, skip_task_models=[], strict=strict)
