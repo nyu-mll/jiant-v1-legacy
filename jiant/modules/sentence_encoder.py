@@ -96,10 +96,10 @@ class SentenceEncoder(Model):
         if not isinstance(self._phrase_layer, NullPhraseLayer):
             if isinstance(self._text_field_embedder, BertEmbedderModule):
                 word_embs_in_context = self._text_field_embedder(sent, is_pair_task=is_pair_task)
-                secition_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
+                section_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
             else:
                 word_embs_in_context = self._text_field_embedder(sent)
-                section_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
+                section_type = self._text_field_embedder(to_append)
             section_type = section_type.expand(-1, len(word_embs_in_context[0]), -1)# expand to seq_len
             # then concatenate
             word_embs_in_context = torch.cat((word_embs_in_context, section_type), 1)
