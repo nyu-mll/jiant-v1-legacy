@@ -42,7 +42,7 @@ from jiant.modules.prpn.PRPN import PRPN
 from jiant.modules.seq2seq_decoder import Seq2SeqDecoder
 from jiant.modules.span_modules import SpanClassifierModule
 from jiant.tasks.edge_probing import EdgeProbingTask
-from jiant.tasks.lm import LanguageModelingTask
+from jiant.tasks.lm import LanguageModelingTask, EHRSectionPredictionTask
 from jiant.tasks.lm_parsing import LanguageModelingParsingTask
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask
 from jiant.tasks.tasks import (
@@ -766,6 +766,8 @@ class MultiTaskModel(nn.Module):
                 self.sent_encoder._phrase_layer, PRPN
             ):
                 out = self._lm_only_lr_forward(batch, task)
+            elif isinstance(self.sentence_encoder, EHRSectionPredictionTask);
+                out = self._section_conditional_lm_forward(batch, task, predict)
             else:
                 out = self._lm_forward(batch, task, predict)
         elif isinstance(task, TaggingTask):

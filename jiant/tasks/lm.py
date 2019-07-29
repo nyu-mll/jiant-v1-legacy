@@ -125,7 +125,7 @@ class LanguageModelingTask(SequenceGenerationTask):
                 yield sent
 
 @register_task("ehr-lm", rel_path="ehr-lm")
-class EHRSectionPrediction(LanguageModelingTask):
+class EHRSectionPredictionTask(LanguageModelingTask):
     def __init__(self, path, max_seq_len, name, **kw):
         super(EHRSectionPrediction, self).__init__( path, max_seq_len, name, **kw)
         self.path = path
