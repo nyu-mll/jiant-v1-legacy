@@ -98,8 +98,8 @@ class LanguageModelingTask(SequenceGenerationTask):
             in the input for each direction """
             d = {
                 "input": sentence_to_text_field(sent_[:-1], indexers),
-                "targs": sentence_to_text_field(sent_[1:-2], self.target_indexer),
-                "section_name": sentence_to_text_field(sent_[-1], self.target_indexer)
+                "targs": sentence_to_text_field(sent_[1:-2], indexers),
+                "section_name": sentence_to_text_field(sent_[-1], indexers)
             }
             return Instance(d)
 
@@ -206,6 +206,16 @@ class EHRSectionPredictionTask(LanguageModelingTask):
             dataset = [x + [y] for x,y in zip(dataset[0], dataset[1])]
             setattr(self, "%s_data_text" % split, dataset)
         log.info("\tFinished loading EHR data.")
+
+    def get_all_labels(self):
+        return [x.lower() for x in ["FINAL DIAGNOSES", "CHIEF COMPLAINT", \
+                "DISCHARGE MEDICATIONS", "FOLLOW-UP PLANS", \
+                "DISCHARGE STATUS", "DISCHARGE INSTRUCTIONS", \
+                "Followup Instructions", "DISCHARGE CONDITIO", \
+                "BRIEF SUMMARY OF HOSPITAL COURSE", "LABORATORY STUDIES", \
+                 "PHYSICAL EXAM AT TIME OF ADMISSION", "SOCIAL HISTORY", \
+                 "FAMILY HISTORY", "ALLERGIES", "MEDICATIONS ON ADMISSION", \
+                 "PAST MEDICAL HISTORY", "HISTORY OF PRESENT ILLNESS"]]
 
     def get_split_text(self, split: str):
         """ Get split text, typically as list of columns.

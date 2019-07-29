@@ -776,7 +776,8 @@ class MultiTaskModel(nn.Module):
             out = self._mc_forward(batch, task, predict)
         elif isinstance(task, EdgeProbingTask):
             # Just get embeddings and invoke task module.
-            word_embs_in_context, sent_mask = self.sent_encoder(batch["input1"], task)
+            word_embs_in_context, sent_mask
+             = self.sent_encoder(batch["input1"], task)
             module = getattr(self, "%s_mdl" % task.name)
             out = module.forward(batch, word_embs_in_context, sent_mask, task, predict)
         elif isinstance(task, SequenceGenerationTask):
@@ -1006,7 +1007,7 @@ class MultiTaskModel(nn.Module):
         n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
         out["n_exs"] = (b_size * seq_len - n_pad) * 2
 
-        sent, mask = sent_encoder(batch["input"], task,  to_append = batch["sentence"], append_to_input=True)
+        sent, mask = sent_encoder(batch["input"], task,  to_append = batch["section"], append_to_input=True)
         sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
 
         # Split encoder outputs by direction
