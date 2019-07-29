@@ -102,11 +102,11 @@ class SentenceEncoder(Model):
                 section_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
             else:
                 word_embs_in_context = self._text_field_embedder(sent)
-                import pdb; pdb.set_trace()
                 section_type = self._text_field_embedder(to_append)
             section_type = self.section_layer(section_type)
             # get the last hidden layer
             section_type = section_type[-1]
+
             section_type = section_type.expand(-1, len(word_embs_in_context[0]), -1)# expand to seq_len
             #  expand
             # then concatenate

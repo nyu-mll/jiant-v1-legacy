@@ -766,7 +766,7 @@ class MultiTaskModel(nn.Module):
                 self.sent_encoder._phrase_layer, PRPN
             ):
                 out = self._lm_only_lr_forward(batch, task)
-            elif isinstance(self.sentence_encoder, EHRSectionPredictionTask);
+            elif isinstance(task, EHRSectionPredictionTask):
                 out = self._section_conditional_lm_forward(batch, task, predict)
             else:
                 out = self._lm_forward(batch, task, predict)
@@ -977,7 +977,7 @@ class MultiTaskModel(nn.Module):
         task.scorer1(logits, targs)
         return out
 
-    def  _section_conditional_lm_forward(self, batch, task):
+    def  _section_conditional_lm_forward(self, batch, task, predict=False):
         """Forward pass for LM model
         Args:
             batch: indexed input data
@@ -993,6 +993,7 @@ class MultiTaskModel(nn.Module):
                 - 'loss': size average CE loss
         """
         out = {}
+        import pdb; pdb.set_trace()
         sent_encoder = self.sent_encoder
         assert_for_log(
             isinstance(sent_encoder._phrase_layer, BiLMEncoder),
@@ -1007,7 +1008,7 @@ class MultiTaskModel(nn.Module):
         n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
         out["n_exs"] = (b_size * seq_len - n_pad) * 2
 
-        sent, mask = sent_encoder(batch["input"], task,  to_append = batch["section"], append_to_input=True)
+        sent, mask = sent_encoder(batch["input"], task,  to_append = batch["section_name"], append_to_input=True)
         sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
 
         # Split encoder outputs by direction
