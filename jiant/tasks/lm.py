@@ -7,7 +7,14 @@ from typing import Iterable, Sequence, Type
 from allennlp.data import Instance
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.training.metrics import Average
-
+from allennlp.data.fields import (
+    LabelField,
+    ListField,
+    MetadataField,
+    MultiLabelField,
+    SpanField,
+    TextField,
+)
 from jiant.utils.data_loaders import process_sentence
 from jiant.tasks.registry import register_task
 from jiant.tasks.tasks import (
@@ -104,6 +111,7 @@ class LanguageModelingTask(SequenceGenerationTask):
             return Instance(d)
 
         for sent in split:
+            import pdb; pdb.set_trace()
             yield _make_instance(sent)
 
     def get_split_text(self, split: str):
@@ -130,7 +138,7 @@ class EHRSectionPredictionTask(LanguageModelingTask):
         super(EHRSectionPredictionTask, self).__init__( path, max_seq_len, name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
-
+        self._label_namespace = "section_tags"
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
@@ -154,8 +162,10 @@ class EHRSectionPredictionTask(LanguageModelingTask):
             in the input for each direction """
             d = {
                 "input": sentence_to_text_field(sent_[:-1], indexers),
+                "input_str": MetadataField(sent_[:-1]),
+                "section_name_str": MetadataField(sent_[-1]),
                 "targs": sentence_to_text_field(sent_[1:-2], self.target_indexer),
-                "section_name": sentence_to_text_field(sent_[-1], self.target_indexer)
+                "section_name": sentence_to_text_field(sent_[-1].split(), self.target_indexer)
             }
             return Instance(d)
 
@@ -169,32 +179,32 @@ class EHRSectionPredictionTask(LanguageModelingTask):
             self._tokenizer_name,
             os.path.join(self.path, "section_train.tsv"),
             max_seq_len=self.max_seq_len,
-            s1_idx=5,
+            s1_idx=1,
             s2_idx=None,
             quote_level=2,
-            label_idx=4,
+            label_idx=5,
             skip_rows=1,
         )
         self.val_data_text = load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "section_val.tsv"),
             max_seq_len=self.max_seq_len,
-            s1_idx=5,
+            s1_idx=1,
             s2_idx=None,
             quote_level=2,
-            label_idx=4,
+            label_idx=5,
             skip_rows=1,
         )
         self.test_data_text = load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "section_test.tsv"),
             max_seq_len=self.max_seq_len,
-            s1_idx=5,
+            s1_idx=1,
             s2_idx=None,
             has_labels=True, # the labels is the section mapping
             quote_level=2,
             return_indices=True,
-            label_idx=4,
+            label_idx=5,
             skip_rows=1,
         )
         self.train_data_text = [self.train_data_text[0], self.train_data_text[2]]

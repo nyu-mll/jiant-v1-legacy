@@ -155,7 +155,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             args.input_module != "elmo" and not args.input_module.startswith("bert"),
             "LM with full ELMo and BERT not supported",
         )
-        bilm = BiLMEncoder(d_emb, args.d_hid, args.d_hid, args.n_layers_enc)
+        bilm = BiLMEncoder(d_emb*2, args.d_hid, args.d_hid, args.n_layers_enc)
         sent_encoder = SentenceEncoder(
             vocab,
             embedder,
@@ -165,6 +165,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             dropout=args.dropout,
             sep_embs_for_skip=args.sep_embs_for_skip,
             cove_layer=cove_layer,
+            append_to_input=True
         )
         d_sent = 2 * args.d_hid
     elif args.sent_enc == "bow":
@@ -776,8 +777,7 @@ class MultiTaskModel(nn.Module):
             out = self._mc_forward(batch, task, predict)
         elif isinstance(task, EdgeProbingTask):
             # Just get embeddings and invoke task module.
-            word_embs_in_context, sent_mask
-             = self.sent_encoder(batch["input1"], task)
+            word_embs_in_context, sent_mask = self.sent_encoder(batch["input1"], task)
             module = getattr(self, "%s_mdl" % task.name)
             out = module.forward(batch, word_embs_in_context, sent_mask, task, predict)
         elif isinstance(task, SequenceGenerationTask):
@@ -977,7 +977,7 @@ class MultiTaskModel(nn.Module):
         task.scorer1(logits, targs)
         return out
 
-    def  _section_conditional_lm_forward(self, batch, task, predict=False):
+    def _section_conditional_lm_forward(self, batch, task, predict=False):
         """Forward pass for LM model
         Args:
             batch: indexed input data
@@ -993,7 +993,6 @@ class MultiTaskModel(nn.Module):
                 - 'loss': size average CE loss
         """
         out = {}
-        import pdb; pdb.set_trace()
         sent_encoder = self.sent_encoder
         assert_for_log(
             isinstance(sent_encoder._phrase_layer, BiLMEncoder),
@@ -1009,8 +1008,9 @@ class MultiTaskModel(nn.Module):
         out["n_exs"] = (b_size * seq_len - n_pad) * 2
 
         sent, mask = sent_encoder(batch["input"], task,  to_append = batch["section_name"], append_to_input=True)
+        # This should output [batch_size, seq_len, d_out]
         sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
-
+       
         # Split encoder outputs by direction
         split = int(self.sent_encoder._phrase_layer.get_output_dim() / 2)
         fwd, bwd = sent[:, :, :split], sent[:, :, split : split * 2]
@@ -1086,7 +1086,8 @@ class MultiTaskModel(nn.Module):
         out["logits"] = logits
         targs = batch["targs"]["words"]
         assert logits.size(0) == targs.size(0), "Number of logits and targets differ!"
-        out["loss"] = F.cross_entropy(logits[0], targs[0], ignore_index=pad_idx) # must index 0 to get dimensions [seq_len, d_out]
+        out["loss"] = F.cross_entropy(logits.argmax(dim=2), targs[0], ignore_index=pad_idx)
+	# cross_entropy expects (N,C) and N as input
         task.scorer1(out["loss"].item())
         if predict:
             # you should get a 
