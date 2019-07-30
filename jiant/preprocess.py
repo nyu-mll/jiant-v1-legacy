@@ -36,7 +36,7 @@ from jiant.tasks import (
 )
 from jiant.tasks import REGISTRY as TASKS_REGISTRY
 from jiant.utils import config, serialize, utils
-
+from jiant.tasks.lm import EHRSectionPredictionTask
 # NOTE: these are not that same as AllenNLP SOS, EOS tokens
 SOS_TOK, EOS_TOK = "<SOS>", "<EOS>"
 # NOTE: pad and unk tokens are created by AllenNLP vocabs by default
@@ -227,7 +227,10 @@ def _build_vocab(args, tasks, vocab_path: str):
     if args.input_module.startswith("bert"):
         # Add pre-computed BPE vocabulary for BERT model.
         add_bert_wpm_vocab(vocab, args.input_module)
-
+    for task in tasks:
+        if isinstance(task, EHRSectionPredictionTask):
+            for label in task.get_all_labels():
+                vocab.add_token_to_namespace(label)
     vocab.save_to_files(vocab_path)
     log.info("\tSaved vocab to %s", vocab_path)
     #  del word2freq, char2freq, target2freq
