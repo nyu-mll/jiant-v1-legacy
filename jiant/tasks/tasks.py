@@ -26,7 +26,7 @@ from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation
 from jiant.allennlp_mods.numeric_field import NumericField
-from jiant.utils import utils
+from jiant.utils import utils, i2b2_utils
 from jiant.utils.data_loaders import (
     get_tag_list,
     load_diagnostic_tsv,
@@ -2075,6 +2075,71 @@ class RecastNLITask(PairClassificationTask):
         )
         log.info("\tFinished loading recast probing data.")
 
+@register_task("i2b2-2010-concepts", rel_path="n2c2_2010")
+class i2b22010ConceptsTask(TaggingTask):
+    def __init__(self, name, ):
+        # Document
+        """ There are 1363 supertags in CCGBank without introduced token. """
+        self.path = path
+        super().__init__(name, 3, **kw)
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+        os.path.join(self.path, "ccg.train." + self._tokenizer_name)
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
+        targs = [
+            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
+            for sent in split[2]
+        ]
+        mask = [
+            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
+            for mask in split[3]
+        ]
+        instances = [
+            Instance({"inputs": x, "targs": t, "mask": m}) for (x, t, m) in zip(inputs, targs, mask)
+        ]
+        return instances
+
+    def load_data(self):
+        train_docs = []
+        self.sentences = []
+        for txt, con in training_list:
+            doc_tmp = Document(txt,con)
+            self.train_data_text = doc_tmp
+        import pdb; pdb.set_trace()
+        self.train_data_text = train_docs
+        val_docs = []
+        for txt, con in val:
+            doc_tmp = Document(txt,con)
+            val_docs.append(doc_tmp)
+
+        self.val_data_text = val_docs
+        test_docs = []
+        for txt, con in test:
+            doc_tmp = Document(txt,con)
+            test_docs.append(doc_tmp)
+        self.test_data_text = test_docs
+
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
+        targs = [
+            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
+            for sent in split[2]
+        ]
+        mask = [
+            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
+            for mask in split[3]
+        ]
+        instances = [
+            Instance({"inputs": x, "targs": t, "mask": m}) for (x, t, m) in zip(inputs, targs, mask)
+        ]
+        return instances
+
 
 class TaggingTask(Task):
     """ Generic tagging task, one tag per word """
@@ -2337,7 +2402,7 @@ class SpanClassificationTask(Task):
                 [self._make_span_field(record["target"]["span" + str(i + 1)], text_field, 1)]
             )
         example["labels"] = LabelField(
-            record["label"], label_namespace="labels", skip_indexing=True
+            sent_[-1], label_namespace="labels", skip_indexing=True
         )
         return Instance(example)
 
