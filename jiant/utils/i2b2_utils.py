@@ -30,6 +30,7 @@ import math
 import re
 import pickle
 import numpy as np
+from jiant.utils import retokenize
 
 
 #############################################################
@@ -382,9 +383,9 @@ id2tag = { v:k for k,v in labels.items() }
 
 class Document:
 
-    def __init__(self, txt, con=None):
+    def __init__(self, txt, tokenizer_name, con=None):
         # read data
-        retVal = read_i2b2(txt, con)
+        retVal = read_i2b2(txt, con, tokenizer_name)
 
         # Internal representation natural for i2b2 format
         self._tok_sents = retVal[0]
@@ -394,7 +395,9 @@ class Document:
             self._tok_concepts = retVal[1]
             self._labels = tok_concepts_to_labels(self._tok_sents,
                                                   self._tok_concepts)
-
+        self._tok_sents = [item for sublist in self._tok_sents for item in sublist]
+        self._labels = [item for sublist in self._labels for item in sublist]
+        self._tok_concepts, self._labels = preprocess_tagging(self._tok_sents, self._labels, tokenizer_name)
         # save filename
         self._filename = txt
 
@@ -485,20 +488,40 @@ class Document:
         # return formatted data
         return retStr.strip()
 
+def preprocess_tagging(text, current_tags, tokenizer_name):
+    """
+    Input: 
+        text: A word delimited list of text.
+        current_tags: A word delimited list of tags. 
+    Output: 
+        Tags a word delimited list of tokenized tags. 
+    """
+    aligner_fn = retokenize.get_aligner_fn(tokenizer_name)
+    assert len(text) == len(current_tags)
+    res_tags = []
+    for i in range(len(text)):
+        token = text[i]
+        _, new_toks = aligner_fn(token)
+        for tok in new_toks:
+            res_tags.append(current_tags[i])
+            # based on BERT-paper for wordpiece, we only keep the tag
+            # for the first part of the word.
+    _, aligned_text = aligner_fn(" ".join(text))
+    assert len(aligned_text) == len(res_tags)
+    return aligned_text, res_tags
 
 
-
-def read_i2b2(txt, con):
+def read_i2b2(txt, con, tokenizer_name):
     """
     read_i2b2()
-
+x
     @param txt. A file path for the tokenized medical record
     @param con. A file path for the i2b2 annotated concepts for txt
     """
     tokenized_sents = []
 
     sent_tokenize = lambda text: text.split('\n')
-    word_tokenize = lambda text: text.split(' ')
+    word_split = lambda text: text.split(' ')
 
     # Read in the medical text
     with open(txt) as f:
@@ -513,7 +536,7 @@ def read_i2b2(txt, con):
             # lowercase 
             sent = sent.lower()
 
-            toks = word_tokenize(sent)
+            toks = word_split(sent)
 
             # normalize tokens
             normed_toks = normalize_tokens(toks)
@@ -522,7 +545,7 @@ def read_i2b2(txt, con):
             #    print(w)
             #print()
 
-            tokenized_sents.append(normed_toks)
+            tokenized_sents.append(toks)
 
     # If an accompanying concept file was specified, read it
     tok_concepts = []
@@ -586,7 +609,7 @@ def read_i2b2(txt, con):
                     error_msg = '\n\n%s\n%s\n\n%s\n\n%s\n%s\n' % (error1,error2,error3,error4,error5)
         for index in sorted(add_pairs_to_delete, reverse=True):
             del tok_concepts[index]
-
+    #result_sents, result_concepts = preprocess_tagging(tokenized_sents, tok_concepts, tokenizer_name)
     return tokenized_sents, tok_concepts
 
 

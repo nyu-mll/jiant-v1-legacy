@@ -162,7 +162,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             args.n_layers_highway,
             bilm,
             skip_embs=args.skip_embs,
-            dropout=args.dropout,
+            dropout=args.dropout, 
             sep_embs_for_skip=args.sep_embs_for_skip,
             cove_layer=cove_layer,
             append_to_input=True
@@ -225,7 +225,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
         # Here, this uses openAIEmbedder.
         embedder = OpenAIEmbedderModule(args)
         d_emb = embedder.get_output_dim()
-    elif args.input_module.startswith("bert"):
+    elif args.input_module.startswith("bert") or args.input_module == "bio-bert":
         # Note: incompatible with other embedders, but logic in preprocess.py
         # should prevent these from being enabled anyway.
         from .bert.utils import BertEmbedderModule
@@ -308,6 +308,7 @@ def build_embeddings(args, vocab, tasks, pretrained_embs=None):
             "gpt",
             "elmo",
             "elmo-chars-only",
+            "bio-bert"
         ], "You do not have a valid value for input_module."
         embeddings = None
         word_embs = None
@@ -671,10 +672,13 @@ def build_span_classifier(task, d_sent, task_params):
     module = SpanClassifierModule(task, d_sent, task_params, num_spans=task.num_spans)
     return module
 
-
-def build_tagger(task, d_inp, out_dim):
+def build_conditional_softmax_tagger(task, d_inp, out_dim):
     """ Build tagger components. """
-    hid2tag = nn.Linear(d_inp, out_dim)
+    # creating an encdoer
+    hid2tag_concept = nn.Linear(d_inp, out_dim)
+    hid2tag_rel = nn.Linear(d_inp, out_dim)
+    hid2tag_assertions = nn.Linear(d_inp, out_dim)
+
     return hid2tag
 
 
@@ -734,7 +738,7 @@ class MultiTaskModel(nn.Module):
         self.vocab = vocab
         self.utilization = Average() if args.track_batch_utilization else None
         self.elmo = args.input_module == "elmo" 
-        self.use_bert = bool(args.input_module.startswith("bert"))
+        self.use_bert = bool(args.input_module.startswith("bert")) or bool(args.input_module == "bio-bert")
         self.sep_embs_for_skip = args.sep_embs_for_skip
 
     def forward(self, task, batch, predict=False):

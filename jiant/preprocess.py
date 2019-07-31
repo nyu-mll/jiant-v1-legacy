@@ -224,7 +224,7 @@ def _build_vocab(args, tasks, vocab_path: str):
     if args.input_module == "gpt":
         # Add pre-computed BPE vocabulary for OpenAI transformer model.
         add_openai_bpe_vocab(vocab, "openai_bpe")
-    if args.input_module.startswith("bert"):
+    if args.input_module.startswith("bert") or args.input_module == "bio-bert":
         # Add pre-computed BPE vocabulary for BERT model.
         add_bert_wpm_vocab(vocab, args.input_module)
     for task in tasks:
@@ -238,7 +238,8 @@ def _build_vocab(args, tasks, vocab_path: str):
 
 def build_indexers(args):
     indexers = {}
-    if not args.input_module.startswith("bert") and args.input_module not in ["elmo", "gpt"]:
+    if not args.input_module.startswith("bert") and args.input_module not in ["elmo", "gpt"] \
+            and not args.input_module == "bio-bert":
         indexers["words"] = SingleIdTokenIndexer()
     if args.input_module == "elmo":
         indexers["elmo"] = ELMoTokenCharactersIndexer("elmo")
@@ -258,9 +259,9 @@ def build_indexers(args):
             args.tokenizer == "OpenAI.BPE"
         ), "OpenAI transformer uses custom BPE tokenization. Set tokenizer=OpenAI.BPE."
         indexers["openai_bpe_pretokenized"] = SingleIdTokenIndexer("openai_bpe")
-    if args.input_module.startswith("bert"):
+    if args.input_module.startswith("bert") or args.input_module == "bio-bert":
         assert not indexers, "BERT is not supported alongside other indexers due to tokenization."
-        assert args.tokenizer == args.input_module, (
+        assert args.tokenizer == args.input_module or args.input_module == "bio-bert", (
             "BERT models use custom WPM tokenization for "
             "each model, so tokenizer must match the "
             "specified BERT model."
@@ -310,7 +311,7 @@ def build_tasks(args):
     word_embs = None
     if args.input_module not in ["elmo", "gpt", "scratch"] and not args.input_module.startswith(
         "bert"
-    ):
+    ) and not args.input_module == "bio-bert":
         emb_file = os.path.join(args.exp_dir, "embs.pkl")
         if args.reload_vocab or not os.path.exists(emb_file):
             word_embs = _build_embeddings(args, vocab, emb_file)

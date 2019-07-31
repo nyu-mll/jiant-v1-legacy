@@ -39,10 +39,13 @@ class BertEmbedderModule(nn.Module):
 
     def __init__(self, args, cache_dir=None):
         super(BertEmbedderModule, self).__init__()
+        if args.input_module == "bio-bert":
+            self.model = pytorch_pretrained_bert.BertModel.from_pretrained('biobert.gz', num_labels=num_labels)
 
         self.model = pytorch_pretrained_bert.BertModel.from_pretrained(
             args.input_module, cache_dir=cache_dir
         )
+
         self.embeddings_mode = args.bert_embeddings_mode
         self.num_layers = self.model.config.num_hidden_layers
         if args.bert_max_layer >= 0:
