@@ -2075,71 +2075,6 @@ class RecastNLITask(PairClassificationTask):
         )
         log.info("\tFinished loading recast probing data.")
 
-@register_task("i2b2-2010-concepts", rel_path="n2c2_2010")
-class i2b22010ConceptsTask(TaggingTask):
-    def __init__(self, name, ):
-        # Document
-        """ There are 1363 supertags in CCGBank without introduced token. """
-        self.path = path
-        super().__init__(name, 3, **kw)
-        self.train_data_text = None
-        self.val_data_text = None
-        self.test_data_text = None
-        os.path.join(self.path, "ccg.train." + self._tokenizer_name)
-
-    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
-        """ Process a tagging task """
-        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
-        targs = [
-            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
-            for sent in split[2]
-        ]
-        mask = [
-            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
-            for mask in split[3]
-        ]
-        instances = [
-            Instance({"inputs": x, "targs": t, "mask": m}) for (x, t, m) in zip(inputs, targs, mask)
-        ]
-        return instances
-
-    def load_data(self):
-        train_docs = []
-        self.sentences = []
-        for txt, con in training_list:
-            doc_tmp = Document(txt,con)
-            self.train_data_text = doc_tmp
-        import pdb; pdb.set_trace()
-        self.train_data_text = train_docs
-        val_docs = []
-        for txt, con in val:
-            doc_tmp = Document(txt,con)
-            val_docs.append(doc_tmp)
-
-        self.val_data_text = val_docs
-        test_docs = []
-        for txt, con in test:
-            doc_tmp = Document(txt,con)
-            test_docs.append(doc_tmp)
-        self.test_data_text = test_docs
-
-
-    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
-        """ Process a tagging task """
-        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
-        targs = [
-            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
-            for sent in split[2]
-        ]
-        mask = [
-            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
-            for mask in split[3]
-        ]
-        instances = [
-            Instance({"inputs": x, "targs": t, "mask": m}) for (x, t, m) in zip(inputs, targs, mask)
-        ]
-        return instances
-
 
 class TaggingTask(Task):
     """ Generic tagging task, one tag per word """
@@ -2166,6 +2101,102 @@ class TaggingTask(Task):
 
     def get_all_labels(self) -> List[str]:
         return self.all_labels
+
+
+@register_task("i2b2-2010-concepts", rel_path="n2c2_2010")
+class i2b22010ConceptsTask(TaggingTask):
+    def __init__(self, path, max_seq_len, name="ccg", **kw):
+        # Document
+        """ There are 1363 supertags in CCGBank without introduced token. """
+        self.path = path
+        super().__init__(name, 3, **kw)
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
+        targs = [
+            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
+            for sent in split[2]
+        ]
+        instances = [
+            Instance({"inputs": x, "targs": t}) for (x, t) in zip(inputs, targs)
+        ]
+        return instances
+
+    def load_data(self):
+        training_list = os.listdir(os.path.join(self.path, "train_data", "txt"))
+        training_list = [x.split(".")[0] for x in training_list]
+        self.train_data_text = []
+        for record in training_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "train_data", "txt", "%s.txt" % record),
+                os.path.join(self.path, "train_data", "concept", "%s.con" % record),
+            )
+            self.train_data_text.append([doc_tmp.getTokenizedSentences(), 
+                                        doc_tmp.getTokenizedSentences()])
+        val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
+        val_list = [x.split(".")[0] for x in training_list]
+        self.val_data_text = []
+        for record in val_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "val_data", "txt", "%s.txt" % record),
+                os.path.join(self.path, "val_data", "concept", "%s.con" % record),
+            )
+            self.val_data_text.append([doc_tmp.getTokenizedSentences(), 
+                                        doc_tmp.getTokenizedSentences()])
+
+        test_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
+        test_list = [x.split(".")[0] for x in training_list]
+        self.test_data_text = []
+        for record in test_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "test_data", "txt", "%s.txt" % record),
+                os.path.join(self.path, "test_data", "concept", "%s.con" % record),
+            )
+            self.test_data_text.append([doc_tmp.getTokenizedSentences(), 
+                                        doc_tmp.getTokenizedSentences()])
+
+        # Get the mask for each sentence, where the mask is whether or not
+        # the token was split off by tokenization. We want to only count the first
+        # sub-piece in the BERT tokenization in the loss and score, following Devlin's NER
+        # experiment
+        # [BERT: Pretraining of Deep Bidirectional Transformers for Language Understanding]
+        # (https://arxiv.org/abs/1810.04805)
+        if self.bert_tokenization:
+            import numpy.ma as ma
+            masks = []
+            for dataset in [self.train_data_text, self.val_data_text]:
+                dataset_mask = []
+                for i in range(len(dataset[2])):
+                    mask = ma.getmask(
+                        ma.masked_where(
+                            np.array(dataset[2][i]) != self.INTRODUCED_TOKEN,
+                            np.array(dataset[2][i]),
+                        )
+                    )
+                    mask_indices = np.where(mask)[0].tolist()
+                    dataset_mask.append(mask_indices)
+                masks.append(dataset_mask)
+
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
+        targs = [
+            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
+            for sent in split[2]
+        ]
+        mask = [
+            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
+            for mask in split[3]
+        ]
+        instances = [
+            Instance({"inputs": x, "targs": t, "mask": m}) for (x, t, m) in zip(inputs, targs, mask)
+        ]
+        return instances
 
 
 @register_task("ccg", rel_path="CCG/")
@@ -2401,9 +2432,7 @@ class SpanClassificationTask(Task):
             example["span" + str(i + 1) + "s"] = ListField(
                 [self._make_span_field(record["target"]["span" + str(i + 1)], text_field, 1)]
             )
-        example["labels"] = LabelField(
-            sent_[-1], label_namespace="labels", skip_indexing=True
-        )
+        example["labels"] = LabelField(sent_[-1], label_namespace="labels", skip_indexing=True)
         return Instance(example)
 
     def process_split(self, records, indexers) -> Iterable[Type[Instance]]:
