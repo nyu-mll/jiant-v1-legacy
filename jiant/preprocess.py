@@ -226,9 +226,9 @@ def _build_vocab(args, tasks, vocab_path: str):
         add_openai_bpe_vocab(vocab, "openai_bpe")
     if args.input_module.startswith("bert") or args.input_module == "bio-bert":
         # Add pre-computed BPE vocabulary for BERT model.
-        add_bert_wpm_vocab(vocab, args.input_module)
+        add_bert_wpm_vocab(vocab, args.tokenizer)
     for task in tasks:
-        if isinstance(task, EHRSectionPredictionTask):
+        if isinstance(task, EHRSectionPredictionTask) or task.name == "i2b2-2010-concepts":
             for label in task.get_all_labels():
                 vocab.add_token_to_namespace(label)
     vocab.save_to_files(vocab_path)

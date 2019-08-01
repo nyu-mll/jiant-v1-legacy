@@ -496,13 +496,21 @@ def preprocess_tagging(text, current_tags, tokenizer_name):
     Output: 
         Tags a word delimited list of tokenized tags. 
     """
-    aligner_fn = retokenize.get_aligner_fn(tokenizer_name)
+    if tokenizer_name == "\"\"":
+        aligner_fn = lambda x: ("", x.split())
+    else:
+        aligner_fn = retokenize.get_aligner_fn(tokenizer_name)
     assert len(text) == len(current_tags)
     res_tags = []
+    new_toks_tis_way = []
     for i in range(len(text)):
         token = text[i]
+        import re
         _, new_toks = aligner_fn(token)
+        if tokenizer_name == "MosesTokenizer" and token[-1] == ".":
+            new_toks = new_toks[-1] #DON'T separate out . out by itself. 
         for tok in new_toks:
+            new_toks_tis_way.append(tok)
             res_tags.append(current_tags[i])
             # based on BERT-paper for wordpiece, we only keep the tag
             # for the first part of the word.

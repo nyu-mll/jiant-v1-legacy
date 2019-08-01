@@ -21,7 +21,8 @@ from allennlp.data.fields import (
     TextField,
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
-from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure
+from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, fbeta_measure
+
 from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation
@@ -2113,6 +2114,14 @@ class i2b22010ConceptsTask(TaggingTask):
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
+        self.scorer1 = fbeta_measure.FBetaMeasure(average="micro")
+        self.val_metric = "%s_f1" % self.name
+
+
+    def get_metrics(self, reset=False):
+        """Get metrics specific to the task"""
+        f1 = self.scorer1.get_metric(reset)
+        return {"f1": f1}
 
     def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
@@ -2121,8 +2130,10 @@ class i2b22010ConceptsTask(TaggingTask):
             TextField(list(map(Token, sent[1])), token_indexers=indexers)
             for sent in split
         ]
+        input_str = [MetadataField(" ".join(sent[0])) for sent in split]
+        targ_str = [MetadataField(" ".join(sent[1])) for sent in split]
         instances = [
-            Instance({"inputs": x, "targs": t}) for (x, t) in zip(inputs, targs)
+            Instance({"inputs": x, "targs": t, "input_str": xs, "targ_str": ts}) for (x, t, xs, ts) in zip(inputs, targs, input_str, targ_str)
         ]
         return instances
 
@@ -2141,6 +2152,7 @@ class i2b22010ConceptsTask(TaggingTask):
             )
             self.train_data_text.append([doc_tmp.getTokenizedSentences(), 
                                         doc_tmp.getTokenLabels()])
+
         val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
         val_list = [x.split(".")[0] for x in val_list]
         self.val_data_text = []
@@ -2154,7 +2166,6 @@ class i2b22010ConceptsTask(TaggingTask):
                                         doc_tmp.getTokenLabels()])
 
         self.test_data_text = self.val_data_text # TODO: Not sure where to get gold labels yet.
-        import pdb; pdb.set_trace()
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
 
 

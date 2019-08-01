@@ -42,7 +42,7 @@ class SentenceEncoder(Model):
         initializer=InitializerApplicator(),
     ):
         super(SentenceEncoder, self).__init__(vocab)
-
+        self.append_to_input = append_to_input
         if text_field_embedder is None:
             self._text_field_embedder = lambda x: x
             d_emb = 0
@@ -99,15 +99,18 @@ class SentenceEncoder(Model):
         if not isinstance(self._phrase_layer, NullPhraseLayer):
             if isinstance(self._text_field_embedder, BertEmbedderModule):
                 word_embs_in_context = self._text_field_embedder(sent, is_pair_task=is_pair_task)
-                section_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
+                if self.append_to_input:
+                    section_type = self._text_field_embedder(to_append, is_pair_task=is_pair_task)
             else:
                 word_embs_in_context = self._text_field_embedder(sent)
-                section_type = self._text_field_embedder(to_append)
-            section_type = self.section_layer(section_type)
-            section_type = section_type[0][:, -1, :]
-            section_type = section_type.unsqueeze(1)
-            section_type = section_type.expand(-1, len(word_embs_in_context[0]), -1)# expand to seq_len
-            word_embs_in_context = torch.cat((word_embs_in_context, section_type), 2)
+                if self.append_to_input:
+                    section_type = self._text_field_embedder(to_append)
+            if self.append_to_input:
+                section_type = self.section_layer(section_type)
+                section_type = section_type[0][:, -1, :]
+                section_type = section_type.unsqueeze(1)
+                section_type = section_type.expand(-1, len(word_embs_in_context[0]), -1)# expand to seq_len
+                word_embs_in_context = torch.cat((word_embs_in_context, section_type), 2)
             #  expand
             # then concatenate
             word_embs_in_context = self._highway_layer(word_embs_in_context)

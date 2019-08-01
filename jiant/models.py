@@ -672,6 +672,12 @@ def build_span_classifier(task, d_sent, task_params):
     module = SpanClassifierModule(task, d_sent, task_params, num_spans=task.num_spans)
     return module
 
+def build_tagger(task, d_inp, out_dim):
+    """ Build tagger components. """
+    # creating an encdoer
+    hid2tag = nn.Linear(d_inp, out_dim)
+    return hid2tag
+
 def build_conditional_softmax_tagger(task, d_inp, out_dim):
     """ Build tagger components. """
     # creating an encdoer
@@ -959,7 +965,7 @@ class MultiTaskModel(nn.Module):
         sent_encoder = self.sent_encoder
         out["n_exs"] = get_batch_size(batch)
         if not isinstance(sent_encoder, BiLMEncoder):
-            sent, mask = sent_encoder(batch["inputs"], task)
+            sent, mask = sent_encoder(batch["inputs"], task) # RNN
             sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
             sent = sent[:, 1:-1, :]
             hid2tag = self._get_classifier(task)
