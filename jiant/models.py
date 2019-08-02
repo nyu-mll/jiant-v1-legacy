@@ -507,7 +507,7 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
     elif isinstance(task, SpanClassificationTask):
         module = build_span_classifier(task, d_sent, task_params)
         setattr(model, "%s_mdl" % task.name, module)
-    elif isinstance(task, TaggingTask):
+    elif isinstance(task, TaggingTask): 
         hid2tag = build_tagger(task, d_sent, task.num_tags)
         setattr(model, "%s_mdl" % task.name, hid2tag)
     elif isinstance(task, MultipleChoiceTask):
@@ -960,6 +960,7 @@ class MultiTaskModel(nn.Module):
         """
         out = {}
         # batch[inputs] only has one item
+        import pdb; pdb.set_trace()
         b_size, seq_len = list(batch["inputs"].values())[0].size()
         seq_len -= 2
         sent_encoder = self.sent_encoder
@@ -1033,7 +1034,8 @@ class MultiTaskModel(nn.Module):
         # Forward and backward logits and targs
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         # stagger, maybe we have to get the hidden_size. 
-        fwd, bwd  = fwd[:, :-2, :], bwd[:, 2:, :]
+        import pdb; pdb.set_trace()
+        fwd, bwd  = fwd[:, :-2, :], bwd[:, 2:, :] # we stagger by 2 because it has 
         staggered_output = torch.cat((fwd, bwd), dim=-1)
         logits = hid2voc(staggered_output) # output is [1, seq_len, d_out]
         out["logits"] = logits

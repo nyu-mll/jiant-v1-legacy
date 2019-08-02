@@ -2117,11 +2117,17 @@ class i2b22010ConceptsTask(TaggingTask):
         self.scorer1 = fbeta_measure.FBetaMeasure(average="micro")
         self.val_metric = "%s_f1" % self.name
 
-
     def get_metrics(self, reset=False):
         """Get metrics specific to the task"""
         f1 = self.scorer1.get_metric(reset)
         return {"f1": f1}
+
+    def count_examples(self, splits=["train", "val", "test"]):
+        """ Count examples in the dataset. """
+        self.example_counts = {}
+        for split in splits:
+            st = self.get_split_text(split)
+            self.example_counts[split] = len(st)
 
     def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
@@ -2164,8 +2170,18 @@ class i2b22010ConceptsTask(TaggingTask):
             )
             self.val_data_text.append([doc_tmp.getTokenizedSentences(), 
                                         doc_tmp.getTokenLabels()])
-
-        self.test_data_text = self.val_data_text # TODO: Not sure where to get gold labels yet.
+        import pdb; pdb.set_trace()
+        test_list = os.listdir(os.path.join(self.path, "test_data", "txt"))
+        test_list = [x.split(".")[0] for x in test_list]
+        self.test_data_text = []
+        for record in test_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "test_data", "txt", "%s.txt" % record),
+                con=os.path.join(self.path, "test_data", "concept", "%s.con" % record),
+                tokenizer_name=self.tokenizer_name
+            )
+            self.test_data_text.append([doc_tmp.getTokenizedSentences(), 
+                                        doc_tmp.getTokenLabels()])
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
 
 

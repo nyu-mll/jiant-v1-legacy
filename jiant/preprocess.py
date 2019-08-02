@@ -84,6 +84,7 @@ def _indexed_instance_generator(instance_iter, vocab):
         Instance with indexed fields.
     """
     for instance in instance_iter:
+        import pdb; pdb.set_trace()
         instance.index_fields(vocab)
         # Strip token fields to save memory and disk.
         del_field_tokens(instance)
@@ -259,14 +260,16 @@ def build_indexers(args):
             args.tokenizer == "OpenAI.BPE"
         ), "OpenAI transformer uses custom BPE tokenization. Set tokenizer=OpenAI.BPE."
         indexers["openai_bpe_pretokenized"] = SingleIdTokenIndexer("openai_bpe")
-    if args.input_module.startswith("bert") or args.input_module == "bio-bert":
+    if args.input_module.startswith("bert"):
         assert not indexers, "BERT is not supported alongside other indexers due to tokenization."
-        assert args.tokenizer == args.input_module or args.input_module == "bio-bert", (
+        assert args.tokenizer == args.input_module, (
             "BERT models use custom WPM tokenization for "
             "each model, so tokenizer must match the "
             "specified BERT model."
         )
-        indexers["bert_wpm_pretokenized"] = SingleIdTokenIndexer(args.input_module)
+        indexers["bert_wpm_pretokenized"] = SingleIdTokenIndexer(args.tokenizer)
+    if args.input_module == "bio-bert":
+        indexers["bert_wpm_pretokenized"] = SingleIdTokenIndexer(args.tokenizer)
     return indexers
 
 
@@ -296,7 +299,7 @@ def build_tasks(args):
     vocab_path = os.path.join(args.exp_dir, "vocab")
     if args.reload_vocab or not os.path.exists(vocab_path):
         _build_vocab(args, tasks, vocab_path)
-
+    import pdb; pdb.set_trace()
     # Always load vocab from file.
     vocab = Vocabulary.from_files(vocab_path)
     log.info("\tLoaded vocab from %s", vocab_path)
@@ -509,6 +512,7 @@ def get_words(tasks):
 
 def get_vocab(word2freq, char2freq, max_v_sizes):
     """Build vocabulary by selecting the most frequent tokens"""
+    import pdb; pdb.set_trace()
     vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes)
     for special in SPECIALS:
         vocab.add_token_to_namespace(special, "tokens")
