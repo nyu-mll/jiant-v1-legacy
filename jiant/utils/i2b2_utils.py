@@ -394,10 +394,11 @@ class Document:
         if con:
             self._tok_concepts = retVal[1]
             self._labels = tok_concepts_to_labels(self._tok_sents,
-                                                  self._tok_concepts)
+                                                  self._tok_concepts, txt, con)
         self._tok_sents = [item for sublist in self._tok_sents for item in sublist]
         self._labels = [item for sublist in self._labels for item in sublist]
-        self._tok_concepts, self._labels = preprocess_tagging(self._tok_sents, self._labels, tokenizer_name)
+        assert len(self._labels) == len(self._tok_sents)
+        self._tok_sents, self._labels = preprocess_tagging(self._tok_sents, self._labels, tokenizer_name)
         # save filename
         self._filename = txt
 
@@ -411,6 +412,7 @@ class Document:
 
 
     def getTokenizedSentences(self):
+        assert len(self._tok_sents) == len(self._labels)
         return self._tok_sents
 
 
@@ -419,6 +421,7 @@ class Document:
 
 
     def conlist(self):
+        assert len(self._tok_sents) == len(self._labels)
         return self._labels
 
 
@@ -496,7 +499,7 @@ def preprocess_tagging(text, current_tags, tokenizer_name):
     Output: 
         Tags a word delimited list of tokenized tags. 
     """
-    if tokenizer_name == "\"\"":
+    if tokenizer_name == "":
         aligner_fn = lambda x: ("", x.split())
     else:
         aligner_fn = retokenize.get_aligner_fn(tokenizer_name)
@@ -623,17 +626,19 @@ x
 
 
 
-def tok_concepts_to_labels(tokenized_sents, tok_concepts):
+def tok_concepts_to_labels(tokenized_sents, tok_concepts, tok_file, con_file):
     # parallel to tokens
     labels = [ ['O' for tok in sent] for sent in tokenized_sents ]
-
+    assert len(labels) == len(tokenized_sents)
     # fill each concept's tokens appropriately
     for concept in tok_concepts:
-        label,lineno,start_tok,end_tok = concept
-        labels[lineno-1][start_tok] = '%s' % label
-        for i in range(start_tok+1,end_tok+1):
-            labels[lineno-1][i] = '%s' % label
-
+        try:
+            label,lineno,start_tok,end_tok = concept
+            labels[lineno-1][start_tok] = '%s' % label
+            for i in range(start_tok+1,end_tok+1):
+                labels[lineno-1][i] = '%s' % label
+        except:
+            import pdb; pdb.set_trace()
     # test it out
     '''
     for i in range(len(tokenized_sents)):
