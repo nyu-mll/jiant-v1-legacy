@@ -35,7 +35,7 @@ from jiant.utils.utils import (
     sort_param_recursive,
     select_relevant_print_args,
     check_for_previous_checkpoints,
-    get_model_attribute
+    get_model_attribute,
 )
 
 
@@ -563,7 +563,9 @@ def main(cl_arguments):
         # Evaluate on target_tasks.
         for task in target_tasks:
             # Find the task-specific best checkpoint to evaluate on.
-            task_to_use = get_model_attribute(model, "_get_task_params")(task.name).get("use_classifier", task.name)
+            task_to_use = get_model_attribute(model, "_get_task_params")(task.name).get(
+                "use_classifier", task.name
+            )
             ckpt_path = get_best_checkpoint_path(args, "eval", task_to_use)
             assert ckpt_path is not None
             load_model_state(model, ckpt_path, args.cuda, skip_task_models=[], strict=strict)

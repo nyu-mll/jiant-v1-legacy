@@ -29,7 +29,7 @@ from jiant.utils.utils import (
     assert_for_log,
     find_last_checkpoint_epoch,
     check_for_previous_checkpoints,
-    get_model_attribute
+    get_model_attribute,
 )  # pylint: disable=import-error
 
 
@@ -654,7 +654,9 @@ class SamplingMultiTaskTrainer:
                         n_batches_since_val / task_info["n_tr_batches"],
                     )
                 if get_model_attribute(self._model, "utilization") is not None:
-                    batch_util = get_model_attribute(self._model, "utilization").get_metric(reset=True)
+                    batch_util = get_model_attribute(self._model, "utilization").get_metric(
+                        reset=True
+                    )
                     log.info("TRAINING BATCH UTILIZATION: %.3f", batch_util)
 
                 # Validate
