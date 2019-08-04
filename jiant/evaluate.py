@@ -20,6 +20,7 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
+    i2b22010ConceptsTask
 )
 from jiant.tasks.lm import LanguageModelingTask
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask
@@ -211,6 +212,10 @@ def write_preds(
             _write_lm_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format, vocab=vocab
             )
+        elif isinstance(task, i2b22010ConceptsTask):
+            _write_concept_preds(
+                task, preds_df, pred_dir, split_anme, strict_glue_format=False
+                )
         else:
             log.warning("Task '%s' not supported by write_preds().", task.name)
             continue
@@ -298,6 +303,24 @@ def _write_edge_preds(
 
 
 def _write_wic_preds(
+    task: str,
+    preds_df: pd.DataFrame,
+    pred_dir: str,
+    split_name: str,
+    strict_glue_format: bool = False,
+):
+    """ Write predictions for WiC task.  """
+    pred_map = {0: "false", 1: "true"}
+    preds_file = _get_pred_filename(task.name, pred_dir, split_name, strict_glue_format)
+    with open(preds_file, "w", encoding="utf-8") as preds_fh:
+        for row_idx, row in preds_df.iterrows():
+            if strict_glue_format:
+                out_d = {"idx": row["idx"], "label": pred_map[row["preds"]]}
+            else:
+                out_d = row.to_dict()
+            preds_fh.write("{0}\n".format(json.dumps(out_d)))
+
+def _write_concept_preds(
     task: str,
     preds_df: pd.DataFrame,
     pred_dir: str,
