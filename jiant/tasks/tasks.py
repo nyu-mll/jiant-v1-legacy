@@ -2151,6 +2151,13 @@ class i2b22010ConceptsTask(TaggingTask):
     def get_all_labels(self):
         return ["O", "problem" ,"treatment", "test"]
 
+    def map_output(self,x, y):
+        result = []
+        for i in range(len(x)):
+            result.append(x[i] + "###" + y[i])
+        return " ".join(result)
+        
+
     def load_data(self):
         training_list = os.listdir(os.path.join(self.path, "train_data", "txt"))
         training_list = [x.split(".")[0] for x in training_list]
@@ -2161,8 +2168,7 @@ class i2b22010ConceptsTask(TaggingTask):
                 con=os.path.join(self.path, "train_data", "concept", "%s.con" % record),
                 tokenizer_name=self.tokenizer_name
             )
-            self.train_data_text.append([" ".join(doc_tmp.getTokenizedSentences()), 
-                                        " ".join(doc_tmp.getTokenLabels())])
+            self.train_data_text.append(self.map_output(doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()))
 
         val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
         val_list = [x.split(".")[0] for x in val_list]
@@ -2173,8 +2179,7 @@ class i2b22010ConceptsTask(TaggingTask):
                 con=os.path.join(self.path, "val_data", "concept", "%s.con" % record),
                 tokenizer_name=self.tokenizer_name
             )
-            self.val_data_text.append([" ".join(doc_tmp.getTokenizedSentences()), 
-                                        " ".join(doc_tmp.getTokenLabels())])
+            self.val_data_text.append(self.map_output(doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()))
         test_list = os.listdir(os.path.join(self.path, "test_data", "txt"))
         test_list = [x.split(".")[0] for x in test_list]
         self.test_data_text = []
@@ -2184,8 +2189,7 @@ class i2b22010ConceptsTask(TaggingTask):
                 con=os.path.join(self.path, "test_data", "concept", "%s.con" % record),
                 tokenizer_name=self.tokenizer_name
             )
-            self.test_data_text.append([" ".join(doc_tmp.getTokenizedSentences()), 
-                                        " ".join(doc_tmp.getTokenLabels())])
+            self.test_data_text.append(self.map_output(doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()))
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
         import pandas as pd
         import pdb; pdb.set_trace()
