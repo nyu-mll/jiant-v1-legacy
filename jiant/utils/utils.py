@@ -33,6 +33,12 @@ SOS_TOK, EOS_TOK = "<SOS>", "<EOS>"
 _MOSES_DETOKENIZER = MosesDetokenizer()
 
 
+def get_model_attribute(model, attr_name):
+    if torch.cuda.device_count() > 1:
+        return getattr(model.module, attr_name)
+    return getattr(model, attr_name)
+
+
 def check_for_previous_checkpoints(serialization_dir, tasks, phase, load_model):
     """
     Check if there are previous checkpoints.
