@@ -155,7 +155,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             args.input_module != "elmo" and not args.input_module.startswith("bert"),
             "LM with full ELMo and BERT not supported",
         )
-        bilm = BiLMEncoder(d_emb*2, args.d_hid, args.d_hid, args.n_layers_enc)
+        bilm = BiLMEncoder(d_emb, args.d_hid, args.d_hid, args.n_layers_enc)
         sent_encoder = SentenceEncoder(
             vocab,
             embedder,
@@ -165,7 +165,7 @@ def build_sent_encoder(args, vocab, d_emb, tasks, embedder, cove_layer):
             dropout=args.dropout, 
             sep_embs_for_skip=args.sep_embs_for_skip,
             cove_layer=cove_layer,
-            append_to_input=True
+            append_to_input=False
         )
         d_sent = 2 * args.d_hid
     elif args.sent_enc == "bow":
@@ -960,7 +960,6 @@ class MultiTaskModel(nn.Module):
         """
         out = {}
         # batch[inputs] only has one item
-        import pdb; pdb.set_trace()
         b_size, seq_len = list(batch["inputs"].values())[0].size()
         seq_len -= 2
         sent_encoder = self.sent_encoder
@@ -973,7 +972,7 @@ class MultiTaskModel(nn.Module):
             logits = hid2tag(sent)
             logits = logits.view(b_size * seq_len, -1)
             out["logits"] = logits
-            targs = batch["targs"]["words"][:, :seq_len].contiguous().view(-1)
+            targs = batch["targs"][:, :seq_len].contiguous().view(-1)
         if "mask" in batch:
             # prevent backprop for tags generated for tokenization-introduced tokens
             # such as word boundaries
@@ -1034,8 +1033,7 @@ class MultiTaskModel(nn.Module):
         # Forward and backward logits and targs
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         # stagger, maybe we have to get the hidden_size. 
-        import pdb; pdb.set_trace()
-        fwd, bwd  = fwd[:, :-2, :], bwd[:, 2:, :] # we stagger by 2 because it has 
+        fwd, bwd  = fwd[:, 1:-1, :], bwd[:, 1:-1, :] # -1, 1 becuase don't include contexts for words EOS and SOS 
         staggered_output = torch.cat((fwd, bwd), dim=-1)
         logits = hid2voc(staggered_output) # output is [1, seq_len, d_out]
         out["logits"] = logits

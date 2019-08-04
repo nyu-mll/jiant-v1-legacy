@@ -19,9 +19,10 @@ from allennlp.data.fields import (
     MultiLabelField,
     SpanField,
     TextField,
+    SequenceLabelField
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
-from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, fbeta_measure
+from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure
 
 from sklearn.metrics import mean_squared_error
 
@@ -2112,15 +2113,16 @@ class i2b22010ConceptsTask(TaggingTask):
         self.path = path
         super().__init__(name, 4, **kw)
         self.train_data_text = None
+        self.num_tags = 4
         self.val_data_text = None
         self.test_data_text = None
-        self.scorer1 = fbeta_measure.FBetaMeasure(average="micro")
+        self.scorer1 = FBetaMeasure(average="micro")
         self.val_metric = "%s_f1" % self.name
 
     def get_metrics(self, reset=False):
         """Get metrics specific to the task"""
         f1 = self.scorer1.get_metric(reset)
-        return {"f1": f1}
+        return {"f1": f1["fscore"], "recall": f1["recall"], "precision": f1["precision"]}
 
     def count_examples(self, splits=["train", "val", "test"]):
         """ Count examples in the dataset. """
@@ -2132,10 +2134,13 @@ class i2b22010ConceptsTask(TaggingTask):
     def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
         inputs = [TextField(list(map(Token, sent[0])), token_indexers=indexers) for sent in split]
-        targs = [
-            TextField(list(map(Token, sent[1])), token_indexers=indexers)
-            for sent in split
-        ]
+        targs = []
+        for sent in split:
+            if len(sent[0]) != len(sent[1]):
+                import pdb; pdb.set_trace()
+            else:
+                targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
+ 
         input_str = [MetadataField(" ".join(sent[0])) for sent in split]
         targ_str = [MetadataField(" ".join(sent[1])) for sent in split]
         instances = [
@@ -2157,7 +2162,8 @@ class i2b22010ConceptsTask(TaggingTask):
                 tokenizer_name=self.tokenizer_name
             )
             self.train_data_text.append([doc_tmp.getTokenizedSentences(), 
-                                        doc_tmp.getTokenLabels()])
+                                        doc_tmp.getTokenLabels(),
+                                        doc_tmp.getName()])
 
         val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
         val_list = [x.split(".")[0] for x in val_list]
@@ -2169,8 +2175,8 @@ class i2b22010ConceptsTask(TaggingTask):
                 tokenizer_name=self.tokenizer_name
             )
             self.val_data_text.append([doc_tmp.getTokenizedSentences(), 
-                                        doc_tmp.getTokenLabels()])
-        import pdb; pdb.set_trace()
+                                        doc_tmp.getTokenLabels(),
+                                        doc_tmp.getName()])
         test_list = os.listdir(os.path.join(self.path, "test_data", "txt"))
         test_list = [x.split(".")[0] for x in test_list]
         self.test_data_text = []
@@ -2181,7 +2187,8 @@ class i2b22010ConceptsTask(TaggingTask):
                 tokenizer_name=self.tokenizer_name
             )
             self.test_data_text.append([doc_tmp.getTokenizedSentences(), 
-                                        doc_tmp.getTokenLabels()])
+                                        doc_tmp.getTokenLabels(),
+                                        doc_tmp.getName()])
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
 
 

@@ -605,11 +605,7 @@ class SamplingMultiTaskTrainer:
             if time.time() - task_info["last_log"] > self._log_interval:
                 task_metrics = task.get_metrics()
 
-                # log to tensorboard
-                if self._TB_dir is not None:
-                    task_metrics_to_TB = task_metrics.copy()
-                    task_metrics_to_TB["loss"] = float(task_info["loss"] / n_batches_since_val)
-                    self._metrics_to_tensorboard_tr(n_step, task_metrics_to_TB, task.name)
+                # log to 
 
                 task_metrics["%s_loss" % task.name] = tr_loss / n_batches_since_val
                 description = self._description_from_metrics(task_metrics)
