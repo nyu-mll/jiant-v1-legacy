@@ -82,6 +82,7 @@ def evaluate(
         n_task_examples = 0
         task_preds = []  # accumulate DataFrames
         assert split in ["train", "val", "test"]
+        import pdb; pdb.set_trace()
         dataset = getattr(task, "%s_data" % split)
         generator = iterator(dataset, num_epochs=1, shuffle=False)
         for batch_idx, batch in enumerate(generator):
@@ -151,6 +152,7 @@ def write_preds(
 ) -> None:
     for task in tasks:
         if task.name not in all_preds:
+            import pdb; pdb.set_trace()
             log.warning("Task '%s': missing predictions for split '%s'", task.name, split_name)
             continue
 

@@ -985,6 +985,9 @@ class MultiTaskModel(nn.Module):
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token)
         out["loss"] = F.cross_entropy(logits, targs, ignore_index=pad_idx)
         task.scorer1(logits, targs)
+        if predict:
+            import pdb; pdb.set_trace()
+            out["preds"] = logits.argmax(dim=2)
         return out
 
     def _section_conditional_lm_forward(self, batch, task, predict=False):
