@@ -622,7 +622,7 @@ class SamplingMultiTaskTrainer:
 
             # Intermediate log to logger and tensorboard
             if time.time() - task_info["last_log"] > self._log_interval:
-                task_metrics = task.get_metrics()
+                task_metrics = self._model.get_metrics()
 
                 # log to 
 
@@ -653,7 +653,7 @@ class SamplingMultiTaskTrainer:
                     task_info = task_infos[task.name]
                     n_batches_since_val = task_info["n_batches_since_val"]
                     if n_batches_since_val > 0:
-                        task_metrics = task.get_metrics(reset=True)
+                        task_metrics = self._model.get_metrics(reset=True)
                         for name, value in task_metrics.items():
                             all_tr_metrics["%s_%s" % (task.name, name)] = value
                         # updating loss from trianing.
@@ -843,7 +843,7 @@ class SamplingMultiTaskTrainer:
 
             # log
             if time.time() - task_info["last_log"] > self._log_interval:
-                task_metrics = task.get_metrics()
+                task_metrics = self._model.get_metrics()
                 task_metrics["%s_loss" % task.name] = (
                     all_val_metrics["%s_loss" % task.name] / batch_num
                 )
@@ -859,7 +859,7 @@ class SamplingMultiTaskTrainer:
         assert batch_num == n_val_batches
 
         # Get task validation metrics and store in all_val_metrics
-        task_metrics = task.get_metrics(reset=True)
+        task_metrics = self._model.get_metrics(reset=True)
         for name, value in task_metrics.items():
             all_val_metrics["%s_%s" % (task.name, name)] = value
         all_val_metrics["%s_loss" % task.name] /= batch_num  # n_val_batches
