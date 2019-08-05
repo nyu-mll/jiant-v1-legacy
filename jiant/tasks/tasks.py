@@ -2123,7 +2123,7 @@ class i2b22010ConceptsTask(TaggingTask):
         """Get metrics specific to the task"""
         f1 = self.scorer1.get_metric(reset)
         return {"f1": f1["fscore"], "recall": f1["recall"], "precision": f1["precision"]}
-
+    # get_metric
     def count_examples(self, splits=["train", "val", "test"]):
         """ Count examples in the dataset. """
         self.example_counts = {}
@@ -2168,7 +2168,7 @@ class i2b22010ConceptsTask(TaggingTask):
                 con=os.path.join(self.path, "train_data", "concept", "%s.con" % record),
                 tokenizer_name=self.tokenizer_name
             )
-            self.train_data_text.append(self.map_output(doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()))
+            self.train_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
 
         val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
         val_list = [x.split(".")[0] for x in val_list]
@@ -2179,7 +2179,7 @@ class i2b22010ConceptsTask(TaggingTask):
                 con=os.path.join(self.path, "val_data", "concept", "%s.con" % record),
                 tokenizer_name=self.tokenizer_name
             )
-            self.val_data_text.append(self.map_output(doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()))
+            self.val_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
         test_list = os.listdir(os.path.join(self.path, "test_data", "txt"))
         test_list = [x.split(".")[0] for x in test_list]
         self.test_data_text = []
@@ -2189,16 +2189,9 @@ class i2b22010ConceptsTask(TaggingTask):
                 con=os.path.join(self.path, "test_data", "concept", "%s.con" % record),
                 tokenizer_name=self.tokenizer_name
             )
-            self.test_data_text.append(self.map_output(doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()))
+            self.test_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
-        import pandas as pd
-        import pdb; pdb.set_trace()
-        train = pd.DataFrame(self.train_data_text, columns=['sentence', 'tags'])
-        train.to_csv('train.csv')
-        val = pd.DataFrame(self.val_data_text, columns=['sentence', 'tags'])
-        val.to_csv("val.csv")
-        test = pd.DataFrame(self.test_data_text, columns=['sentence', 'tags'])
-        test.to_csv("test.csv")
+
 
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):

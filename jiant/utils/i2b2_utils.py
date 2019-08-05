@@ -386,7 +386,6 @@ class Document:
     def __init__(self, txt, tokenizer_name, con=None):
         # read data
         retVal = read_i2b2(txt, con, tokenizer_name)
-
         # Internal representation natural for i2b2 format
         self._tok_sents = retVal[0]
 
@@ -557,8 +556,7 @@ x
             #print()
 
             tokenized_sents.append(toks)
-
-    # If an accompanying concept file was specified, read it
+     # If an accompanying concept file was specified, read it
     tok_concepts = []
     if con:
         with open(con) as f:
@@ -591,7 +589,7 @@ x
                 #assert concept_text==matching_text, 'something wrong with inds'
 
                 # add the concept info
-                tup = (concept_label, start_lineno, start_tok_ind, end_tok_ind)
+                tup = (concept_label, start_lineno, start_tok_ind, end_tok_ind, concept_text)
                 tok_concepts.append(tup)
 
         # Safe guard against concept file having duplicate entries
@@ -620,6 +618,7 @@ x
                     error_msg = '\n\n%s\n%s\n\n%s\n\n%s\n%s\n' % (error1,error2,error3,error4,error5)
         for index in sorted(add_pairs_to_delete, reverse=True):
             del tok_concepts[index]
+
     #result_sents, result_concepts = preprocess_tagging(tokenized_sents, tok_concepts, tokenizer_name)
     return tokenized_sents, tok_concepts
 
@@ -633,12 +632,14 @@ def tok_concepts_to_labels(tokenized_sents, tok_concepts, tok_file, con_file):
     # fill each concept's tokens appropriately
     for concept in tok_concepts:
         try:
-            label,lineno,start_tok,end_tok = concept
+            label,lineno,start_tok,end_tok = concept[:-1]
             labels[lineno-1][start_tok] = '%s' % label
-            for i in range(start_tok+1,end_tok+1):
+            for i in range(start_tok,end_tok):
                 labels[lineno-1][i] = '%s' % label
         except:
             import pdb; pdb.set_trace()
+            continue 
+
     # test it out
     '''
     for i in range(len(tokenized_sents)):
