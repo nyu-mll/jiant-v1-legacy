@@ -31,6 +31,7 @@ import re
 import pickle
 import numpy as np
 from jiant.utils import retokenize
+from jiant.utils import moses_aligner
 
 
 #############################################################
@@ -371,12 +372,13 @@ def compute_performance_stats(label, pred, ref):
 
     return scores
 
-
 labels = { 'O':0,
-            'problem':1, 
-            'test': 2, 
-            'treatment': 3
+           'B-problem':1, 'B-test':2, 'B-treatment':3,
+           'I-problem':4, 'I-test':5, 'I-treatment':6,
          }
+
+id2tag = { v:k for k,v in labels.items() }
+
 
 id2tag = { v:k for k,v in labels.items() }
 
@@ -509,16 +511,13 @@ def preprocess_tagging(text, current_tags, tokenizer_name):
         token = text[i]
         import re
         _, new_toks = aligner_fn(token)
-        if tokenizer_name == "MosesTokenizer" and token[-1] == ".":
-            new_toks = new_toks[-1] #DON'T separate out . out by itself. 
         for tok in new_toks:
             new_toks_tis_way.append(tok)
             res_tags.append(current_tags[i])
             # based on BERT-paper for wordpiece, we only keep the tag
             # for the first part of the word.
-    _, aligned_text = aligner_fn(" ".join(text))
-    assert len(aligned_text) == len(res_tags)
-    return aligned_text, res_tags
+    assert len(new_toks_tis_way) == len(res_tags)
+    return new_toks_tis_way, res_tags
 
 
 def read_i2b2(txt, con, tokenizer_name):
@@ -628,17 +627,13 @@ x
 def tok_concepts_to_labels(tokenized_sents, tok_concepts, tok_file, con_file):
     # parallel to tokens
     labels = [ ['O' for tok in sent] for sent in tokenized_sents ]
-    assert len(labels) == len(tokenized_sents)
+
     # fill each concept's tokens appropriately
     for concept in tok_concepts:
-        try:
-            label,lineno,start_tok,end_tok = concept[:-1]
-            labels[lineno-1][start_tok] = '%s' % label
-            for i in range(start_tok,end_tok):
-                labels[lineno-1][i] = '%s' % label
-        except:
-            import pdb; pdb.set_trace()
-            continue 
+        label,lineno,start_tok,end_tok, span_str = concept
+        labels[lineno-1][start_tok] = 'B-%s' % label
+        for i in range(start_tok+1,end_tok+1):
+            labels[lineno-1][i] = 'I-%s' % label
 
     # test it out
     '''
@@ -774,4 +769,5 @@ def tok_labels_to_concepts(tokenized_sents, tok_labels):
 
 class DocumentException(Exception):
     pass
+
 

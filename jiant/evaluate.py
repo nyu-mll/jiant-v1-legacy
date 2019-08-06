@@ -75,7 +75,7 @@ def evaluate(
     all_preds = {}
     n_examples_overall = 0  # n examples over all tasks
     assert len(tasks) > 0, "Configured to evaluate, but specified no task to evaluate."
-
+    import pdb; pdb.set_trace()
     for task in tasks:
         log.info("Evaluating on: %s, split: %s", task.name, split)
         last_log = time.time()
@@ -88,7 +88,7 @@ def evaluate(
         for batch_idx, batch in enumerate(generator):
             with torch.no_grad():
                 batch = move_to_device(batch, cuda_device)
-                out = model.forward(task, batch, predict=True)
+                out = model.forward(batch, batch["targs"], predict=True)
 
             n_task_examples += out["n_exs"]
             # get predictions

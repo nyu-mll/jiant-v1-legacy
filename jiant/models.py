@@ -295,7 +295,7 @@ def build_model(args, vocab, pretrained_embs, tasks):
 def build_embeddings(args, vocab, tasks, pretrained_embs=None):
     """ Build embeddings according to options in args """
     d_emb, d_char = 0, args.d_char
-
+    import pdb; pdb.set_trace()
     token_embedders = {}
     # Word embeddings
     n_token_vocab = vocab.get_vocab_size("tokens")

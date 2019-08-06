@@ -2149,7 +2149,7 @@ class i2b22010ConceptsTask(TaggingTask):
         return instances
 
     def get_all_labels(self):
-        return ["O", "problem" ,"treatment", "test"]
+        return ["O", "B-problem" ,"B-treatment", "B-test", "I-problem", "I-treatment", "I-test" ] 
 
     def map_output(self,x, y):
         result = []
