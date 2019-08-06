@@ -20,33 +20,13 @@ import sys
 import time
 import copy
 import torch
-from typing import Iterator, List, Dict
 
 from jiant import evaluate
 from jiant.models import build_model
-from allennlp.modules.seq2seq_encoders import PytorchSeq2SeqWrapper
-
 from jiant.preprocess import build_tasks
 from jiant import tasks as task_modules
 from jiant.trainer import build_trainer
 from jiant.utils import config
-from jiant.models import build_embeddings
-from allennlp.modules.text_field_embedders import TextFieldEmbedder
-from allennlp.modules.seq2seq_encoders import Seq2SeqEncoder
-from allennlp.nn.util import get_text_field_mask, sequence_cross_entropy_with_logits
-from allennlp.predictors import SentenceTaggerPredictor
-from allennlp.training.metrics import CategoricalAccuracy
-from allennlp.commands.train import train_model
-from allennlp.common.params import Params
-from allennlp.common.file_utils import cached_path
-from allennlp.data import Instance
-from allennlp.data.dataset_readers import DatasetReader
-from allennlp.data.fields import TextField, SequenceLabelField
-from allennlp.data.token_indexers import TokenIndexer, SingleIdTokenIndexer
-from allennlp.data.tokenizers import Token
-from allennlp.data.vocabulary import Vocabulary
-from allennlp.models import Model
-from allennlp.modules.feedforward import FeedForward
 from jiant.utils.utils import (
     assert_for_log,
     load_model_state,
@@ -58,41 +38,10 @@ from jiant.utils.utils import (
     delete_all_checkpoints,
 )
 
-from allennlp.models import Model
 
 # Global notification handler, can be accessed outside main() during exception handling.
 EMAIL_NOTIFIER = None
 
-class LstmTagger(Model):
-    def __init__(self,
-                 word_embeddings: TextFieldEmbedder,
-                 encoder: Seq2SeqEncoder,
-                 vocab: Vocabulary) -> None:
-        super().__init__(vocab)
-        self.word_embeddings = word_embeddings
-        self.encoder = encoder
-        self.hidden2tag = torch.nn.Linear(in_features=encoder.get_output_dim(),
-                                          out_features=4)
-
-        self.accuracy = CategoricalAccuracy()
-
-    def forward(self,
-                sentence: Dict[str, torch.Tensor],
-                labels: torch.Tensor = None) -> torch.Tensor:
-        mask = get_text_field_mask(sentence["inputs"])
-        embeddings = self.word_embeddings(sentence["inputs"])
-        encoder_out = self.encoder(embeddings, mask)
-        tag_logits = self.hidden2tag(encoder_out)
-        output = {"tag_logits": tag_logits}
-
-        if labels is not None:
-            self.accuracy(tag_logits, labels, mask)
-            output["loss"] = sequence_cross_entropy_with_logits(tag_logits, labels, mask)
-
-        return output
-
-    def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-        return {"accuracy": self.accuracy.get_metric(reset)}
 
 def handle_arguments(cl_arguments):
     parser = argparse.ArgumentParser(description="")
@@ -501,7 +450,8 @@ def load_model_for_target_train_run(args, ckpt_path, model, strict, task):
             "they should not be updated! Check sep_embs_for_skip flag or make an issue.",
         )
         # Only train task-specific module
-        to_train = [(n, p) for n, p in model.named_parameters() if p.requires_grad]
+        pred_module = getattr(model, "%s_mdl" % task.name)
+        to_train = [(n, p) for n, p in pred_module.named_parameters() if p.requires_grad]
         to_train += elmo_scalars
     return to_train
 
@@ -520,13 +470,11 @@ def main(cl_arguments):
     tasks = sorted(set(pretrain_tasks + target_tasks), key=lambda x: x.name)
     log.info("\tFinished loading tasks in %.3fs", time.time() - start_time)
     log.info("\t Tasks: {}".format([task.name for task in tasks]))
-    import pdb; pdb.set_trace()
+
     # Build model
     log.info("Building model...")
     start_time = time.time()
-    d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, pretrained_embs=None)
-    encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb, 200, 2, batch_first=True))
-    model = LstmTagger(word_embeddings, encoder, vocab)
+    model = build_model(args, vocab, word_embs, tasks)
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested
