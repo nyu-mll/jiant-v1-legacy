@@ -86,7 +86,10 @@ def evaluate(
         for batch_idx, batch in enumerate(generator):
             with torch.no_grad():
                 batch = move_to_device(batch, cuda_device)
-                out = model.forward(batch, batch["targs"], predict=True)
+                if isinstance(task, TaggingTask):
+                    out = model.forward(batch, batch["targs"], predict=True)
+                else:
+                    out = self._model.forward(task, batch, predict=True)
 
             n_task_examples += out["n_exs"]
             # get predictions
