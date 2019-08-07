@@ -182,7 +182,7 @@ class CrfTagger(Model):
         """
         embedded_text_input = self.text_field_embedder(tokens["inputs"])
         mask = util.get_text_field_mask(tokens["inputs"])
-
+        import pdb; pdb.set_trace()
         if self.dropout:
             embedded_text_input = self.dropout(embedded_text_input)
 
