@@ -848,7 +848,10 @@ class SamplingMultiTaskTrainer:
 
             # log
             if time.time() - task_info["last_log"] > self._log_interval:
-                task_metrics = self._model.get_metrics()
+                if task.name == "i2b2-2010-concepts":
+                    task_metrics = self._model.get_metrics()
+                else:
+                    task_metrics = task.get_metrics()
                 task_metrics["%s_loss" % task.name] = (
                     all_val_metrics["%s_loss" % task.name] / batch_num
                 )
