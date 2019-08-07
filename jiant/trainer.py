@@ -1004,7 +1004,7 @@ class SamplingMultiTaskTrainer:
 
     def _forward(self, batch, task=None):
         tensor_batch = move_to_device(batch, self._cuda_device)
-        if isinstance(task, TaggingTask):
+        if task.name == "i2b2i-2010-concepts":
             model_out = self._model.forward(tensor_batch, batch["targs"])
         else:
             model_out = self._model.forward(task, batch)

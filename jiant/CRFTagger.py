@@ -200,7 +200,6 @@ class CrfTagger(Model):
         predicted_tags = [x for x, y in best_paths]
 
         output = {"logits": logits, "mask": mask, "tags": predicted_tags}
-        tags = tags.cuda()
         if tags is not None:
             # Add negative log-likelihood as loss
             log_likelihood = self.crf(logits, tags, mask)
