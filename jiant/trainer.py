@@ -999,7 +999,10 @@ class SamplingMultiTaskTrainer:
 
     def _forward(self, batch, task=None):
         tensor_batch = move_to_device(batch, self._cuda_device)
-        model_out = self._model.forward(tensor_batch, batch["targs"])
+        if isinstance(task, TaggingTask):
+            model_out = self._model.forward(tensor_batch, batch["targs"])
+        else:
+            model_out = self._model.forward(task, batch)
         return model_out
 
     def _description_from_metrics(self, metrics):
