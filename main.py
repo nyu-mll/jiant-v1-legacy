@@ -21,11 +21,13 @@ import time
 import copy
 import torch
 from typing import Iterator, List, Dict
+import _pickle as pkl
 
 from jiant import evaluate
 from jiant.models import build_model
 from allennlp.modules.seq2seq_encoders import PytorchSeq2SeqWrapper
-
+from jiant import CRFTagger
+from jiant.CRFTagger import CrfTagger
 from jiant.preprocess import build_tasks
 from jiant import tasks as task_modules
 from jiant.trainer import build_trainer
@@ -35,7 +37,7 @@ from allennlp.modules.text_field_embedders import TextFieldEmbedder
 from allennlp.modules.seq2seq_encoders import Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask, sequence_cross_entropy_with_logits
 from allennlp.predictors import SentenceTaggerPredictor
-from allennlp.training.metrics import CategoricalAccuracy
+from allennlp.training.metrics import CategoricalAccuracy, FBetaMeasure
 from allennlp.commands.train import train_model
 from allennlp.common.params import Params
 from allennlp.common.file_utils import cached_path
@@ -74,11 +76,13 @@ class LstmTagger(Model):
         self.hidden2tag = torch.nn.Linear(in_features=encoder.get_output_dim(),
                                           out_features=4)
 
-        self.accuracy = CategoricalAccuracy()
-
+        self.accuracy = FBetaMeasure(average="macro") 
+        self.utilization = None
+        self.vocab = vocab 
     def forward(self,
                 sentence: Dict[str, torch.Tensor],
-                labels: torch.Tensor = None) -> torch.Tensor:
+                labels: torch.Tensor = None,
+                predict: bool= False) -> torch.Tensor:
         mask = get_text_field_mask(sentence["inputs"])
         embeddings = self.word_embeddings(sentence["inputs"])
         encoder_out = self.encoder(embeddings, mask)
@@ -87,12 +91,18 @@ class LstmTagger(Model):
 
         if labels is not None:
             self.accuracy(tag_logits, labels, mask)
-            output["loss"] = sequence_cross_entropy_with_logits(tag_logits, labels, mask)
-
+            output["loss"] = sequence_cross_entropy_with_logits(tag_logits, labels.cuda(), mask.cuda())
+        output["n_exs"] = len(sentence["inputs"]["words"])
+        if predict:
+            import pdb; pdb.set_trace()
+            tag_ids = tag_logits.argmax(dim=2)
+            output["preds"] = [self.vocab.get_token_from_index(i.item(), 'i2b2-2010-concepts_tags') for i in tag_ids[0]]
         return output
-
+    def get_elmo_mixing_weights(self, t):
+        return None
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-        return {"accuracy": self.accuracy.get_metric(reset)}
+        import pdb; pdb.set_trace()
+        return {"f1": self.accuracy.get_metric(reset)["fscore"]}
 
 def handle_arguments(cl_arguments):
     parser = argparse.ArgumentParser(description="")
@@ -520,13 +530,15 @@ def main(cl_arguments):
     tasks = sorted(set(pretrain_tasks + target_tasks), key=lambda x: x.name)
     log.info("\tFinished loading tasks in %.3fs", time.time() - start_time)
     log.info("\t Tasks: {}".format([task.name for task in tasks]))
-    import pdb; pdb.set_trace()
     # Build model
     log.info("Building model...")
     start_time = time.time()
-    d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, pretrained_embs=None)
+    emb_file = os.path.join(args.exp_dir, "embs.pkl")
+    word_embs = pkl.load(open(emb_file, "rb"))
+    d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, word_embs)
     encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb, 200, 2, batch_first=True))
-    model = LstmTagger(word_embeddings, encoder, vocab)
+    #model = LstmTagger(word_embeddings, encoder, vocab)
+    model = CrfTagger(vocab, word_embeddings, encoder, "i2b2-2010-concepts_tags", label_encoding="BIO", calculate_span_f1=True) 
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested
@@ -615,7 +627,7 @@ def main(cl_arguments):
         # Evaluate on target_tasks.
         for task in target_tasks:
             # Find the task-specific best checkpoint to evaluate on.
-            task_to_use = model._get_task_params(task.name).get("use_classifier", task.name)
+            task_to_use = task.name
             ckpt_path = get_best_checkpoint_path(args, "eval", task_to_use)
             assert ckpt_path is not None
             load_model_state(model, ckpt_path, args.cuda, skip_task_models=[], strict=strict)
