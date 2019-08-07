@@ -763,6 +763,7 @@ class MultiTaskModel(nn.Module):
         Returns:
             - out: dictionary containing task outputs and loss if label was in batch
         """
+        import pdb; pdb.set_trace()
         if self.utilization is not None:
             if "input1" in batch:
                 self.utilization(get_batch_utilization(batch["input1"]))
@@ -1018,7 +1019,7 @@ class MultiTaskModel(nn.Module):
         assert_for_log(
             "targs" in batch and "words" in batch["targs"], "Batch missing target words!"
         )
-
+        
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token, "tokens")
         b_size, seq_len = batch["targs"]["words"].size()
         n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
@@ -1044,7 +1045,7 @@ class MultiTaskModel(nn.Module):
         staggered_output = torch.cat((fwd, bwd), dim=-1)
         logits = hid2voc(staggered_output) # output is [1, seq_len, d_out]
         out["logits"] = logits
-        targs = batch["targs"]["words"]
+        targs = batch["targs"]["words"].cuda()
         assert logits.size(0) == targs.size(0), "Number of logits and targets differ!"
         out["loss"] = F.cross_entropy(logits[0], targs[0], ignore_index=pad_idx) # must index 0 to get dimensions [seq_len, d_out]
         task.scorer1(out["loss"].item())
