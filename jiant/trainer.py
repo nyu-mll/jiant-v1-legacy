@@ -622,8 +622,10 @@ class SamplingMultiTaskTrainer:
 
             # Intermediate log to logger and tensorboard
             if time.time() - task_info["last_log"] > self._log_interval:
-                task_metrics = self._model.get_metrics()
-
+                if task.name == "i2b2-2010-concepts":
+                    task_metrics = self._model.get_metrics()
+                else:
+                    task_metrics = task.get_metrics()
                 # log to 
 
                 task_metrics["%s_loss" % task.name] = tr_loss / n_batches_since_val
@@ -653,7 +655,10 @@ class SamplingMultiTaskTrainer:
                     task_info = task_infos[task.name]
                     n_batches_since_val = task_info["n_batches_since_val"]
                     if n_batches_since_val > 0:
-                        task_metrics = self._model.get_metrics(reset=True)
+                        if task.name == "i2b2-2010-concepts":
+                            task_metrics = self._model.get_metrics(reset=True)
+                        else:
+                            task_metrics = task.get_metrics(reset=True)
                         for name, value in task_metrics.items():
                             all_tr_metrics["%s_%s" % (task.name, name)] = value
                         # updating loss from trianing.
