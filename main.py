@@ -536,9 +536,10 @@ def main(cl_arguments):
     emb_file = os.path.join(args.exp_dir, "embs.pkl")
     word_embs = pkl.load(open(emb_file, "rb"))
     d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, word_embs)
-    encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb, 200, 2, batch_first=True))
     #model = LstmTagger(word_embeddings, encoder, vocab)
-    model = CrfTagger(vocab, word_embeddings, encoder, "i2b2-2010-concepts_tags", label_encoding="BIO", calculate_span_f1=True) 
+    # this is the lM model 
+    model = build_model(args, vocab, word_embs, tasks)
+
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested
@@ -579,6 +580,8 @@ def main(cl_arguments):
 
     if args.do_target_task_training:
         # Train on target tasks
+        # now, us the cRFTagger
+        
         pre_target_train_path = setup_target_task_training(args, target_tasks, model, strict)
         target_tasks_to_train = copy.deepcopy(target_tasks)
         # Check for previous target train checkpoints
@@ -594,7 +597,7 @@ def main(cl_arguments):
             # Skip tasks that should not be trained on.
             if task.eval_only_task:
                 continue
-
+            model = CrfTagger(vocab, word_embeddings, model.get_phrase_layer(), "i2b2-2010-concepts_tags", label_encoding="BIO", calculate_span_f1=True)
             params_to_train = load_model_for_target_train_run(
                 args, pre_target_train_path, model, strict, task
             )
