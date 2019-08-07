@@ -598,6 +598,7 @@ def main(cl_arguments):
             if task.eval_only_task:
                 continue
             model = CrfTagger(vocab, word_embeddings, model.get_phrase_layer(), "i2b2-2010-concepts_tags", label_encoding="BIO", calculate_span_f1=True)
+            model.cuda()
             params_to_train = load_model_for_target_train_run(
                 args, pre_target_train_path, model, strict, task
             )
