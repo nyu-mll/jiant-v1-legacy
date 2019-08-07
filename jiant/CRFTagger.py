@@ -147,6 +147,7 @@ class CrfTagger(Model):
                 tokens: Dict[str, torch.LongTensor],
                 tags: torch.LongTensor = None,
                 metadata: List[Dict[str, Any]] = None,
+                predict: bool = False,
                 # pylint: disable=unused-argument
                 **kwargs) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ
@@ -186,7 +187,6 @@ class CrfTagger(Model):
             embedded_text_input = self.dropout(embedded_text_input)
 
         encoded_text = self.encoder(embedded_text_input, mask)
-
         if self.dropout:
             encoded_text = self.dropout(encoded_text)
 
@@ -220,6 +220,8 @@ class CrfTagger(Model):
         if metadata is not None:
             output["words"] = [x["words"] for x in metadata]
         output["n_exs"] = len(tokens["inputs"][list(tokens["inputs"].keys())[0]])
+        if predict:
+            output = self.decode(output)
         return output
 
     @overrides
@@ -229,7 +231,7 @@ class CrfTagger(Model):
         ``output_dict["tags"]`` is a list of lists of tag_ids,
         so we use an ugly nested list comprehension.
         """
-        output_dict["tags"] = [
+        output_dict["preds"] = [
                 [self.vocab.get_token_from_index(tag, namespace=self.label_namespace)
                  for tag in instance_tags]
                 for instance_tags in output_dict["tags"]

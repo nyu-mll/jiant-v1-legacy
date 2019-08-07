@@ -75,14 +75,12 @@ def evaluate(
     all_preds = {}
     n_examples_overall = 0  # n examples over all tasks
     assert len(tasks) > 0, "Configured to evaluate, but specified no task to evaluate."
-    import pdb; pdb.set_trace()
     for task in tasks:
         log.info("Evaluating on: %s, split: %s", task.name, split)
         last_log = time.time()
         n_task_examples = 0
         task_preds = []  # accumulate DataFrames
         assert split in ["train", "val", "test"]
-        import pdb; pdb.set_trace()
         dataset = getattr(task, "%s_data" % split)
         generator = iterator(dataset, num_epochs=1, shuffle=False)
         for batch_idx, batch in enumerate(generator):
@@ -115,7 +113,7 @@ def evaluate(
         # ['preds'] + FIELDS_TO_EXPORT
         # for GLUE tasks, preds entries should be single scalars.
         # Update metrics
-        task_metrics = task.get_metrics(reset=True)
+        task_metrics = model.get_metrics(reset=True)
         for name, value in task_metrics.items():
             all_metrics["%s_%s" % (task.name, name)] = value
 
@@ -152,7 +150,6 @@ def write_preds(
 ) -> None:
     for task in tasks:
         if task.name not in all_preds:
-            import pdb; pdb.set_trace()
             log.warning("Task '%s': missing predictions for split '%s'", task.name, split_name)
             continue
 
@@ -216,7 +213,7 @@ def write_preds(
             )
         elif isinstance(task, i2b22010ConceptsTask):
             _write_concept_preds(
-                task, preds_df, pred_dir, split_anme, strict_glue_format=False
+                task, preds_df, pred_dir, split_name, strict_glue_format=False
                 )
         else:
             log.warning("Task '%s' not supported by write_preds().", task.name)
