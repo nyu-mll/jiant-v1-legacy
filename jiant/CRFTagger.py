@@ -147,6 +147,7 @@ class CrfTagger(Model):
                 tokens: Dict[str, torch.LongTensor],
                 tags: torch.LongTensor = None,
                 metadata: List[Dict[str, Any]] = None,
+                predict=False,
                 # pylint: disable=unused-argument
                 **kwargs) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ
@@ -179,9 +180,9 @@ class CrfTagger(Model):
         loss : ``torch.FloatTensor``, optional
             A scalar loss to be optimised. Only computed if gold label ``tags`` are provided.
         """
+        tokens["inputs"]["words"] = tokens["inputs"]["words"].cuda()
         embedded_text_input = self.text_field_embedder(tokens["inputs"])
         mask = util.get_text_field_mask(tokens["inputs"])
-
         if self.dropout:
             embedded_text_input = self.dropout(embedded_text_input)
 
@@ -220,6 +221,8 @@ class CrfTagger(Model):
         if metadata is not None:
             output["words"] = [x["words"] for x in metadata]
         output["n_exs"] = len(tokens["inputs"][list(tokens["inputs"].keys())[0]])
+        if predict:
+            output = self.decode(output)
         return output
 
     @overrides

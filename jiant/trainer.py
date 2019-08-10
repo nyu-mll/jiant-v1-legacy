@@ -219,7 +219,7 @@ class SamplingMultiTaskTrainer:
         """
         self._model = model
 
-        self._patience = patience
+        self._patience = 100
         self._max_vals = max_vals
         self._val_interval = val_interval
         self._serialization_dir = serialization_dir
@@ -252,6 +252,7 @@ class SamplingMultiTaskTrainer:
         and the current score, check if current score is
         best so far and if out of patience.
         """
+        import pdb; pdb.set_trace()
         patience = self._patience + 1
         best_fn = min if should_decrease else max
         best_score = best_fn(metric_history)
@@ -493,7 +494,6 @@ class SamplingMultiTaskTrainer:
         task_infos, metric_infos = self._setup_training(
             tasks, batch_size, train_params, optimizer_params, scheduler_params, phase
         )
-
         optimizer_params = copy.deepcopy(optimizer_params)
         if "t_total" in optimizer_params:
             # If we know in advance how many opt steps there will be, set it so the LR scheduler
@@ -529,6 +529,7 @@ class SamplingMultiTaskTrainer:
                     )
                 else:
                     n_step, should_stop = self._restore_checkpoint(phase, tasks)
+                    should_stop = False
                     log.info("Loaded model from checkpoint. Starting at step %d.", n_step)
             else:
                 log.info("Starting training without restoring from a checkpoint.")
@@ -644,7 +645,6 @@ class SamplingMultiTaskTrainer:
 
             # Validation
             if n_step % validation_interval == 0:
-
                 # Dump and log all of our current info
                 n_val = int(n_step / validation_interval)
                 log.info("***** Step %d / Validation %d *****", n_step, n_val)
@@ -982,7 +982,7 @@ class SamplingMultiTaskTrainer:
         if optimizer.param_groups[0]["lr"] < self._min_lr:
             log.info("Minimum LR reached. Stopping training.")
             should_stop = True
-
+     
         # check if validation metric is stopped
         stop_metric = metric_infos[stop_metric]["stopped"]
         if stop_metric:
@@ -994,7 +994,7 @@ class SamplingMultiTaskTrainer:
         if stop_val:
             log.info("Maximum number of validations reached. Stopping training.")
             should_stop = True
-
+        should_stop = False
         return should_stop
 
     def _forward(self, batch, task=None):
