@@ -181,7 +181,11 @@ class CrfTagger(Model):
         """
         embedded_text_input = self.text_field_embedder(tokens["inputs"])
         mask = util.get_text_field_mask(tokens["inputs"])
-
+        section_type = self.text_field_embedder(tokens["section"])
+        section_type = section_type[0][:, -1, :]
+        section_type = section_type.unsqueeze(1)
+        section_type = section_type.expand(-1, len(embedded_text_input[0]), -1)# expand to seq_len
+        embedded_text_input = torch.cat((embedded_text_input, section_type), 2)
         if self.dropout:
             embedded_text_input = self.dropout(embedded_text_input)
 

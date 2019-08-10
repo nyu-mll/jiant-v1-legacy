@@ -32,6 +32,8 @@ import pickle
 import numpy as np
 from jiant.utils import retokenize
 from jiant.utils import moses_aligner
+from simple_sentence_segment import sentence_segment
+
 
 
 #############################################################
@@ -519,6 +521,16 @@ def preprocess_tagging(text, current_tags, tokenizer_name):
     assert len(new_toks_tis_way) == len(res_tags)
     return new_toks_tis_way, res_tags
 
+def get_sections(sentences):
+    # input; list[str] 
+    # output: {str: (int, int)} where str is a section name and (start_index, end_index), 
+    # where all tokens in etween those sentenc eindices are part of the previous sentence. 
+    section_map = {}
+    for sentence in sentences:
+        if part[index + len(section)] == ":" or \
+                                part[index + len(section) + 1] == ":" or \
+                                part[index: index + len(section)].isupper():
+
 
 def read_i2b2(txt, con, tokenizer_name):
     """
@@ -538,7 +550,8 @@ x
         text = f.read().strip('\n')
 
         # tokenize
-        sentences = sent_tokenize(text)
+        sentences = sentence_segment(text) # from noc_labs, better segmentation. 
+        section_tags_map = get_sections(sentences)
         for sentence in sentences:
             sent = clean_text(sentence.rstrip())
 
