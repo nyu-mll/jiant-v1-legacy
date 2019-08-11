@@ -20,7 +20,8 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
-    i2b22010ConceptsTask
+    i2b22010ConceptsTask, 
+    i2b2ConditionalTask
 )
 from jiant.tasks.lm import LanguageModelingTask
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask
@@ -214,7 +215,7 @@ def write_preds(
             _write_lm_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format, vocab=vocab
             )
-        elif isinstance(task, i2b22010ConceptsTask):
+        elif isinstance(task, i2b22010ConceptsTask) or isinstance(task, i2b2ConditionalTask):
             _write_concept_preds(
                 task, preds_df, pred_dir, split_anme, strict_glue_format=False
                 )
