@@ -73,15 +73,19 @@ class CrfTagger(Model):
                  dropout: Optional[float] = None,
                  verbose_metrics: bool = False,
                  initializer: InitializerApplicator = InitializerApplicator(),
+                 conditional: bool = False,
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
         super().__init__(vocab, regularizer)
 
         self.label_namespace = label_namespace
+        self.conditional = conditional
+        self.section_
         self.text_field_embedder = text_field_embedder
         self.num_tags = self.vocab.get_vocab_size(label_namespace)
         self.encoder = encoder
         self._verbose_metrics = verbose_metrics
         self.utilization = None
+        self.section_layer = nn.LSTM(d_emb, d_emb, 2)
         if dropout:
             self.dropout = torch.nn.Dropout(dropout)
         else:
@@ -183,6 +187,13 @@ class CrfTagger(Model):
         tokens["inputs"]["words"] = tokens["inputs"]["words"].cuda()
         embedded_text_input = self.text_field_embedder(tokens["inputs"])
         mask = util.get_text_field_mask(tokens["inputs"])
+        if self.conditional:
+            section_type = self.text_field_embedder(tokens["section"])
+            section_type = self.section_layer(section_type)
+            section_type = section_type[0][:, -1, :]
+            section_type = section_type.unsqueeze(1)
+            section_type = section_type.expand(-1, len(embedded_text_input[0]), -1)# expand to seq_len
+            embedded_text_input = torch.cat((embedded_text_input, section_type), 2)
         if self.dropout:
             embedded_text_input = self.dropout(embedded_text_input)
 

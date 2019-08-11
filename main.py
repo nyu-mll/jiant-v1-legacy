@@ -529,16 +529,21 @@ def main(cl_arguments):
     pretrain_tasks, target_tasks, vocab, word_embs = build_tasks(args)
     tasks = sorted(set(pretrain_tasks + target_tasks), key=lambda x: x.name)
     log.info("\tFinished loading tasks in %.3fs", time.time() - start_time)
-    log.info("\t Tasks: {}".format([task.name for task in tasks]))
+    log.info("\t Tasks: {}".format([task.name  for task in tasks]))
     # Build model
     log.info("Building model...")
     start_time = time.time()
     emb_file = os.path.join(args.exp_dir, "embs.pkl")
     word_embs = pkl.load(open(emb_file, "rb"))
     d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, word_embs)
-    lstm = torch.nn.LSTM(d_emb, 200, 2, batch_first=True)
-    encoder = PytorchSeq2SeqWrapper(lstm)
+    encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb * 2, 200, 2, batch_first=True))
     #model = LstmTagger(word_embeddings, encoder, vocab)
+    for name, param in encoder.named_parameters():
+      if 'bias' in name:
+         nn.init.constant(param, 0.0)
+      elif 'weight' in name:
+        nn.init.xavier_normal(param)
+        
     model = CrfTagger(vocab, word_embeddings, encoder, "i2b2-2010-concepts_tags", label_encoding="BIO", calculate_span_f1=True) 
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
