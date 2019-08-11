@@ -2192,6 +2192,73 @@ class i2b22010ConceptsTask(TaggingTask):
             self.test_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
 
+@register_task("i2b2-conditional-2010", rel_path="n2c2_2010")
+class i2b2ConditionalTask(i2b22010ConceptsTask):
+   def __init__(self, path, max_seq_len, name="i2b2-2010-concepts", **kw):
+        # Document
+        """ There are 1363 supertags in CCGBank without introduced token. """
+        self.path = path
+        super().__init__(name, 4, **kw)
+        self.train_data_text = None
+        self.num_tags = 4
+        self.val_data_text = None
+        self.test_data_text = None
+        self.scorer1 = FBetaMeasure(average="micro")
+        self.val_metric = "%s_f1" % self.name
+
+    def load_data(self):
+        training_list = os.listdir(os.path.join(self.path, "train_data", "txt"))
+        training_list = [x.split(".")[0] for x in training_list]
+        self.train_data_text = []
+        for record in training_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "train_data", "txt", "%s.txt" % record),
+                con=os.path.join(self.path, "train_data", "concept", "%s.con" % record),
+                tokenizer_name=self.tokenizer_name
+            )
+            self.train_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels(), doc_tmp.getSection()])
+
+        val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
+        val_list = [x.split(".")[0] for x in val_list]
+        self.val_data_text = []
+        for record in val_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "val_data", "txt", "%s.txt" % record),
+                con=os.path.join(self.path, "val_data", "concept", "%s.con" % record),
+                tokenizer_name=self.tokenizer_name
+            )
+            self.val_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels(), doc_tmp.getSection()])
+        test_list = os.listdir(os.path.join(self.path, "test_data", "txt"))
+        test_list = [x.split(".")[0] for x in test_list]
+        self.test_data_text = []
+        for record in test_list:
+            doc_tmp = i2b2_utils.Document(
+                os.path.join(self.path, "test_data", "txt", "%s.txt" % record),
+                con=os.path.join(self.path, "test_data", "concept", "%s.con" % record),
+                tokenizer_name=self.tokenizer_name
+            )
+            self.test_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels(), doc_tmp.getSection()])
+        self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        inputs = [TextField(list(map(Token, sent[0])), token_indexers=indexers) for sent in split]
+        targs = []
+        for sent in split:
+            if len(sent[0]) != len(sent[1]):
+                import pdb; pdb.set_trace()
+            else:
+                targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
+
+        input_str = [MetadataField(" ".join(sent[0])) for sent in split]
+        targ_str = [MetadataField(" ".join(sent[1])) for sent in split]
+        section_str = [MetadataField(" ".join(sent[2])) for sent in split]
+        sections = [[TextField(list(map(Token, sent[2])),  token_indexers=indexers) for sent in split]
+        instances = [
+            Instance({"inputs": x, "targs": t, "input_str": xs, "section_str": sec_str, "section": sec, "targ_str": ts}) for (x, t, xs, ts, sect_str, sec) in zip(inputs, targs, input_str, targ_str, section_str, sections)
+        ]
+        return instances
+
 
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
