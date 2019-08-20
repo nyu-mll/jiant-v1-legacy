@@ -537,9 +537,14 @@ def main(cl_arguments):
     emb_file = os.path.join(args.exp_dir, "embs.pkl")
     word_embs = pkl.load(open(emb_file, "rb"))
     d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, word_embs)
-    encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb * 2, 200, 2, batch_first=True))
-    #model = LstmTagger(word_embeddings, encoder, vocab)
-    model = CrfTagger(vocab, word_embeddings, encoder, "i2b2-conditional-2010_tags", label_encoding="BIO", conditional=True,calculate_span_f1=True)
+    if "conditional" in pretrain_tasks[0].name:
+        encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb * 2, 200, 2, batch_first=True))
+        conditional=True
+    else:
+        encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb, 200, 2, batch_first=True))
+        conditional=False
+
+    model = CrfTagger(vocab, word_embeddings, encoder, pretrain_tasks[0]._label_namespace, label_encoding="BIO", conditional=conditional, calculate_span_f1=True)
     for name, param in model.named_parameters():
       if 'bias' in name:
          nn.init.constant(param, 0.0)

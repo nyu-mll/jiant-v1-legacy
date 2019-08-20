@@ -80,7 +80,6 @@ class CrfTagger(Model):
         self.label_namespace = label_namespace
         self.conditional = conditional
         d_emb = text_field_embedder.get_output_dim()
-        self.section_layer = nn.LSTM(d_emb, d_emb, 2)
         self.text_field_embedder = text_field_embedder
         self.num_tags = self.vocab.get_vocab_size(label_namespace)
         self.encoder = encoder
