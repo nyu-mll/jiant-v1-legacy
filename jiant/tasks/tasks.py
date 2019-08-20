@@ -2194,13 +2194,14 @@ class i2b22010ConceptsTask(TaggingTask):
 
 @register_task("i2b2-conditional-2010", rel_path="n2c2_2010")
 class i2b2ConditionalTask(i2b22010ConceptsTask):
-   def __init__(self, path, max_seq_len, name="i2b2-2010-concepts", **kw):
+    def __init__(self, path, max_seq_len, name="i2b2-conditional-2010", **kw):
         # Document
         """ There are 1363 supertags in CCGBank without introduced token. """
         self.path = path
-        super().__init__(name, 4, **kw)
+        super().__init__(path, max_seq_len, name, **kw)
         self.train_data_text = None
         self.num_tags = 4
+        self.name = name
         self.val_data_text = None
         self.test_data_text = None
         self.scorer1 = FBetaMeasure(average="micro")
@@ -2217,7 +2218,6 @@ class i2b2ConditionalTask(i2b22010ConceptsTask):
                 tokenizer_name=self.tokenizer_name
             )
             self.train_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels(), doc_tmp.getSection()])
-
         val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
         val_list = [x.split(".")[0] for x in val_list]
         self.val_data_text = []
@@ -2255,7 +2255,7 @@ class i2b2ConditionalTask(i2b22010ConceptsTask):
         section_str = [MetadataField(" ".join(sent[2])) for sent in split]
         sections = [TextField(list(map(Token, sent[2])),  token_indexers=indexers) for sent in split]
         instances = [
-            Instance({"inputs": x, "targs": t, "input_str": xs, "section_str": sec_str, "section": sec, "targ_str": ts}) for (x, t, xs, ts, sect_str, sec) in zip(inputs, targs, input_str, targ_str, section_str, sections)
+            Instance({"inputs": x, "targs": t, "input_str": xs, "section_str": sec_str, "section": sec, "targ_str": ts}) for (x, t, xs, ts, sec_str, sec) in zip(inputs, targs, input_str, targ_str, section_str, sections)
         ]
         return instances
 

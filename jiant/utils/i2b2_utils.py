@@ -32,7 +32,6 @@ import pickle
 import numpy as np
 from jiant.utils import retokenize
 from jiant.utils import moses_aligner
-from simple_sentence_segment import sentence_segment
 
 
 
@@ -398,10 +397,13 @@ class Document:
             self._tok_concepts = retVal[1]
             self._labels = tok_concepts_to_labels(self._tok_sents,
                                                   self._tok_concepts, txt, con)
+        self.sections = self.get_sections(self._tok_sents)
         self._tok_sents = [item for sublist in self._tok_sents for item in sublist]
         self._labels = [item for sublist in self._labels for item in sublist]
+        self.sections = [item for sublist in self.sections for item in sublist]
         assert len(self._labels) == len(self._tok_sents)
-        self._tok_sents, self._labels = preprocess_tagging(self._tok_sents, self._labels, tokenizer_name)
+        _, self._labels = preprocess_tagging(self._tok_sents, self._labels, tokenizer_name)
+        self._tok_sents, self.sections = preprocess_tagging(self._tok_sents, self.sections,  tokenizer_name)
         # save filename
         self._filename = txt
 
@@ -413,7 +415,34 @@ class Document:
     def getExtension(self):
         return 'con'
 
+    def get_sections(self, tokenized_sents):
+        # input: list[str]
+        # output: List(str) where str is section
+        result = []
+        sections = sections = ["FINAL DIAGNOSES", "CHIEF COMPLAINT", "DISCHARGE MEDICATIONS", "FOLLOW-UP PLANS", "RESULTS", "DISCHARGE STATUS", "PHYSICAL EXAM", "DISCHARGE INSTRUCTIONS", "Followup Instructions", "DISCHARGE CONDITION", "BRIEF SUMMARY OF HOSPITAL COURSE", "LABORATORY STUDIES", "PHYSICAL EXAM AT TIME OF ADMISSION", "SOCIAL HISTORY", "FAMILY HISTORY", "ALLERGIES", "MEDICATIONS ON ADMISSION", "PAST MEDICAL HISTORY", "HISTORY OF PRESENT ILLNESS"]
+        mappings = mappings = {"discharge diagnosis": "final diagnosis", "followup instructions": "discharge instructions", "follow-up plans": "discharge instructions", "discharge disposition":"dischargge status", "brief hospital course": "brief summary of hospital course", "pertinent results":"results"}
 
+        current_section = "discharge summary"
+        for chunk in tokenized_sents:
+                curr_result = []
+                chunk_str =  " ".join(chunk)
+                chunk_str = chunk_str.lower()
+                for section in sections + list(mappings.keys()):
+                    section = section.lower()
+                    if mappings.get(section) is not None and section in chunk_str:
+                        current_section = mappings[section]
+                    elif section in chunk_str:
+                        current_section = section
+                    if "completed by" in chunk_str or "dictated" in chunk_str:
+                        current_section = "discharge summary"
+                for i in range(len(chunk)):
+                    curr_result.append(current_section)
+                result.append(curr_result)
+        return result
+
+    def getSection(self):
+        assert len(self._tok_sents) == len(self.sections)
+        return self.sections
     def getTokenizedSentences(self):
         assert len(self._tok_sents) == len(self._labels)
         return self._tok_sents
@@ -521,16 +550,6 @@ def preprocess_tagging(text, current_tags, tokenizer_name):
     assert len(new_toks_tis_way) == len(res_tags)
     return new_toks_tis_way, res_tags
 
-def get_sections(sentences):
-    # input; list[str] 
-    # output: {str: (int, int)} where str is a section name and (start_index, end_index), 
-    # where all tokens in etween those sentenc eindices are part of the previous sentence. 
-    section_map = {}
-    for sentence in sentences:
-        if part[index + len(section)] == ":" or \
-                                part[index + len(section) + 1] == ":" or \
-                                part[index: index + len(section)].isupper():
-
 
 def read_i2b2(txt, con, tokenizer_name):
     """
@@ -548,10 +567,8 @@ x
     with open(txt) as f:
         # Original text file
         text = f.read().strip('\n')
-
+        sentences = sent_tokenize(text)
         # tokenize
-        sentences = sentence_segment(text) # from noc_labs, better segmentation. 
-        section_tags_map = get_sections(sentences)
         for sentence in sentences:
             sent = clean_text(sentence.rstrip())
 

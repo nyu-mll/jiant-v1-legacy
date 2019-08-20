@@ -22,6 +22,7 @@ import copy
 import torch
 from typing import Iterator, List, Dict
 import _pickle as pkl
+from torch import nn
 
 from jiant import evaluate
 from jiant.models import build_model
@@ -538,13 +539,13 @@ def main(cl_arguments):
     d_emb, word_embeddings, _ = build_embeddings(args, vocab, target_tasks, word_embs)
     encoder = PytorchSeq2SeqWrapper(torch.nn.LSTM(d_emb * 2, 200, 2, batch_first=True))
     #model = LstmTagger(word_embeddings, encoder, vocab)
-    for name, param in encoder.named_parameters():
+    model = CrfTagger(vocab, word_embeddings, encoder, "i2b2-conditional-2010_tags", label_encoding="BIO", conditional=True,calculate_span_f1=True)
+    for name, param in model.named_parameters():
       if 'bias' in name:
          nn.init.constant(param, 0.0)
       elif 'weight' in name:
         nn.init.xavier_normal(param)
         
-    model = CrfTagger(vocab, word_embeddings, encoder, "i2b2-2010-concepts_tags", label_encoding="BIO", calculate_span_f1=True) 
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested

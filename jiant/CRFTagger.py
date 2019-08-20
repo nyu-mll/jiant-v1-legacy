@@ -3,7 +3,7 @@ from typing import Dict, Optional, List, Any
 from overrides import overrides
 import torch
 from torch.nn.modules.linear import Linear
-
+from torch import nn
 from allennlp.common.checks import check_dimensions_match, ConfigurationError
 from allennlp.data import Vocabulary
 from allennlp.modules import Seq2SeqEncoder, TimeDistributed, TextFieldEmbedder
@@ -79,7 +79,8 @@ class CrfTagger(Model):
 
         self.label_namespace = label_namespace
         self.conditional = conditional
-        self.section_
+        d_emb = text_field_embedder.get_output_dim()
+        self.section_layer = nn.LSTM(d_emb, d_emb, 2)
         self.text_field_embedder = text_field_embedder
         self.num_tags = self.vocab.get_vocab_size(label_namespace)
         self.encoder = encoder
@@ -189,10 +190,10 @@ class CrfTagger(Model):
         mask = util.get_text_field_mask(tokens["inputs"])
         if self.conditional:
             section_type = self.text_field_embedder(tokens["section"])
-            section_type = self.section_layer(section_type)
+            section_type = self.section_layer(section_type) # [batch_Size, seq_len, section_dim, word_dim] -> [batch_size, seq_len, word_dim]
             section_type = section_type[0][:, -1, :]
             section_type = section_type.unsqueeze(1)
-            section_type = section_type.expand(-1, len(embedded_text_input[0]), -1)# expand to seq_len
+            section_type = section_type.expand(-1, len(embedded_text_input[0]), -1)
             embedded_text_input = torch.cat((embedded_text_input, section_type), 2)
         if self.dropout:
             embedded_text_input = self.dropout(embedded_text_input)
