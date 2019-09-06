@@ -2238,6 +2238,92 @@ class TaggingTask(Task):
         return self.all_labels
 
 
+@register_task("followup", rel_path="followup")
+class FollowupTask(TaggingTask):
+    def __init__(self, path, max_seq_len, name, tokenizer_name, num_tags=12, **kw):
+        kw["tokenizer_name"] = tokenizer_name
+        super().__init__(name, num_tags,  **kw)
+        self.val_metric = "%s_f1" % self.name 
+        self.val_metric_decreases = False
+        self.path = path
+        self.all_labels = [str(i) for i in range(self.num_tags)]
+        self._label_namespace = self.name + "_tags"
+        self.target_indexer = {"words": SingleIdTokenIndexer(namespace=self._label_namespace)}
+        self.labels = ['Lab to be ordered', 'Case-specific instructions for patient', 'Appointment to be ordered', \
+         'Procedure needs to be ordered', 'Medication to be ordered', 'Appointment to be reviewed', \
+         'Medication followup', 'Lab result to review', 'Other helpful contextual information', 'Imaging to order']
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def get_metrics(self, reset=False):
+        acc = self.scorer1.get_metrics(reset)
+        return {"f1": f1}
+
+    def count_examples(self, splits=["train", "val", "test"]):
+        """ Count examples in the dataset. """
+        self.example_counts = {}
+        for split in splits:
+            st = self.get_split_text(split)
+            self.example_counts[split] = len(st)
+
+    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        inputs = [TextField(list(map(Token, sent[0])), token_indexers=indexers) for sent in split]
+        targs = []
+        for sent in split:
+            if len(sent[0]) != len(sent[1]):
+                import pdb; pdb.set_trace()
+            else:
+                targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
+ 
+        input_str = [MetadataField(" ".join(sent[0])) for sent in split]
+        targ_str = [MetadataField(" ".join(sent[1])) for sent in split]
+        instances = [
+            Instance({"inputs": x, "targs": t, "input_str": xs, "targ_str": ts}) for (x, t, xs, ts) in zip(inputs, targs, input_str, targ_str)
+        ]
+        return instances
+
+    def load_data(self):
+        # annotatiosn look like 
+        import pandas as pd 
+        import datetime
+        test_file = os.path.join(self.path, "annotations_export.csv")
+        current_csv = pd.read_csv(test_file)
+        data = []
+        label_map = {self.labels[i]: i for i in range(len(self.labels))}
+        for i in range(len(current_csv)):
+            row = current_csv.iloc[i]
+            tokens = eval(row['document'])["tokens"]
+            labels = eval(row['annotations'])
+            text = "".join(x[0] for x in tokens)
+            text = text.split(" ")
+            label_preproc = [0] * len(text) # label_in_words
+            label_string = [""] * len(text)
+            """
+            It's still not completely working here. Still getting overlapping ranges andnot the 
+            reproduced. 
+            """
+            for label in labels:
+                word_token_index = 0 
+                token_end_index = 0
+                for token in tokens:
+                    start_char_index = label[2]
+                    if token[1] < start_char_index:
+                        word_token_index += 1
+                    if token[1] < (label[2] + label[3]):
+                        token_end_index += 1
+                    else: 
+                        break
+                import pdb; pdb.set_trace()
+                word_start_index = len("".join([x[0] for x in tokens[:word_token_index]]).split(" "))
+                word_end_index = len("".join([x[0] for x in tokens[:token_end_index]]).split(" "))
+                label_string[word_start_index: word_end_index] = [label_map[label[1]]] * (word_end_index - word_start_index)
+                label_preproc[word_start_index:word_end_index] = [label[1]] * (word_end_index - word_start_index)
+            data.append([text, label_preproc, label_string])
+        return data
+
+
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
     """ CCG supertagging as a task.
