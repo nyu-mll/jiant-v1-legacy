@@ -23,12 +23,14 @@ class PytorchTransformersEmbedderModule(nn.Module):
 
     def __init__(self, args):
         super(PytorchTransformersEmbedderModule, self).__init__()
-
-        self.cache_dir = os.getenv(
-            "PYTORCH_PRETRAINED_BERT_CACHE",
-            os.path.join(args.exp_dir, "pytorch_transformers_cache"),
-        )
-        utils.maybe_make_dir(self.cache_dir)
+        if args.input_module == "clinicalBERT":
+             self.cache_dir = args.load_eval_checkpoint
+         else:
+            self.cache_dir = os.getenv(
+             "PYTORCH_PRETRAINED_BERT_CACHE",
+              os.path.join(args.exp_dir, "pytorch_transformers_cache"),
+              )
+            utils.maybe_make_dir(self.cache_dir)
 
         self.output_mode = args.pytorch_transformers_output_mode
         self.input_module = args.input_module
