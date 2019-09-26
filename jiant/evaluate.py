@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 import pandas as pd
 import torch
 from allennlp.data.iterators import BasicIterator
+from allennlp.nn.util import move_to_device
 from jiant import tasks as tasks_module
 from jiant.tasks.tasks import (
     BooleanQuestionTask,
@@ -19,10 +20,11 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
+    i2b22010ConceptsTask
 )
+from jiant.tasks.lm import LanguageModelingTask
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask
 from jiant.tasks.edge_probing import EdgeProbingTask
-from jiant.utils.utils import get_output_attribute, uses_cuda
 
 
 LOG_INTERVAL = 30
@@ -45,7 +47,7 @@ def parse_write_preds_arg(write_preds_arg: str) -> List[str]:
 
 
 def evaluate(
-    model, tasks: Sequence[tasks_module.Task], batch_size: int, cuda_device, split="val"
+    model, tasks: Sequence[tasks_module.Task], batch_size: int, cuda_device: int, split="val"
 ) -> Tuple[Dict, pd.DataFrame]:
     """Evaluate on a dataset
     {par,qst,ans}_idx are used for MultiRC and other question answering dataset"""
@@ -73,7 +75,6 @@ def evaluate(
     all_preds = {}
     n_examples_overall = 0  # n examples over all tasks
     assert len(tasks) > 0, "Configured to evaluate, but specified no task to evaluate."
-
     for task in tasks:
         log.info("Evaluating on: %s, split: %s", task.name, split)
         last_log = time.time()
@@ -84,8 +85,13 @@ def evaluate(
         generator = iterator(dataset, num_epochs=1, shuffle=False)
         for batch_idx, batch in enumerate(generator):
             with torch.no_grad():
-                out = model.forward(task, batch, predict=True)
-            n_task_examples += get_output_attribute(out, "n_exs", uses_cuda(cuda_device))
+                batch = move_to_device(batch, cuda_device)
+                if isinstance(task, TaggingTask):
+                    out = model.forward(batch, batch["targs"], predict=True)
+                else:
+                    out = self._model.forward(task, batch, predict=True)
+
+            n_task_examples += out["n_exs"]
             # get predictions
             if "preds" not in out:
                 continue
@@ -110,7 +116,7 @@ def evaluate(
         # ['preds'] + FIELDS_TO_EXPORT
         # for GLUE tasks, preds entries should be single scalars.
         # Update metrics
-        task_metrics = task.get_metrics(reset=True)
+        task_metrics = model.get_metrics(reset=True)
         for name, value in task_metrics.items():
             all_metrics["%s_%s" % (task.name, name)] = value
 
@@ -143,7 +149,7 @@ def evaluate(
 
 
 def write_preds(
-    tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False
+    tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False, vocab=None
 ) -> None:
     for task in tasks:
         if task.name not in all_preds:
@@ -204,6 +210,14 @@ def write_preds(
             _write_diagnostics_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format
             )
+        elif isinstance(task, LanguageModelingTask):
+            _write_lm_preds(
+                task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format, vocab=vocab
+            )
+        elif isinstance(task, i2b22010ConceptsTask):
+            _write_concept_preds(
+                task, preds_df, pred_dir, split_name, strict_glue_format=False
+                )
         else:
             log.warning("Task '%s' not supported by write_preds().", task.name)
             continue
@@ -215,7 +229,7 @@ def write_preds(
 # Exact file names per task required by the GLUE evaluation server
 GLUE_NAME_MAP = {
     "cola": "CoLA",
-    "glue-diagnostic": "AX",
+    "diagnostic": "AX",
     "mnli-mm": "MNLI-mm",
     "mnli-m": "MNLI-m",
     "mrpc": "MRPC",
@@ -244,15 +258,9 @@ SUPERGLUE_NAME_MAP = {
 
 def _get_pred_filename(task_name, pred_dir, split_name, strict_glue_format):
     if strict_glue_format and task_name in GLUE_NAME_MAP:
-        if split_name == "test":
-            file = "%s.tsv" % (GLUE_NAME_MAP[task_name])
-        else:
-            file = "%s_%s.tsv" % (GLUE_NAME_MAP[task_name], split_name)
+        file = GLUE_NAME_MAP[task_name] + ".tsv"
     elif strict_glue_format and task_name in SUPERGLUE_NAME_MAP:
-        if split_name == "test":
-            file = "%s.jsonl" % (SUPERGLUE_NAME_MAP[task_name])
-        else:
-            file = "%s_%s.jsonl" % (SUPERGLUE_NAME_MAP[task_name], split_name)
+        file = SUPERGLUE_NAME_MAP[task_name] + ".jsonl"
     else:
         file = "%s_%s.tsv" % (task_name, split_name)
     return os.path.join(pred_dir, file)
@@ -314,6 +322,24 @@ def _write_wic_preds(
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
 
+def _write_concept_preds(
+    task: str,
+    preds_df: pd.DataFrame,
+    pred_dir: str,
+    split_name: str,
+    strict_glue_format: bool = False,
+):
+    """ Write predictions for WiC task.  """
+    pred_map = {0: "false", 1: "true"}
+    preds_file = _get_pred_filename(task.name, pred_dir, split_name, strict_glue_format)
+    with open(preds_file, "w", encoding="utf-8") as preds_fh:
+        for row_idx, row in preds_df.iterrows():
+            if strict_glue_format:
+                out_d = {"idx": row["idx"], "label": pred_map[row["preds"]]}
+            else:
+                out_d = row.to_dict()
+            preds_fh.write("{0}\n".format(json.dumps(out_d)))
+
 
 def _write_winograd_preds(
     task: str,
@@ -352,6 +378,24 @@ def _write_boolq_preds(
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
 
+def _write_lm_preds(
+    task: str, 
+    preds_df: pd.DataFrame, 
+    pred_dir: str,
+    split_name: str,
+    vocab: str,
+    strict_glue_format: bool = False,
+):  
+    preds_file = _get_pred_filename(task.name, pred_dir, split_name, strict_glue_format)
+    with open(preds_file, "w", encoding="utf-8") as preds_fh:
+        for row_idx, row in preds_df.iterrows():
+            if strict_glue_format:
+                labels = list(map(lambda x: vocab.get_token_from_index(x), row["preds"]))
+                out_d = {"idx": row["idx"], "label": pred_map[row["preds"]]}
+            else:
+                row["preds"] = list(map(lambda x: vocab.get_token_from_index(x), row["preds"]))
+                out_d = row.to_dict()
+            preds_fh.write("{0}\n".format(json.dumps(out_d)))
 
 def _write_commitment_preds(
     task: str,
@@ -579,11 +623,12 @@ def _write_glue_preds(
         inplace=True,
     )
 
-    if task_name == "mnli" and split_name == "test":  # 9796 + 9847 = 19643
-        assert len(preds_df) == 19643, "Missing predictions for MNLI!"
-        log.info("There are %d examples in MNLI, 19643 were expected", len(preds_df))
-        # Sort back to original order to split matched and mismatched, which are
-        # treated as a single dataset by jiant.
+    if task_name == "mnli" and split_name == "test":  # 9796 + 9847 + 1104 = 20747
+        assert len(preds_df) == 20747, "Missing predictions for MNLI!"
+        log.info("There are %d examples in MNLI, 20747 were expected", len(preds_df))
+        # Sort back to original order. Otherwise mismatched, matched and diagnostic
+        # would be mixed together
+        # Mismatched, matched and diagnostic all begin by index 0.
         preds_df.sort_index(inplace=True)
         pred_map = {0: "neutral", 1: "entailment", 2: "contradiction"}
         _apply_pred_map(preds_df, pred_map, "prediction")
@@ -592,9 +637,14 @@ def _write_glue_preds(
             _get_pred_filename("mnli-m", pred_dir, split_name, strict_glue_format),
         )
         _write_preds_with_pd(
-            preds_df.iloc[9796:],
+            preds_df.iloc[9796:19643],
             _get_pred_filename("mnli-mm", pred_dir, split_name, strict_glue_format),
         )
+        _write_preds_with_pd(
+            preds_df.iloc[19643:],
+            _get_pred_filename("diagnostic", pred_dir, split_name, strict_glue_format),
+        )
+
     elif task_name in ["rte", "qnli"]:
         pred_map = {0: "not_entailment", 1: "entailment"}
         _apply_pred_map(preds_df, pred_map, "prediction")
