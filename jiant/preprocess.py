@@ -405,6 +405,7 @@ def _get_task(name, args, data_path, scratch_path):
     pkl_path = os.path.join(scratch_path, "tasks", f"{name:s}.{args.tokenizer:s}.pkl")
     # TODO: refactor to always read from disk, even if task is constructed
     # here. This should avoid subtle bugs from deserialization issues.
+    import pdb; pdb.set_trace()
     if os.path.isfile(pkl_path) and not args.reload_tasks:
         task = pkl.load(open(pkl_path, "rb"))
         log.info("\tLoaded existing task %s", name)
@@ -576,7 +577,7 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
     anything special, so we can just use the standard indexers.
     """
     do_lower_case = "uncased" in tokenizer_name
-
+    import pdb; pdb.set_trace()
     if tokenizer_name.startswith("bert-"):
         tokenizer = BertTokenizer.from_pretrained(tokenizer_name, do_lower_case=do_lower_case)
     elif tokenizer_name.startswith("roberta-"):
@@ -649,7 +650,7 @@ class ModelPreprocessingInterface(object):
         boundary_token_fn = None
         lm_boundary_token_fn = None
 
-        if args.input_module.startswith("bert-"):
+        if args.input_module.startswith("bert-") or args.input_module == "clinicalBERT":
             from jiant.pytorch_transformers_interface.modules import BertEmbedderModule
 
             boundary_token_fn = BertEmbedderModule.apply_boundary_tokens

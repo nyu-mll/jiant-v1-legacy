@@ -25,7 +25,7 @@ class PytorchTransformersEmbedderModule(nn.Module):
         super(PytorchTransformersEmbedderModule, self).__init__()
         if args.input_module == "clinicalBERT":
              self.cache_dir = args.load_eval_checkpoint
-         else:
+        else:
             self.cache_dir = os.getenv(
              "PYTORCH_PRETRAINED_BERT_CACHE",
               os.path.join(args.exp_dir, "pytorch_transformers_cache"),
@@ -250,14 +250,14 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
 
     def __init__(self, args):
         super(BertEmbedderModule, self).__init__(args)
-
+        input_module = "bert-base-cased" if args.input_module == "clinicalBERT" else "clinicalBERT"
         self.model = pytorch_transformers.BertModel.from_pretrained(
-            args.input_module, cache_dir=self.cache_dir, output_hidden_states=True
+            input_module, cache_dir=self.cache_dir, output_hidden_states=True
         )
         self.max_pos = self.model.config.max_position_embeddings
 
         self.tokenizer = pytorch_transformers.BertTokenizer.from_pretrained(
-            args.input_module, cache_dir=self.cache_dir, do_lower_case="uncased" in args.tokenizer
+            input_module, cache_dir=self.cache_dir, do_lower_case="uncased" in args.tokenizer
         )  # TODO: Speed things up slightly by reusing the previously-loaded tokenizer.
         self._sep_id = self.tokenizer.convert_tokens_to_ids("[SEP]")
         self._cls_id = self.tokenizer.convert_tokens_to_ids("[CLS]")

@@ -56,24 +56,6 @@ def mkpath(path):
             pass
         else:
             raise
-def get_sections(self, tokenized_sents):
-	# input: list[str]
-	# output: List(str) where str is section
-	result = []
-	current_section = "discharge summary"
-	for chunk in chunks:
-		curr_result = []
-		chunk_str =  " ".join(chunk)
-		chunk_str = chun_str.lower()
-		for section in sections:
-			if section in chunk_str:
-				current_section = section
-			if "completed by" in chunk_str or "dictated" in chunk_str:
-				current_section = "discharge summary"
-		for i in range(len(chunk)):
-			curr_result.append(current_section)
-		result.append(curr_result)
-	return result
 
 #############################################################
 #  text pre-processing
@@ -415,15 +397,11 @@ class Document:
                                                   self._tok_concepts, txt, con)
         self._tok_sents = [item for sublist in self._tok_sents for item in sublist]
         self._labels = [item for sublist in self._labels for item in sublist]
-        self.sections = self.get_sections(self._tok_sents)
         assert len(self._labels) == len(self._tok_sents)
         self._tok_sents, self._labels = preprocess_tagging(self._tok_sents, self._labels, tokenizer_name)
         # save filename
         self._filename = txt
 
-
-    def getName(self):
-        return os.path.basename(self._filename).split('.')[0]
 
 
     def getExtension(self):
@@ -635,7 +613,6 @@ x
                     error_msg = '\n\n%s\n%s\n\n%s\n\n%s\n%s\n' % (error1,error2,error3,error4,error5)
         for index in sorted(add_pairs_to_delete, reverse=True):
             del tok_concepts[index]
-    import pdb; pdb.set_trace()
     #result_sents, result_concepts = preprocess_tagging(tokenized_sents, tok_concepts, tokenizer_name)
     return tokenized_sents, tok_concepts
 
