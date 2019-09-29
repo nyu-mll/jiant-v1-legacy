@@ -251,9 +251,12 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
     def __init__(self, args):
         super(BertEmbedderModule, self).__init__(args)
         input_module = "bert-base-cased" if args.input_module == "clinicalBERT" else "clinicalBERT"
-        self.model = pytorch_transformers.BertModel.from_pretrained(
-            input_module, cache_dir=self.cache_dir, output_hidden_states=True
-        )
+        if args.input_module == "clinicalBERT":
+            self.model = pytorch_transformers.BertModel.from_pretrained("/home/ubuntu/jiant_cleanup/clinicalBERT", output_hidden_states=True)
+        else:
+            self.model = pytorch_transformers.BertModel.from_pretrained(
+                input_module, cache_dir=self.cache_dir, output_hidden_states=True
+            )
         self.max_pos = self.model.config.max_position_embeddings
 
         self.tokenizer = pytorch_transformers.BertTokenizer.from_pretrained(

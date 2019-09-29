@@ -48,7 +48,7 @@ def get_output_attribute(out, attribute_name, use_cuda):
     attribute_name: str, 
     use_cuda: bool
     """
-    if use_cuda:
+    if torch.cuda.device_count() > 1:
         return out[attribute_name].sum()
     else:
         return out[attribute_name]
@@ -68,7 +68,7 @@ def get_model_attribute(model, attribute_name, use_cuda):
         The attribute object from the model. 
     """
     # maybe we should do (int, list)
-    if use_cuda:
+    if torch.cuda.device_count() > 1:
         return getattr(model.module, attribute_name)
     else:
         return getattr(model, attribute_name)

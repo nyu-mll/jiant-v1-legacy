@@ -384,12 +384,12 @@ id2tag = { v:k for k,v in labels.items() }
 
 class Document:
 
-    def __init__(self, txt, tokenizer_name, con=None):
+    def __init__(self, txt, tokenizer_name, max_seq_len, con=None):
         # read data
         retVal = read_i2b2(txt, con, tokenizer_name)
         # Internal representation natural for i2b2 format
         self._tok_sents = retVal[0]
-
+        self.max_seq_len = max_seq_len
         # Store token labels
         if con:
             self._tok_concepts = retVal[1]
@@ -410,11 +410,15 @@ class Document:
 
     def getTokenizedSentences(self):
         assert len(self._tok_sents) == len(self._labels)
-        return self._tok_sents
+        if self.max_seq_len > len(self._tok_sents):
+            return self._tok_sents
+        return self._tok_sents[:self.max_seq_len]
 
 
     def getTokenLabels(self):
-        return self._labels
+        if self.max_seq_len > len(self._labels):
+            return self._labels
+        return self._labels[:self.max_seq_len]
 
 
     def conlist(self):
@@ -614,6 +618,7 @@ x
         for index in sorted(add_pairs_to_delete, reverse=True):
             del tok_concepts[index]
     #result_sents, result_concepts = preprocess_tagging(tokenized_sents, tok_concepts, tokenizer_name)
+    # result_sents. result_concepts
     return tokenized_sents, tok_concepts
 
 
@@ -764,6 +769,7 @@ def tok_labels_to_concepts(tokenized_sents, tok_labels):
 
 class DocumentException(Exception):
     pass
+
 
 
 

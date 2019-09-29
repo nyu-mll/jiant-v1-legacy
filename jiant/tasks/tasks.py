@@ -19,9 +19,10 @@ from allennlp.data.fields import (
     MultiLabelField,
     SpanField,
     TextField,
+    SequenceLabelField
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
-from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure
+from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure, SpanBasedF1Measure
 from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation
@@ -2244,18 +2245,22 @@ class i2b22010ConceptsTask(TaggingTask):
         # Document
         """ There are 1363 supertags in CCGBank without introduced token. """
         self.path = path
-        super().__init__(name, 4, **kw)
+        super().__init__(name, 7, **kw)
         self.train_data_text = None
-        self.num_tags = 4
+        self.num_tags = 7
+        self.max_seq_len = max_seq_len
         self.val_data_text = None
         self.test_data_text = None
-        self.scorer1 = FBetaMeasure(average="micro")
+        vocab = vocabulary.Vocabulary(counter=None, non_padded_namespaces=[self._label_namespace])
+        for value in self.get_all_labels():
+            vocab.add_token_to_namespace(value, self._label_namespace)
+        self.scorer1 = SpanBasedF1Measure(vocab, self._label_namespace)
         self.val_metric = "%s_f1" % self.name
 
     def get_metrics(self, reset=False):
         """Get metrics specific to the task"""
         f1 = self.scorer1.get_metric(reset)
-        return {"f1": f1["fscore"], "recall": f1["recall"], "precision": f1["precision"]}
+        return {"f1": f1["f-measure"], "recall": f1["recall"], "precision": f1["precision"]}
     # get_metric
     def count_examples(self, splits=["train", "val", "test"]):
         """ Count examples in the dataset. """
@@ -2264,8 +2269,9 @@ class i2b22010ConceptsTask(TaggingTask):
             st = self.get_split_text(split)
             self.example_counts[split] = len(st)
 
-    def process_split(self, split, indexers) -> Iterable[Type[Instance]]:
+    def process_split(self, split, indexers, model_preprocessing_interface) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
+        split = [[model_preprocessing_interface.boundary_token_fn(sent[0]), sent[1]] for sent in split]
         inputs = [TextField(list(map(Token, sent[0])), token_indexers=indexers) for sent in split]
         targs = []
         for sent in split:
@@ -2297,10 +2303,11 @@ class i2b22010ConceptsTask(TaggingTask):
             doc_tmp = i2b2_utils.Document(
                 os.path.join(self.path, "train_data", "txt", "%s.txt" % record),
                 con=os.path.join(self.path, "train_data", "concept", "%s.con" % record),
-                tokenizer_name=self.tokenizer_name
+                tokenizer_name=self.tokenizer_name,
+                max_seq_len=self.max_seq_len
             )
             self.train_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
-
+        import pdb; pdb.set_trace()
         val_list = os.listdir(os.path.join(self.path, "val_data", "txt"))
         val_list = [x.split(".")[0] for x in val_list]
         self.val_data_text = []
@@ -2308,7 +2315,8 @@ class i2b22010ConceptsTask(TaggingTask):
             doc_tmp = i2b2_utils.Document(
                 os.path.join(self.path, "val_data", "txt", "%s.txt" % record),
                 con=os.path.join(self.path, "val_data", "concept", "%s.con" % record),
-                tokenizer_name=self.tokenizer_name
+                tokenizer_name=self.tokenizer_name,
+                max_seq_len=self.max_seq_len
             )
             self.val_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
         test_list = os.listdir(os.path.join(self.path, "test_data", "txt"))
@@ -2318,7 +2326,8 @@ class i2b22010ConceptsTask(TaggingTask):
             doc_tmp = i2b2_utils.Document(
                 os.path.join(self.path, "test_data", "txt", "%s.txt" % record),
                 con=os.path.join(self.path, "test_data", "concept", "%s.con" % record),
-                tokenizer_name=self.tokenizer_name
+                tokenizer_name=self.tokenizer_name,
+                max_seq_len=self.max_seq_len
             )
             self.test_data_text.append([doc_tmp.getTokenizedSentences(), doc_tmp.getTokenLabels()])
         self.sentences =  [x[0] for x in self.train_data_text] + [x[0] for x in self.val_data_text[0]]
@@ -2349,6 +2358,7 @@ class CCGTaggingTask(TaggingTask):
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
+        sent[0] = model_preprocessing_interface.apply_boundary_tokens(sent[0])
         inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
         targs = [
             TextField(list(map(Token, sent)), token_indexers=self.target_indexer)

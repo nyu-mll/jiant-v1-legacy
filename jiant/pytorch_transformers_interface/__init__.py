@@ -26,6 +26,7 @@ def input_module_uses_pytorch_transformers(input_module):
         or input_module.startswith("openai-gpt")
         or input_module.startswith("transfo-xl-")
         or input_module.startswith("xlm-")
+        or input_module == "clinicalBERT"
     )
 
 

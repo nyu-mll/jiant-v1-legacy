@@ -161,7 +161,6 @@ def _index_split(task, split, indexers, vocab, record_file, model_preprocessing_
             yield elem
 
     instance_iter = _counter_iter(instance_iter)
-
     # Actually call generators and stream to disk.
     serialize.write_records(_indexed_instance_generator(instance_iter, vocab), record_file)
     log.info("%s: Saved %d instances to %s", log_prefix, _instance_counter, record_file)
@@ -247,7 +246,7 @@ def _build_vocab(args, tasks, vocab_path: str):
     if input_module_uses_pytorch_transformers(args.input_module):
         # Add pre-computed vocabulary of corresponding tokenizer for pytorch_transformers models.
         add_pytorch_transformers_vocab(vocab, args.tokenizer)
-
+    import pdb; pdb.set_trace()
     vocab.save_to_files(vocab_path)
     log.info("\tSaved vocab to %s", vocab_path)
     #  del word2freq, char2freq, target2freq
@@ -274,7 +273,7 @@ def build_indexers(args):
             not indexers
         ), "pytorch_transformers modules like BERT/XLNet are not supported alongside other "
         "indexers due to tokenization."
-        assert args.tokenizer == args.input_module, (
+        assert args.input_module == "clinicalBERT" or args.tokenizer == args.input_module, (
             "pytorch_transformers models use custom tokenization for each model, so tokenizer "
             "must match the specified model."
         )
@@ -302,7 +301,6 @@ def build_tasks(args):
     assert len(set(tokenizer_names.values())) == 1, (
         f"Error: mixing tasks with different tokenizers!" " Tokenizations: {tokenizer_names:s}"
     )
-
     # 2) build / load vocab and indexers
     indexers = build_indexers(args)
 
@@ -405,7 +403,6 @@ def _get_task(name, args, data_path, scratch_path):
     pkl_path = os.path.join(scratch_path, "tasks", f"{name:s}.{args.tokenizer:s}.pkl")
     # TODO: refactor to always read from disk, even if task is constructed
     # here. This should avoid subtle bugs from deserialization issues.
-    import pdb; pdb.set_trace()
     if os.path.isfile(pkl_path) and not args.reload_tasks:
         task = pkl.load(open(pkl_path, "rb"))
         log.info("\tLoaded existing task %s", name)
@@ -577,7 +574,6 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
     anything special, so we can just use the standard indexers.
     """
     do_lower_case = "uncased" in tokenizer_name
-    import pdb; pdb.set_trace()
     if tokenizer_name.startswith("bert-"):
         tokenizer = BertTokenizer.from_pretrained(tokenizer_name, do_lower_case=do_lower_case)
     elif tokenizer_name.startswith("roberta-"):

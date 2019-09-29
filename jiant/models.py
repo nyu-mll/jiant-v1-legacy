@@ -1021,9 +1021,11 @@ class MultiTaskModel(nn.Module):
             sent = sent[:, 1:-1, :]
             hid2tag = self._get_classifier(task)
             logits = hid2tag(sent)
+            import pdb; pdb.set_trace()
             logits = logits.view(b_size * seq_len, -1)
             out["logits"] = logits
-            targs = batch["targs"]["words"][:, :seq_len].contiguous().view(-1)
+            import pdb; pdb.set_trace()
+            targs = batch["targs"][:, :seq_len].contiguous().view(-1)
         if "mask" in batch:
             # Prevent backprop for tags generated for tokenization-introduced tokens
             # such as word boundaries
@@ -1034,7 +1036,7 @@ class MultiTaskModel(nn.Module):
             logits = logits.index_select(0, keep_idxs)
             targs = targs.index_select(0, keep_idxs)
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token)
-        out["loss"] = format_output(F.cross_entropy(logits, targs, ignore_index=pad_idx))
+        out["loss"] = format_output(F.cross_entropy(logits, targs, ignore_index=pad_idx), self._cuda_device)
         task.scorer1(logits, targs)
         return out
 
