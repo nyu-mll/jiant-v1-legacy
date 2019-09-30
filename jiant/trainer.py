@@ -18,7 +18,7 @@ from allennlp.data.iterators import BasicIterator, BucketIterator  # pylint: dis
 from allennlp.training.learning_rate_schedulers import (  # pylint: disable=import-error
     LearningRateScheduler,
 )
-from allennlp.nn.util import device_mapping
+from allennlp.nn.util import device_mapping, move_to_device
 from allennlp.training.optimizers import Optimizer  # pylint: disable=import-error
 from tensorboardX import SummaryWriter  # pylint: disable=import-error
 from torch.nn.utils.clip_grad import clip_grad_norm_
@@ -1046,6 +1046,7 @@ class SamplingMultiTaskTrainer:
         return should_stop
 
     def _forward(self, batch, task=None):
+        batch = move_to_device(batch, self._cuda_device)
         model_out = self._model.forward(task, batch)
         return model_out
 

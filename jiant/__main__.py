@@ -611,8 +611,8 @@ def main(cl_arguments):
             task_params = get_model_attribute(model, "_get_task_params", uses_cuda(cuda_device))
             task_to_use = task_params(task.name).get("use_classifier", task.name)
             ckpt_path = get_best_checkpoint_path(args, "eval", task_to_use)
-            #assert ckpt_path is not None
-            #load_model_state(model, ckpt_path, cuda_device, skip_task_models=[], strict=strict)
+            assert ckpt_path is not None
+            load_model_state(model, ckpt_path, cuda_device, skip_task_models=[], strict=strict)
             evaluate_and_write(args, model, [task], "test", cuda_device)
 
     if args.delete_checkpoints_when_done and not args.keep_all_checkpoints:

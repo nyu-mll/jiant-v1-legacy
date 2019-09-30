@@ -112,7 +112,7 @@ def evaluate(
         # ['preds'] + FIELDS_TO_EXPORT
         # for GLUE tasks, preds entries should be single scalars.
         # Update metrics
-        task_metrics = model.get_metrics(reset=True)
+        task_metrics = task.get_metrics(reset=True)
         for name, value in task_metrics.items():
             all_metrics["%s_%s" % (task.name, name)] = value
 

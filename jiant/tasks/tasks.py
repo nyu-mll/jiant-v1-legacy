@@ -2260,6 +2260,7 @@ class i2b22010ConceptsTask(TaggingTask):
     def get_metrics(self, reset=False):
         """Get metrics specific to the task"""
         f1 = self.scorer1.get_metric(reset)
+        import pdb; pdb.set_trace()
         return {"f1": f1["f-measure"], "recall": f1["recall"], "precision": f1["precision"]}
     # get_metric
     def count_examples(self, splits=["train", "val", "test"]):
@@ -2271,14 +2272,11 @@ class i2b22010ConceptsTask(TaggingTask):
 
     def process_split(self, split, indexers, model_preprocessing_interface) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
-        split = [[model_preprocessing_interface.boundary_token_fn(sent[0]), sent[1]] for sent in split]
+        split = [[model_preprocessing_interface.boundary_token_fn(sent[0]), ['O']+sent[1]+['O']] for sent in split]
         inputs = [TextField(list(map(Token, sent[0])), token_indexers=indexers) for sent in split]
         targs = []
         for sent in split:
-            if len(sent[0]) != len(sent[1]):
-                import pdb; pdb.set_trace()
-            else:
-                targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
+            targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
  
         input_str = [MetadataField(" ".join(sent[0])) for sent in split]
         targ_str = [MetadataField(" ".join(sent[1])) for sent in split]
