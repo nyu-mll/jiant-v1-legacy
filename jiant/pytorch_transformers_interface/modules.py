@@ -279,6 +279,8 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
+        ids = torch.autograd.Variable(ids.data.clone(), requires_grad=False)
+        input_mask = torch.autograd.Variable(input_mask.data.clone(), requires_grad=False)
         hidden_states, lex_seq = [], None
         if self.output_mode not in ["none", "top"]:
             lex_seq = self.model.embeddings.word_embeddings(ids)
@@ -286,8 +288,7 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
         if self.output_mode != "only":
             token_types = self.get_seg_ids(ids, input_mask)
             _, output_pooled_vec, hidden_states = self.model(
-                ids, token_type_ids=token_types, attention_mask=input_mask
-            )
+                ids, token_type_ids=token_types, attention_mask=input_mask            )
         return self.prepare_output(lex_seq, hidden_states, input_mask)
 
     def get_pretrained_lm_head(self):
