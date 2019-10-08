@@ -252,7 +252,7 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
         super(BertEmbedderModule, self).__init__(args)
         input_module = "bert-base-cased" if args.input_module == "clinicalBERT" else "clinicalBERT"
         if args.input_module == "clinicalBERT":
-            self.model = pytorch_transformers.BertModel.from_pretrained("/home/ubuntu/jiant_cleanup/clinicalBERT", output_hidden_states=True)
+            self.model = pytorch_transformers.BertModel.from_pretrained("/beegfs/yp913/jiant_cleanup/clinicalBERT", output_hidden_states=True)
         else:
             self.model = pytorch_transformers.BertModel.from_pretrained(
                 input_module, cache_dir=self.cache_dir, output_hidden_states=True
@@ -279,8 +279,6 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
-        ids = torch.autograd.Variable(ids.data.clone(), requires_grad=False)
-        input_mask = torch.autograd.Variable(input_mask.data.clone(), requires_grad=False)
         hidden_states, lex_seq = [], None
         if self.output_mode not in ["none", "top"]:
             lex_seq = self.model.embeddings.word_embeddings(ids)

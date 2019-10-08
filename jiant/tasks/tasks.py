@@ -2260,8 +2260,7 @@ class i2b22010ConceptsTask(TaggingTask):
     def get_metrics(self, reset=False):
         """Get metrics specific to the task"""
         f1 = self.scorer1.get_metric(reset)
-        import pdb; pdb.set_trace()
-        return {"f1": f1["f-measure"], "recall": f1["recall"], "precision": f1["precision"]}
+        return {"f1": f1["f1-measure-overall"], "recall": f1["recall-overall"], "precision": f1["precision-overall"]}
     # get_metric
     def count_examples(self, splits=["train", "val", "test"]):
         """ Count examples in the dataset. """
