@@ -327,6 +327,11 @@ def align_moses(text: Text) -> Tuple[TokenAligner, List[Text]]:
     ta = TokenAligner(text, cleaned_moses_tokens)
     return ta, moses_tokens
 
+def align_scispacy(text: Text) -> Tuple[TokenAligner, List[Text]]:
+    SciSpacyTokenizer = get_tokenizer("scispacy")
+    sci_tokens = SciSpacyTokenizer.tokenize(text)
+    ta = TokenAligner(text, sci_tokens)
+    return ta, sci_tokens
 
 def align_wpm(text: Text, tokenizer_name: str) -> Tuple[TokenAligner, List[Text]]:
     """Alignment fn for WPM tokenizer, used in BERT
@@ -396,5 +401,7 @@ def get_aligner_fn(tokenizer_name: Text):
         return functools.partial(align_sentencepiece, tokenizer_name=tokenizer_name)
     elif tokenizer_name.startswith("roberta-") or tokenizer_name.startswith("gpt2"):
         return functools.partial(align_bytebpe, tokenizer_name=tokenizer_name)
+    elif tokenizer_name == "scispacy":
+        return align_scispacy
     else:
         raise ValueError(f"Unsupported tokenizer '{tokenizer_name}'")

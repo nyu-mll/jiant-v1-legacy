@@ -105,6 +105,8 @@ def get_tokenizer(tokenizer_name):
         tokenizer = MosesTokenizer()
     elif tokenizer_name == "SplitChars":
         tokenizer = SplitCharsTokenizer()
+    elif tokenizer_name == "scispacy":
+        tokenizer = SciSpacyTokenizer()
     elif tokenizer_name == "":
         tokenizer = SpaceTokenizer()
     else:
