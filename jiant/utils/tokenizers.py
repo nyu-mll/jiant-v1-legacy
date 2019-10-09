@@ -20,7 +20,8 @@ from pytorch_transformers import (
     TransfoXLTokenizer,
     XLMTokenizer,
 )
-
+import spacy
+nlp = spacy.load("en_core_sci_md")
 
 class Tokenizer(object):
     def tokenize(self, sentence):
@@ -55,6 +56,12 @@ class SplitCharsTokenizer(Tokenizer):
     def detokenize(self, tokens):
         return "".join(tokens)
 
+class SciSpacyTokenizer(Tokenizer):
+    def __init__(self):
+        super().__init__()
+
+    def tokenize(self, sentence):
+        return nlp(sentence)
 
 class MosesTokenizer(Tokenizer):
     def __init__(self):

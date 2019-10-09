@@ -40,6 +40,7 @@ from pytorch_transformers import (
     TransfoXLTokenizer,
     XLMTokenizer,
 )
+from jiant.utils.tokenizers import SciSpacyTokenizer
 
 from jiant.tasks import (
     ALL_DIAGNOSTICS,
@@ -574,6 +575,8 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
     anything special, so we can just use the standard indexers.
     """
     do_lower_case = "uncased" in tokenizer_name
+    if tokenizer_name.startswith("sci"):
+        tokenizer = SciSpacyTokenizer()
     if tokenizer_name.startswith("bert-"):
         tokenizer = BertTokenizer.from_pretrained(tokenizer_name, do_lower_case=do_lower_case)
     elif tokenizer_name.startswith("roberta-"):
