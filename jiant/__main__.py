@@ -156,7 +156,8 @@ def check_configurations(args, pretrain_tasks, target_tasks):
             "a checkpoint.",
         )
         steps_log.write("Loading model from path: %s \n" % args.load_target_train_checkpoint)
-
+    if args.reload_tasks != args.reload_data:
+        log.info("args.reload_tasks=%d and args.reload_data=%d, make sure this is what you really want to do." % (args.reload_tasks, args.reload_data))
     assert_for_log(
         args.transfer_paradigm in ["finetune", "frozen"],
         "Transfer paradigm %s not supported!" % args.transfer_paradigm,

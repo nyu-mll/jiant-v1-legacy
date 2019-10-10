@@ -425,7 +425,14 @@ def _get_task(name, args, data_path, scratch_path):
             tokenizer_name=args.tokenizer,
             **task_kw,
         )
-        task.load_data()
+        if os.path.isfile(pkl_path) and not args.reload_data:
+            prev_task = pkl.load(open(pkl_path, "rb"))
+            task.train_data_text = prev_task.train_data_text
+            task.val_data_text = prev_task.val_data_text
+            task.test_data_text = prev_task.test_data_text
+            task.sentences = prev_task.sentences
+        else:
+            task.load_data()
         utils.maybe_make_dir(os.path.dirname(pkl_path))
         pkl.dump(task, open(pkl_path, "wb"))
 
