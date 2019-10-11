@@ -330,8 +330,8 @@ def align_moses(text: Text) -> Tuple[TokenAligner, List[Text]]:
 def align_scispacy(text: Text) -> Tuple[TokenAligner, List[Text]]:
     SciSpacyTokenizer = get_tokenizer("scispacy")
     sci_tokens = SciSpacyTokenizer.tokenize(text)
-    ta = TokenAligner(text, sci_tokens)
-    return ta, sci_tokens
+    ta = TokenAligner(text, sci_tokens.text)
+    return ta, [sci_tokens.text]
 
 def align_wpm(text: Text, tokenizer_name: str) -> Tuple[TokenAligner, List[Text]]:
     """Alignment fn for WPM tokenizer, used in BERT

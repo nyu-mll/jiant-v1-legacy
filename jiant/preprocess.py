@@ -518,12 +518,12 @@ def get_vocab(word2freq, char2freq, max_v_sizes):
     """Build vocabulary by selecting the most frequent tokens"""
     vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes)
     for special in SPECIALS:
-        vocab.add_token_to_namespace(special, "tokens")
+        vocab.add_token_to_namespace(special, "scispacy")
 
     words_by_freq = [(word, freq) for word, freq in word2freq.items()]
     words_by_freq.sort(key=lambda x: x[1], reverse=True)
     for word, _ in words_by_freq[: max_v_sizes["word"]]:
-        vocab.add_token_to_namespace(word, "tokens")
+        vocab.add_token_to_namespace(word, "scispacy")
 
     chars_by_freq = [(char, freq) for char, freq in char2freq.items()]
     chars_by_freq.sort(key=lambda x: x[1], reverse=True)
@@ -602,8 +602,10 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
         )
     # TODO: this is another place can be simplified by "model-before-preprocess" reorganization
     # we can pass tokenizer created in model here, see issue <TBD>
-
-    vocab_size = len(tokenizer)
+    if tokenizer_name != "scispacy":
+        vocab_size = len(tokenizer)
+    else:
+        return
     # do not use tokenizer.vocab_size, it does not include newly added token
     if tokenizer_name.startswith("roberta-"):
         if tokenizer.convert_ids_to_tokens(vocab_size - 1) is None:
