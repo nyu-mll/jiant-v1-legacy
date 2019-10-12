@@ -519,6 +519,7 @@ def main(cl_arguments):
     log.info("Building model...")
     start_time = time.time()
     model = build_model(args, vocab, word_embs, tasks, cuda_device)
+    model.resize_token_embeddings(len(vocab.get_index_to_token_vocabulary("scispacy")))
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested

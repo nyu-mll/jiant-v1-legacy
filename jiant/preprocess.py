@@ -247,7 +247,6 @@ def _build_vocab(args, tasks, vocab_path: str):
     if input_module_uses_pytorch_transformers(args.input_module):
         # Add pre-computed vocabulary of corresponding tokenizer for pytorch_transformers models.
         add_pytorch_transformers_vocab(vocab, args.tokenizer)
-    import pdb; pdb.set_trace()
     vocab.save_to_files(vocab_path)
     log.info("\tSaved vocab to %s", vocab_path)
     #  del word2freq, char2freq, target2freq
@@ -524,7 +523,6 @@ def get_vocab(word2freq, char2freq, max_v_sizes):
     words_by_freq.sort(key=lambda x: x[1], reverse=True)
     for word, _ in words_by_freq[: max_v_sizes["word"]]:
         vocab.add_token_to_namespace(word, "scispacy")
-
     chars_by_freq = [(char, freq) for char, freq in char2freq.items()]
     chars_by_freq.sort(key=lambda x: x[1], reverse=True)
     for char, _ in chars_by_freq[: max_v_sizes["char"]]:
@@ -602,10 +600,7 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
         )
     # TODO: this is another place can be simplified by "model-before-preprocess" reorganization
     # we can pass tokenizer created in model here, see issue <TBD>
-    if tokenizer_name != "scispacy":
-        vocab_size = len(tokenizer)
-    else:
-        return
+
     # do not use tokenizer.vocab_size, it does not include newly added token
     if tokenizer_name.startswith("roberta-"):
         if tokenizer.convert_ids_to_tokens(vocab_size - 1) is None:
@@ -614,8 +609,9 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
             log.info("Time to delete vocab_size-1 in preprocess.py !!!")
     # due to a quirk in huggingface's file, the last token of RobertaTokenizer is None, remove
     # this when they fix the problem
-
-    ordered_vocab = tokenizer.convert_ids_to_tokens(range(vocab_size))
+    ordered_vocab = []
+    if tokenizer_name != "clinicalBERT":
+        ordered_vocab = tokenizer.convert_ids_to_tokens(range(vocab_size))
     log.info("Added pytorch_transformers vocab (%s): %d tokens", tokenizer_name, len(ordered_vocab))
     for word in ordered_vocab:
         vocab.add_token_to_namespace(word, input_module_tokenizer_name(tokenizer_name))
