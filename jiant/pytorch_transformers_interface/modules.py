@@ -258,14 +258,14 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
                 input_module, cache_dir=self.cache_dir, output_hidden_states=True
             )
         self.max_pos = self.model.config.max_position_embeddings
-
+        self.tokenizer = args.tokenizer
         self.tokenizer = pytorch_transformers.BertTokenizer.from_pretrained(
             input_module, cache_dir=self.cache_dir, do_lower_case="uncased" in args.tokenizer
         )  # TODO: Speed things up slightly by reusing the previously-loaded tokenizer.
-        self._sep_id = self.tokenizer.convert_tokens_to_ids("[SEP]")
-        self._cls_id = self.tokenizer.convert_tokens_to_ids("[CLS]")
-        self._pad_id = self.tokenizer.convert_tokens_to_ids("[PAD]")
-        self._unk_id = self.tokenizer.convert_tokens_to_ids("[UNK]")
+        self._sep_id = args.sep_id 
+        self._cls_id = args.cls_id
+        self._pad_id = args.pad_id
+        self._unk_id = args.unk_id
 
         self.parameter_setup(args)
 

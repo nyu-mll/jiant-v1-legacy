@@ -515,10 +515,11 @@ def get_words(tasks):
 
 def get_vocab(word2freq, char2freq, max_v_sizes):
     """Build vocabulary by selecting the most frequent tokens"""
-    vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes)
+    vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes, pretrained_files="/beegfs/yp913/jiant_cleanup/cilnicalBERT/vocab.txt")
+    vocab.set_from_file(filename="/beegfs/yp913/jiant_cleanup/clinicalBERT/vocab.txt", is_padded=1, namespace="scispacy", oov_token="[UNK]")
+    vocab._oov_token = "[UNK]"
     for special in SPECIALS:
         vocab.add_token_to_namespace(special, "scispacy")
-
     words_by_freq = [(word, freq) for word, freq in word2freq.items()]
     words_by_freq.sort(key=lambda x: x[1], reverse=True)
     for word, _ in words_by_freq[: max_v_sizes["word"]]:
@@ -609,8 +610,8 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
             log.info("Time to delete vocab_size-1 in preprocess.py !!!")
     # due to a quirk in huggingface's file, the last token of RobertaTokenizer is None, remove
     # this when they fix the problem
-    ordered_vocab = []
-    if tokenizer_name != "clinicalBERT":
+    ordered_vocab = ["[CLS]", "[SEP]", "[PAD]", "[UNK]"]
+    if tokenizer_name != "scispacy":
         ordered_vocab = tokenizer.convert_ids_to_tokens(range(vocab_size))
     log.info("Added pytorch_transformers vocab (%s): %d tokens", tokenizer_name, len(ordered_vocab))
     for word in ordered_vocab:

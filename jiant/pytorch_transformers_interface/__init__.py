@@ -39,6 +39,7 @@ def input_module_tokenizer_name(input_module):
         "bert-base-cased": "bert_cased",
         "bert-large-cased": "bert_cased",
         "clinicalBERT": "scispacy",
+        "scispacy": "scispacy",
         "bert-large-cased-whole-word-masking": "bert_cased",
         "bert-large-cased-whole-word-masking-finetuned-squad": "bert_cased",
         "bert-base-cased-finetuned-mrpc": "bert_cased",

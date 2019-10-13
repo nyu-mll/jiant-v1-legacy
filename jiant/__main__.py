@@ -518,8 +518,12 @@ def main(cl_arguments):
     # Build model
     log.info("Building model...")
     start_time = time.time()
+    args.sep_id = vocab.get_token_index("[SEP]", "scispacy")
+    args.cls_id = vocab.get_token_index("[CLS]", "scispacy")
+    args.unk_id = vocab.get_token_index("[UNK]", "scispacy")
+    args.pad_id = vocab.get_token_index("[PAD]", "scispacy")
     model = build_model(args, vocab, word_embs, tasks, cuda_device)
-    model.resize_token_embeddings(len(vocab.get_index_to_token_vocabulary("scispacy")))
+    model.sent_encoder._text_field_embedder.model.resize_token_embeddings(len(vocab.get_index_to_token_vocabulary("scispacy")) + model.sent_encoder._text_field_embedder.model.embeddings.word_embeddings.num_embeddings) 
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested
