@@ -35,7 +35,7 @@ class PytorchTransformersEmbedderModule(nn.Module):
         self.output_mode = args.pytorch_transformers_output_mode
         self.input_module = args.input_module
         self.max_pos = None
-        self.tokenizer_required = input_module_tokenizer_name(args.input_module)
+        self.tokenizer_required = input_module_tokenizer_name(args.tokenizer)
 
         # Integer token indices for special symbols.
         self._cls_id = None
@@ -279,6 +279,7 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
+        import pdb; pdb.set_trace()
         hidden_states, lex_seq = [], None
         if self.output_mode not in ["none", "top"]:
             lex_seq = self.model.embeddings.word_embeddings(ids)
