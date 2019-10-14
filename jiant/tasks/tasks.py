@@ -22,7 +22,7 @@ from allennlp.data.fields import (
     SequenceLabelField
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
-from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure, SpanBasedF1Measure
+from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, SpanBasedF1Measure
 from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation

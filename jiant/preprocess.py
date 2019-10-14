@@ -515,7 +515,7 @@ def get_words(tasks):
 
 def get_vocab(word2freq, char2freq, max_v_sizes, tokenizer):
     """Build vocabulary by selecting the most frequent tokens"""
-    vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes, pretrained_files="/beegfs/yp913/jiant_cleanup/cilnicalBERT/vocab.txt")
+    vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes)
     if tokenizer == "scispacy":
         vocab.set_from_file(filename="/beegfs/yp913/jiant_cleanup/clinicalBERT/vocab.txt", is_padded=1, namespace="scispacy", oov_token="[UNK]")
         vocab._oov_token = "[UNK]"
