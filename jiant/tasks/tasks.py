@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable, List, Sequence, Type
 import numpy as np
 import pandas as pd
 import torch
-
+import pickle
 
 # Fields for instance processing
 from allennlp.data import Instance, Token, vocabulary
@@ -19,9 +19,10 @@ from allennlp.data.fields import (
     MultiLabelField,
     SpanField,
     TextField,
+    SequenceLabelField
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
-from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure
+from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure
 from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation
@@ -38,6 +39,7 @@ from jiant.utils.data_loaders import (
 from jiant.utils.tokenizers import get_tokenizer
 from jiant.tasks.registry import register_task  # global task registry
 from jiant.metrics.winogender_metrics import GenderParity
+from jiant.utils.i2b2_utils import preprocess_tagging
 
 """Define the tasks and code for loading their data.
 
@@ -2229,6 +2231,7 @@ class TaggingTask(Task):
         self.val_data_text = None
         self.test_data_text = None
 
+
     def get_metrics(self, reset=False):
         """Get metrics specific to the task"""
         acc = self.scorer1.get_metric(reset)
@@ -2237,6 +2240,64 @@ class TaggingTask(Task):
     def get_all_labels(self) -> List[str]:
         return self.all_labels
 
+
+@register_task("followups", rel_path="followups")
+class FollowupsTask(TaggingTask):
+    def __init__(self, path, max_seq_len, name="followups", **kw):
+        # we want to have preprocess_tagging(),
+        self.path = path
+        super().__init__(name, 12, **kw)
+        self.num_tags = 12
+
+        self.bert_tokenization = self._tokenizer_name.startswith("bert-")
+        self.max_seq_len = max_seq_len
+        self.scorer1 = FBetaMeasure(labels=range(12), average='micro')
+        self.scorer2 = FBetaMeasure(labels=range(12))
+        self.val_metric = "%s_f1" % self.name
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def get_all_labels(self):
+        labels = ['O'] 
+        non_trivial_labels = ['Lab to be ordered', 'Case-specific instructions for patient', 'Other helpful contextual information', 'Procedure needs to be ordered', 'Procedure needs to be reviewed', 'Medication to be ordered', 'Appointment to be reviewed', 'Medication followup', 'Lab result to review', 'Appointment to be ordered', 'Imaging to order']
+        labels.extend(non_trivial_labels)
+        return labels
+
+    def get_metrics(self, reset=False):
+        score = self.scorer1.get_metric(reset=reset)
+        return {'f1': score['fscore']}
+
+    def load_data(self):
+        def load_pickle(path):
+            dataset = pickle.load(open(path, "rb"))
+            data, label, metadata = dataset
+            res = [preprocess_tagging(d, l, tokenizer_name=self.tokenizer_name) for d,l in zip(data, label)]
+            data, label = list(zip(*res))
+            return data, label, metadata
+        self.train_data_text = load_pickle(os.path.join(self.path, "train_1"))
+        val_data = self.train_data_text[0][:10]
+        val_label = self.train_data_text[1][:10]
+        val_met = self.train_data_text[2][:10]
+        self.val_data_text = [val_data, val_label, val_met]
+        self.test_data_text = load_pickle(os.path.join(self.path, "test_1"))
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+        
+    def process_split(self, split, indexers, model_preprocessing_interface) -> Iterable[Type[Instance]]:
+        """ Process a tagging task """
+        split = [[model_preprocessing_interface.boundary_token_fn(sent1), ['O']+sent2+['O']] for sent1, sent2 in zip(split[0], split[1])]
+        split = list(zip(*split))
+        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
+        targs = []
+        for sent in zip(split[0], split[1]):
+            targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
+
+        input_str = [MetadataField(" ".join(sent)) for sent in split[0]]
+        targ_str = [MetadataField(" ".join(sent)) for sent in split[1]]
+        instances = [
+            Instance({"inputs": x, "targs": t, "input_str": xs, "targ_str": ts}) for (x, t, xs, ts) in zip(inputs, targs, input_str, targ_str)
+        ]
+        return instances
 
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
@@ -2804,7 +2865,6 @@ class SpanPredictionTask(Task):
     """ Generic task class for predicting a span """
 
     n_classes = 2
-
 
 @register_task("copa", rel_path="COPA/")
 class COPATask(MultipleChoiceTask):

@@ -120,7 +120,7 @@ def evaluate(
             if time.time() - last_log > LOG_INTERVAL:
                 log.info("\tTask %s: batch %d", task.name, batch_idx)
                 last_log = time.time()
-
+        import pdb; pdb.set_trace()
         # task_preds will be a DataFrame with columns
         # ['preds'] + FIELDS_TO_EXPORT
         # for GLUE tasks, preds entries should be single scalars.
@@ -153,7 +153,6 @@ def evaluate(
     # hack for diagnostics
     all_metrics["micro_avg"] /= max(n_examples_overall, 1)
     all_metrics["macro_avg"] /= len(tasks)
-
     return all_metrics, all_preds
 
 

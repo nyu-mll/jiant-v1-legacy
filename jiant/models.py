@@ -1093,25 +1093,27 @@ class MultiTaskModel(nn.Module):
         out["n_exs"] = get_batch_size(batch, self._cuda_device)
         if not isinstance(sent_encoder, BiLMEncoder):
             sent, mask = sent_encoder(batch["inputs"], task)
-            sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
+            #sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
             sent = sent[:, 1:-1, :]
             hid2tag = self._get_classifier(task)
             logits = hid2tag(sent)
-            logits = logits.view(b_size * seq_len, -1)
             out["logits"] = logits
-            targs = batch["targs"]["words"][:, :seq_len].contiguous().view(-1)
-        if "mask" in batch:
-            # Prevent backprop for tags generated for tokenization-introduced tokens
-            # such as word boundaries
-            mask = batch["mask"]
-            batch_mask = [mask[i][:seq_len] for i in range(b_size)]
+            logits = logits.view(-1, logits.shape[-1]) # (N*T, VOCAB)
+            targs = batch["targs"][:, 1:-1].reshape((batch["targs"][:,1:-1].shape[0] *batch["targs"][:,1:-1].shape[1] ))
+            batch_mask = [mask[i][1:-1] for i in range(b_size)]
             batch_mask = torch.stack(batch_mask)
             keep_idxs = torch.nonzero(batch_mask.view(-1).data).squeeze()
             logits = logits.index_select(0, keep_idxs)
             targs = targs.index_select(0, keep_idxs)
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token)
-        out["loss"] = format_output(F.cross_entropy(logits, targs, ignore_index=pad_idx))
+        out["loss"] = format_output(F.cross_entropy(logits, targs), self._cuda_device)
+        logits = logits.unsqueeze(0)
+        targs = targs.unsqueeze(0)
+        if predict:
+            out["preds"] = torch.max(logits, dim=2)[1]
+            # these are the predictions. 
         task.scorer1(logits, targs)
+        task.scorer2(logits, targs)
         return out
 
     def _lm_forward(self, batch, task, predict):

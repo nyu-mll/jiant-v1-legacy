@@ -318,23 +318,20 @@ def space_tokenize_with_bow(sentence):
     return ["<w>" + t for t in sentence.split()]
 
 
-def align_moses(text: Text) -> Tuple[TokenAligner, List[Text]]:
+def align_moses(text: Text, MosesTokenizer) -> Tuple[TokenAligner, List[Text]]:
     """Aligner fn for Moses tokenizer, used in Transformer-XL
     """
-    MosesTokenizer = get_tokenizer("MosesTokenizer")
     moses_tokens = MosesTokenizer.tokenize(text)
     cleaned_moses_tokens = unescape_moses(moses_tokens)
     ta = TokenAligner(text, cleaned_moses_tokens)
     return ta, moses_tokens
 
 
-def align_wpm(text: Text, tokenizer_name: str) -> Tuple[TokenAligner, List[Text]]:
+def align_wpm(text: Text, wpm_tokenizer: str, do_lower_case:bool) -> Tuple[TokenAligner, List[Text]]:
     """Alignment fn for WPM tokenizer, used in BERT
     """
     # If using lowercase, do this for the source tokens for better matching.
-    do_lower_case = tokenizer_name.endswith("uncased")
     bow_tokens = space_tokenize_with_bow(text.lower() if do_lower_case else text)
-    wpm_tokenizer = get_tokenizer(tokenizer_name)
     wpm_tokens = wpm_tokenizer.tokenize(text)
 
     # Align using <w> markers for stability w.r.t. word boundaries.
@@ -387,9 +384,12 @@ def get_aligner_fn(tokenizer_name: Text):
     Use TokenAligner to project token index from source to target.
     """
     if tokenizer_name == "MosesTokenizer" or tokenizer_name.startswith("transfo-xl-"):
-        return align_moses
+        MosesTokenizer = get_tokenizer("MosesTokenizer")
+        return functools.partial(align_moses, MosesTokenizer=MosesTokenizer)
     elif tokenizer_name.startswith("bert-"):
-        return functools.partial(align_wpm, tokenizer_name=tokenizer_name)
+        wpm_tokenizer = get_tokenizer(tokenizer_name)
+        do_lower_case = tokenizer_name.endswith("uncased")
+        return functools.partial(align_wpm, wpm_tokenizer=wpm_tokenizer, do_lower_case=do_lower_case)
     elif tokenizer_name.startswith("openai-gpt") or tokenizer_name.startswith("xlm-mlm-en-"):
         return functools.partial(align_bpe, tokenizer_name=tokenizer_name)
     elif tokenizer_name.startswith("xlnet-"):
