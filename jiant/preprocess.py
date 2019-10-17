@@ -247,7 +247,6 @@ def _build_vocab(args, tasks, vocab_path: str):
     if input_module_uses_pytorch_transformers(args.input_module):
         # Add pre-computed vocabulary of corresponding tokenizer for pytorch_transformers models.
         add_pytorch_transformers_vocab(vocab, args.tokenizer)
-
     vocab.save_to_files(vocab_path)
     log.info("\tSaved vocab to %s", vocab_path)
     #  del word2freq, char2freq, target2freq

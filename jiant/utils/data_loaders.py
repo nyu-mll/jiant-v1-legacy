@@ -28,7 +28,7 @@ def load_span_data(tokenizer_name, file_name, label_fn=None, has_labels=True):
         label: bool
         target: dict that contains the spans
     Args:
-        tokenizer_name: str,
+        tokenzer_name: str,
         file_name: str,
         label_fn: function that expects a row and outputs a transformed row with labels
           transformed.
@@ -93,6 +93,7 @@ def load_tsv(
     filter_value=None,
     tag_vocab=None,
     tag2idx_dict=None,
+    header=None
 ):
     """
     Load a tsv.
@@ -135,18 +136,15 @@ def load_tsv(
     # TODO(Yada): Instead of index integers, adjust this to pass in column names
     # get the first row as the columns to pass into the pandas reader
     # This reads the data file given the delimiter, skipping over any rows
-    # (usually header row)
-    rows = pd.read_csv(
-        data_file,
+    # (usually header row)\
+    rows = pd.read_csv(data_file,
         sep=delimiter,
-        error_bad_lines=False,
-        header=None,
-        skiprows=skip_rows,
+        header=header,
+        skiprows=0,
         quoting=quote_level,
         keep_default_na=False,
         encoding="utf-8",
     )
-
     if filter_idx and filter_value:
         rows = rows[rows[filter_idx] == filter_value]
     # Filter for sentence1s that are of length 0

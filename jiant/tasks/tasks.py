@@ -1120,6 +1120,7 @@ class MultiNLITask(PairClassificationTask):
         self.test_data_text = None
 
     def load_data(self):
+        import pdb; pdb.set_trace()
         """Process the dataset located at path."""
         targ_map = {"neutral": 0, "entailment": 1, "contradiction": 2}
         tr_data = load_tsv(
@@ -1201,6 +1202,68 @@ class MultiNLITask(PairClassificationTask):
         )
         log.info("\tFinished loading MNLI data.")
 
+
+
+@register_task("followups_classification", rel_path="followups_classification")
+class FollowupsClassificationTask(SingleClassificationTask):
+    def __init__(self, path, max_seq_len,name, **kw):
+        # and we're going to need to do SingleCLassification
+        super(FollowupsClassificationTask, self).__init__(name, n_classes=7, **kw)
+         # BERTForClassifiacitonTask.
+        self.path = path
+        self.max_seq_len = max_seq_len
+        self._label_namespace = self.name + "_tags"
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def get_all_labels(self):
+        non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
+        return non_trivial_labels
+
+    def load_data(self):
+        targ_map = {x: i for i, x in enumerate(self.get_all_labels())}
+        self.train_data_text= load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "train_1classification"),
+            max_seq_len=self.max_seq_len,
+            s1_idx='0',
+            s2_idx=None,
+            header=0,
+            label_idx='1',
+            delimiter=',',
+            quote_level=1,
+            label_fn=targ_map.__getitem__,
+            skip_rows=0,
+        )
+        self.val_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "train_1classification"),
+            max_seq_len=self.max_seq_len,
+            s1_idx='0',
+            s2_idx=None,
+            header=0,
+            label_idx='1',
+            delimiter=',',
+            quote_level=1,
+            label_fn=targ_map.__getitem__,
+            skip_rows=0,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "test_1classification"),
+            max_seq_len=self.max_seq_len,
+            s1_idx='0',
+            s2_idx=None,
+            header=0,
+            label_idx='1',
+            delimiter=',',
+            quote_level=1,
+            label_fn=targ_map.__getitem__,
+            skip_rows=0,
+        )
+        import pdb; pdb.set_trace()
+        self.sentences = self.train_data_text[0] 
 
 @register_task("mnli-ho", rel_path="MNLI/")
 @register_task("mnli-fiction-ho", rel_path="MNLI/", genre="fiction")
@@ -2240,7 +2303,6 @@ class TaggingTask(Task):
     def get_all_labels(self) -> List[str]:
         return self.all_labels
 
-
 @register_task("followups", rel_path="followups")
 class FollowupsTask(TaggingTask):
     def __init__(self, path, max_seq_len, name="followups", **kw):
@@ -2282,7 +2344,7 @@ class FollowupsTask(TaggingTask):
         self.val_data_text = [val_data, val_label, val_met]
         self.test_data_text = load_pickle(os.path.join(self.path, "test_1"))
         self.sentences = self.train_data_text[0] + self.val_data_text[0]
-        
+
     def process_split(self, split, indexers, model_preprocessing_interface) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
         split = [[model_preprocessing_interface.boundary_token_fn(sent1), ['O']+sent2+['O']] for sent1, sent2 in zip(split[0], split[1])]
