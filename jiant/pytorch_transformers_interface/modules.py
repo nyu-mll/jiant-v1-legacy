@@ -12,7 +12,7 @@ import pytorch_transformers
 from jiant.utils.options import parse_task_list_arg
 from jiant.utils import utils
 from jiant.pytorch_transformers_interface import input_module_tokenizer_name
-
+from allennlp.modules.token_embedders import bert_token_embedder
 
 class PytorchTransformersEmbedderModule(nn.Module):
     """ Shared code for pytorch_transformers wrappers.
@@ -158,6 +158,49 @@ class PytorchTransformersEmbedderModule(nn.Module):
         else:
             return self.model.config.hidden_size
 
+    def handle_longer_sequences():
+        if needs_split:
+            # First, unpack the output embeddings into one long sequence again
+            unpacked_embeddings = torch.split(all_encoder_layers, batch_size, dim=1)
+            unpacked_embeddings = torch.cat(unpacked_embeddings, dim=2)
+
+            # Next, select indices of the sequence such that it will result in embeddings representing the original
+            # sentence. To capture maximal context, the indices will be the middle part of each embedded window
+            # sub-sequence (plus any leftover start and final edge windows), e.g.,
+            #  0     1 2    3  4   5    6    7     8     9   10   11   12    13 14  15
+            # "[CLS] I went to the very fine [SEP] [CLS] the very fine store to eat [SEP]"
+            # with max_pieces = 8 should produce max context indices [2, 3, 4, 10, 11, 12] with additional start
+            # and final windows with indices [0, 1] and [14, 15] respectively.
+
+            # Find the stride as half the max pieces, ignoring the special start and end tokens
+            # Calculate an offset to extract the centermost embeddings of each window
+            stride = (self.max_pieces - self.num_start_tokens - self.num_end_tokens) // 2
+            stride_offset = stride // 2 + self.num_start_tokens
+
+            first_window = list(range(stride_offset))
+
+            max_context_windows = [
+                i
+                for i in range(full_seq_len)
+                if stride_offset - 1 < i % self.max_pieces < stride_offset + stride
+            ]
+
+            # Lookback what's left, unless it's the whole self.max_pieces window
+            if full_seq_len % self.max_pieces == 0:
+                lookback = self.max_pieces
+            else:
+                lookback = full_seq_len % self.max_pieces
+
+            final_window_start = full_seq_len - lookback + stride_offset + stride
+            final_window = list(range(final_window_start, full_seq_len))
+
+            select_indices = first_window + max_context_windows + final_window
+
+            initial_dims.append(len(select_indices))
+
+            recombined_embeddings = unpacked_embeddings[:, :, select_indices]
+        else:
+            recombined_embeddings = all_encoder_layers
     def get_seg_ids(self, token_ids, input_mask):
         """ Dynamically build the segment IDs for a concatenated pair of sentences
         Searches for index _sep_id in the tensor. Supports BERT or XLNet-style padding.
@@ -271,8 +314,11 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
         self._cls_id = self.tokenizer.convert_tokens_to_ids("[CLS]")
         self._pad_id = self.tokenizer.convert_tokens_to_ids("[PAD]")
         self._unk_id = self.tokenizer.convert_tokens_to_ids("[UNK]")
-
+        if self.output_mode in ["none", "top", "mix"]:
+            self.token_embedder = bert_token_embedder.PretrainedBertEmbedder(self.model, requires_grad=args.transfer_paradigm, top_layer_only=self.output_mode)
         self.parameter_setup(args)
+        self.max_piees = 512 # the longest squence. 
+        # adn you apss it into the BertEmbedder insted. 
 
     @staticmethod
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
@@ -288,6 +334,14 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
         return s
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
+        if self.output_mode not in ["none", "top", "mix"]:
+            return self.custom_forward(sent, task_name)
+        else:
+            ids, input_mask = self.correct_sent_indexing(sent)
+            token_types = self.get_seg_ids(ids, input_mask)
+            return self.token_embedder.forward(ids, token_type_ids=token_types)
+
+    def custom_forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
         hidden_states, lex_seq = [], None
         if self.output_mode not in ["none", "top"]:
@@ -295,10 +349,7 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
             lex_seq = self.model.embeddings.LayerNorm(lex_seq)
         if self.output_mode != "only":
             token_types = self.get_seg_ids(ids, input_mask)
-            _, output_pooled_vec, hidden_states = self.model(
-                ids, token_type_ids=token_types, attention_mask=input_mask
-            )
-        return self.prepare_output(lex_seq, hidden_states, input_mask)
+        return self.token_embedder.forward(ids, token_type_ids=token_types)
 
     def get_pretrained_lm_head(self):
         model_with_lm_head = pytorch_transformers.BertForMaskedLM.from_pretrained(
