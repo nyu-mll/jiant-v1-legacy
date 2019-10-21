@@ -2,7 +2,6 @@ import logging
 import collections
 from typing import Any, Dict, List, Optional, Tuple, DefaultDict, Set
 
-from overrides import overrides
 
 from allennlp.common.file_utils import cached_path
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
@@ -18,10 +17,12 @@ from allennlp.data.instance import Instance
 from allennlp.data.tokenizers import Token
 from allennlp.data.token_indexers import SingleIdTokenIndexer, TokenIndexer
 from allennlp.data.dataset_readers.dataset_utils import Ontonotes, enumerate_spans
-from allennlp.allennlp.training.metrics.conll_coref_scores import ConllCorefScores
+from jiant.tasks.registry import register_task  # global task registry
+import os
+from jiant.tasks.tasks import Task
 logger = logging.getLogger(__name__)
 
-
+from pytorch_transformers import BertTokenizer
 def canonicalize_clusters(
     clusters: DefaultDict[int, List[Tuple[int, int]]]
 ) -> List[List[Tuple[int, int]]]:
@@ -55,9 +56,8 @@ def canonicalize_clusters(
             merged_clusters.append(set(cluster))
     return [list(c) for c in merged_clusters]
 
-
-@DatasetReader.register("coref")
-class ConllCorefReader(DatasetReader):
+@register_task("conll", rel_path="conll/")
+class ConllCorefReader(Task):
     """
     Reads a single CoNLL-formatted file. This is the same file format as used in the
     :class:`~allennlp.data.dataset_readers.semantic_role_labelling.SrlReader`, but is preprocessed
@@ -79,40 +79,33 @@ class ConllCorefReader(DatasetReader):
         Default is ``{"tokens": SingleIdTokenIndexer()}``.
     """
 
-   def __init__(self, path, max_seq_len, name, **kw):
-        """ Do stuff """
-        super(SNLITask, self).__init__(name, n_classes=3, **kw)
-        self.path = path
-        self.max_seq_len = max_seq_len
-
-        self.train_data_text = None
-        self.val_data_text = None
-        self.test_data_text = None
-        self.scorer1 = ConllCorefScores()
-
-    def __init__(
-        self,
-        path,
-        max_seq_len, 
-        name, 
-        max_span_width: int = 10,
-        lazy: bool = False
-        **kw,
-    ) -> None:
-        super().__init__(lazy)
+    def __init__(self,path,max_seq_len, name,  tokenizer_name, max_span_width=10) -> None:
         self._max_span_width = max_span_width
         self.path = path
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
+        self.tokenizer = tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
+        self.load_data()
 
-    @overrides
+    def count_examples(self, splits=["train", "val", "test"]):
+        """ Count examples in the dataset. """
+        self.example_counts = {}
+        for split in splits:
+            st = self.get_split_text(split)
+            self.example_counts[split] = len(st)
+
+    def load_data(self):
+        self._read(os.path.join(self.path, "train.english.v4_gold_conll"), "train")
+        self._read(os.path.join(self.path, "dev.english.v4_gold_conll"), "val")
+        self._read(os.path.join(self.path, "test.english.v4_gold_conll"), "test")
+
     def _read(self, file_path: str, split_name):
         # if `file_path` is a URL, redirect to the cache
         file_path = cached_path(file_path)
 
         ontonotes_reader = Ontonotes()
-        res_sentneces = []
+        res_sentences = []
         res_clusters = []
         for sentences in ontonotes_reader.dataset_document_iterator(file_path):
             clusters: DefaultDict[int, List[Tuple[int, int]]] = collections.defaultdict(list)
@@ -126,21 +119,25 @@ class ConllCorefReader(DatasetReader):
                     span_id, (start, end) = typed_span
                     clusters[span_id].append((start + total_tokens, end + total_tokens))
                 total_tokens += len(sentence.words)
-                setattr(task, "_classifier_name", task_classifier if task_classifier else task.name)
+                #setattr(task, "_classifier_name", task_classifier if task_classifier else task.name)
             canonical_clusters = canonicalize_clusters(clusters)
-            res_sentences.append(sentences)
-            res_clusters.append(canonical_clusters)
+            new_sentences = [s.words for s in sentences]
+            flattened_sentences = [self._normalize_word(word) for sentence in new_sentences for word in sentence]
+            flattened_sentences = self.tokenizer.tokenize(" ".join(flattened_sentences))
+            if len(flattened_sentences) <= 510:
+                res_sentences.append(sentences)
+                res_clusters.append(canonical_clusters)
+        import pdb; pdb.set_trace()
         setattr(self, "%s_data_text" , [res_sentences, res_clusters])
 
 
     def process_split(
         self, split, indexers, model_preprocessing_interface
-    ) -> Iterable[Type[Instance]]:
+    ):
         """ Process split text into a list of AllenNLP Instances. """
         for sentence, cluster in zip(split[0], split[1]):
-            yield self.text_to_instance(indexers, [s.words for s in model_preprocessing_interface.boundary_token_fn(sentence)], cluster, )
+            yield self.texdt_to_instance(indexers, [s.words for s in model_preprocessing_interface.boundary_token_fn(sentence)], cluster, )
 
-    @overrides
     def text_to_instance(
         self,  # type: ignore
         token_indexers,
