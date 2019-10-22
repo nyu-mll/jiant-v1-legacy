@@ -22,6 +22,7 @@ ALL_GLUE_TASKS = [
     "rte",
     "wnli",
     "glue-diagnostic",
+    "followups_classification"
 ]
 
 ALL_SUPERGLUE_TASKS = [

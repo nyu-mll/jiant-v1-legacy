@@ -20,6 +20,8 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
+    FollowupsClassificationTask, 
+    FollowupsMultilabelTask
 )
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask, QASRLTask
 from jiant.tasks.edge_probing import EdgeProbingTask
@@ -64,7 +66,7 @@ def evaluate(
 ) -> Tuple[Dict, pd.DataFrame]:
     """Evaluate on a dataset
     {par,qst,ans}_idx are used for MultiRC and other question answering dataset"""
-    FIELDS_TO_EXPORT = [
+    FIELDS_TO_EXPORT = [    
         "idx",
         "sent1_str",
         "sent2_str",
@@ -102,6 +104,7 @@ def evaluate(
                 if isinstance(cuda_device, int):
                     batch = move_to_device(batch, cuda_device)
                 out = model.forward(task, batch, predict=True)
+            #import pdb; pdb.set_trace()
             n_task_examples += get_output_attribute(out, "n_exs", cuda_device)
             # get predictions
             if "preds" not in out:
@@ -172,7 +175,7 @@ def write_preds(
             + tasks_module.ALL_COLA_NPI_TASKS
         )
 
-        if task.name in glue_style_tasks:
+        if task.name in glue_style_tasks or "followups" in task.name:
             # Strict mode: strict GLUE format (no extra cols)
             strict = strict_glue_format and task.name in tasks_module.ALL_GLUE_TASKS
             _write_glue_preds(task.name, preds_df, pred_dir, split_name, strict_glue_format=strict)
@@ -183,6 +186,7 @@ def write_preds(
             _write_boolq_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format
             )
+
         elif isinstance(task, CommitmentTask):
             _write_commitment_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format
@@ -239,6 +243,7 @@ GLUE_NAME_MAP = {
     "rte": "RTE",
     "sst": "SST-2",
     "sts-b": "STS-B",
+    "followups_classification":"followups_classification",
     "wnli": "WNLI",
 }
 
@@ -309,7 +314,6 @@ def _write_edge_preds(
         for record in records:
             fd.write(json.dumps(record))
             fd.write("\n")
-
 
 def _write_wic_preds(
     task: str,

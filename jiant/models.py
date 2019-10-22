@@ -890,6 +890,7 @@ class MultiTaskModel(nn.Module):
 
     def _single_sentence_forward(self, batch, task, predict):
         out = {}
+
         # embed the sentence
         word_embs_in_context, sent_mask = self.sent_encoder(batch["input1"], task)
         # pass to a task specific classifier
@@ -897,6 +898,7 @@ class MultiTaskModel(nn.Module):
         logits = classifier(word_embs_in_context, sent_mask)
         out["logits"] = logits
         out["n_exs"] = get_batch_size(batch, self._cuda_device)
+
         if "labels" in batch:  # means we should compute loss
             if batch["labels"].dim() == 0:
                 labels = batch["labels"].unsqueeze(0)
@@ -904,10 +906,15 @@ class MultiTaskModel(nn.Module):
                 labels = batch["labels"]
             else:
                 labels = batch["labels"].squeeze(-1)
-            out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
-            tagmask = batch.get("tagmask", None)
-            task.update_metrics(logits, labels, tagmask=tagmask)
-
+            if "multilabel" in task.name:
+                class_weights = torch.FloatTensor([task.class_weights for i in range(len(labels))])
+                loss = nn.BCEWithLogitsLoss(reduction='none')
+                out["loss"] = format_output(loss(logits, labels.float()), self._cuda_device)
+                out["loss"] = (out["loss"] * torch.FloatTensor(task.class_weights)).mean()
+                task.scorer1.update((torch.sigmoid(logits), labels))
+            else:
+                out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
+                task.scorer1(logits, labels)
         if predict:
             if isinstance(task, RegressionTask):
                 if logits.ndimension() > 1:
@@ -917,7 +924,9 @@ class MultiTaskModel(nn.Module):
                     logits = logits.squeeze(-1)
                 out["preds"] = logits
             else:
-                _, out["preds"] = logits.max(dim=1)
+                binary_preds = logits.ge(0).long() 
+                out["preds"] = binary_preds
+        #how to get the 
         return out
 
     def _nli_diagnostic_forward(self, batch, task, predict):

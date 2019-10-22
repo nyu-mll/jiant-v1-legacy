@@ -40,6 +40,9 @@ from jiant.utils.tokenizers import get_tokenizer
 from jiant.tasks.registry import register_task  # global task registry
 from jiant.metrics.winogender_metrics import GenderParity
 from jiant.utils.i2b2_utils import preprocess_tagging
+import ignite
+from jiant.metrics.IgniteF1 import IgniteMacroF1
+
 
 """Define the tasks and code for loading their data.
 
@@ -74,19 +77,18 @@ def atomic_tokenize(
     sent = [nonatomic_toks[0] if t == atomic_tok else t for t in sent]
     return sent
 
-
 def process_single_pair_task_split(
     split,
     indexers,
     model_preprocessing_interface,
     is_pair=True,
     classification=True,
+    multilabel=False,
     is_symmetrical_pair=False,
 ):
     """
     Convert a dataset of sentences into padded sequences of indices. Shared
     across several classes.
-
     Args:
         - split (list[list[str]]): list of inputs (possibly pair) and outputs
         - indexers ()
@@ -96,7 +98,6 @@ def process_single_pair_task_split(
         - is_symmetrical_pair (Bool) whether reverse the sentences in a pair will change the result,
             if this is true, and the model allows uses_mirrored_pair, a mirrored pair will be added
             to the input
-
     Returns:
         - instances (Iterable[Instance]): an iterable of AllenNLP Instances with fields
     """
@@ -125,7 +126,12 @@ def process_single_pair_task_split(
                 )
                 d["sent2_str"] = MetadataField(" ".join(input2))
         if classification:
-            d["labels"] = LabelField(labels, label_namespace="labels", skip_indexing=True)
+            if multilabel:
+                d["labels"] =  MultiLabelField(
+                    labels, label_namespace="tags",  num_labels=7, skip_indexing=True
+                )
+            else:
+                d["labels"] = LabelField(labels, label_namespace="tags", skip_indexing=True)
         else:
             d["labels"] = NumericField(labels)
 
@@ -139,10 +145,10 @@ def process_single_pair_task_split(
     if len(split) < 4:  # counting iterator for idx
         assert len(split) == 3
         split.append(itertools.count())
-
     # Map over columns: input1, (input2), labels, idx
     instances = map(_make_instance, *split)
     return instances  # lazy iterator
+
 
 
 def create_subset_scorers(count, scorer_type, **args_to_scorer):
@@ -1202,11 +1208,146 @@ class MultiNLITask(PairClassificationTask):
         )
         log.info("\tFinished loading MNLI data.")
 
+class LabelwiseAccuracy(IgniteAccuracy):
+    def __init__(self, output_transform=lambda x: x, is_multilabel=True):
+        self._num_correct = None
+        self._num_examples = None
+        self.output_transform = output_transform
+        super(LabelwiseAccuracy, self).__init__(output_transform=output_transform, is_multilabel=is_multilabel)
+
+    def reset(self):
+        self._num_correct = None
+        self._num_examples = 0
+        super(LabelwiseAccuracy, self).reset()
+
+    def update(self, output):
+        output = self.output_transform(output)
+        y_pred, y = output
+        self._check_shape(output)
+        self._check_type((y_pred, y))
+
+        num_classes = y_pred.size(1)
+        last_dim = y_pred.ndimension()
+        y_pred = torch.transpose(y_pred, 1, last_dim - 1).reshape(-1, num_classes)
+        y = torch.transpose(y, 1, last_dim - 1).reshape(-1, num_classes)
+        correct_exact = torch.all(y == y_pred.type_as(y), dim=-1)  # Sample-wise
+        correct_elementwise = torch.sum(y == y_pred.type_as(y), dim=0)
+
+        if self._num_correct is not None:
+            self._num_correct = torch.add(self._num_correct,
+                                                    correct_elementwise)
+        else:
+            self._num_correct = correct_elementwise
+        self._num_examples += correct_exact.shape[0]
+
+    def compute(self):
+        if self._num_examples == 0:
+            raise NotComputableError('Accuracy must have at least one example before it can be computed.')
+        return self._num_correct.type(torch.float) / self._num_examples
+
+@register_task("followups_multilabel", rel_path="followups_classification")
+class FollowupsMultilabelTask(SingleClassificationTask):
+    def __init__(self, path, split, max_seq_len,name, **kw):
+        # and we're going to need to do SingleCLassification
+        super(FollowupsMultilabelTask, self).__init__(name, n_classes=7, **kw)
+         # BERTForClassifiacitonTask.
+        self.path = path
+        self.max_seq_len = max_seq_len
+        self._label_namespace = self.name + "_tags"
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+        self.split = split
+        def thresholded_output_transform(output):
+            y_pred, y = output
+            y_pred = y_pred.ge(0).long()
+            return y_pred, y
+        self.scorer1 =IgniteMacroF1()
+        #self.scorer1 = LabelwiseAccuracy(output_transform=thresholded_output_transform, is_multilabel=True)
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_f1" % self.name
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+        return process_single_pair_task_split(
+            split, indexers, model_preprocessing_interface, is_pair=False, multilabel=True
+        )
+        
+    def get_metrics(self, reset=False):
+        acc = self.scorer1.compute()
+        # weight accuraced 
+        if reset:
+            self.scorer1.reset()
+        return {"f1": acc.mean(), "acc_label_0": acc[0], "acc_label_1": acc[1], "acc_label_2": acc[2], "acc_label_3": acc[3], "acc_label_4": acc[4], "acc_label_5": acc[5], "acc_label_6": acc[6]}
+
+    def get_all_labels(self):
+        non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
+        return non_trivial_labels
+
+    def load_data(self):
+        targ_map = {x: i for i, x in enumerate(self.get_all_labels())}
+        def label_fn(label):
+            labels = eval(label)
+            res_label = []
+            for label in labels:
+                res_label.append(targ_map[label])
+            return res_label
+
+        self.train_data_text= load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "train_%smultilabel" % str(self.split)),
+            max_seq_len=self.max_seq_len,
+            s1_idx='0',
+            s2_idx=None,
+            header=0,
+            label_idx='1',
+            delimiter=',',
+            quote_level=1,
+            label_fn=label_fn,
+            skip_rows=0,
+        )
+        self.val_data_text = self.train_data_text
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "test_%smultilabel" % str(self.split)),
+            max_seq_len=self.max_seq_len,
+            s1_idx='0',
+            s2_idx=None,
+            header=0,
+            label_idx='1',
+            delimiter=',',
+            quote_level=1,
+            label_fn=label_fn,
+            skip_rows=0,
+        )
+        self.sentences = self.train_data_text[0]
+        from sklearn.utils.class_weight import compute_class_weight
+        import numpy as np
+        train_classes = [x for y in self.train_data_text[2] for x in y]
+        current_train_data = []
+        for e in self.train_data_text[2]:
+            if len(e) > 0:
+                current_train_data.append([int(i in e) for i in range(7)])
+            else:
+                current_train_data.append([])
+       #self.train_data_text = [self.train_data_text[0], self.train_data_text[1], current_train_data]
+        #self.val_data_text = self.train_data_text
+        current_test_data = []
+        for e in self.test_data_text[2]:
+            if len(e) > 0:
+                current_test_data.append([int(i in e) for i in range(7)])
+            else:
+                current_test_data.append([])
+        #self.test_data_text = [self.test_data_text[0], self.test_data_text[1], current_test_data]
+        self.class_weights = compute_class_weight('balanced', np.unique(train_classes), train_classes)
+
 
 
 @register_task("followups_classification", rel_path="followups_classification")
 class FollowupsClassificationTask(SingleClassificationTask):
-    def __init__(self, path, max_seq_len,name, **kw):
+    def __init__(self, path, split, max_seq_len,name, **kw):
         # and we're going to need to do SingleCLassification
         super(FollowupsClassificationTask, self).__init__(name, n_classes=7, **kw)
          # BERTForClassifiacitonTask.
@@ -1216,6 +1357,7 @@ class FollowupsClassificationTask(SingleClassificationTask):
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
+        self.split = split
 
     def get_all_labels(self):
         non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
@@ -1225,7 +1367,7 @@ class FollowupsClassificationTask(SingleClassificationTask):
         targ_map = {x: i for i, x in enumerate(self.get_all_labels())}
         self.train_data_text= load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "train_1classification"),
+            os.path.join(self.path, "train_%sclassification" % str(self.split)),
             max_seq_len=self.max_seq_len,
             s1_idx='0',
             s2_idx=None,
@@ -1236,22 +1378,10 @@ class FollowupsClassificationTask(SingleClassificationTask):
             label_fn=targ_map.__getitem__,
             skip_rows=0,
         )
-        self.val_data_text = load_tsv(
-            self._tokenizer_name,
-            os.path.join(self.path, "train_1classification"),
-            max_seq_len=self.max_seq_len,
-            s1_idx='0',
-            s2_idx=None,
-            header=0,
-            label_idx='1',
-            delimiter=',',
-            quote_level=1,
-            label_fn=targ_map.__getitem__,
-            skip_rows=0,
-        )
+        self.val_data_text = self.train_data_text
         self.test_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "test_1classification"),
+            os.path.join(self.path, "test_%sclassification" % str(self.split)),
             max_seq_len=self.max_seq_len,
             s1_idx='0',
             s2_idx=None,
@@ -1262,8 +1392,10 @@ class FollowupsClassificationTask(SingleClassificationTask):
             label_fn=targ_map.__getitem__,
             skip_rows=0,
         )
-        import pdb; pdb.set_trace()
-        self.sentences = self.train_data_text[0] 
+        self.sentences = self.train_data_text[0]
+        from sklearn.utils.class_weight import compute_class_weight
+        import numpy as np
+        self.class_weights = compute_class_weight('balanced', np.unique(self.train_data_text[2]), self.train_data_text[2])
 
 @register_task("mnli-ho", rel_path="MNLI/")
 @register_task("mnli-fiction-ho", rel_path="MNLI/", genre="fiction")
