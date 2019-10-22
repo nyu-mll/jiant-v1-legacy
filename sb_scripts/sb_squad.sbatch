@@ -15,4 +15,4 @@
 #module load cudnn/8.0v5.1
 
 source activate jiant
-python main.py --config_file jiant/config/squad_bert.conf >> /scratch/pmh330/jiant-outputs/out_train_squad_v3.log 2>&1
+python main.py --config_file jiant/config/squad_bert.conf >> /scratch/pmh330/jiant-outputs/out_train_squad_v4.log 2>&1

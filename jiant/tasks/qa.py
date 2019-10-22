@@ -916,7 +916,8 @@ class SQuADTask(SpanPredictionTask):
         aligner_fn = get_aligner_fn(self.tokenizer_name)
 
         with open(path, "r", encoding='utf-8') as f:
-            data = json.load(f)["data"] 
+            data = json.load(f)["data"]
+        skipped = 0 
         for ex in data:
             for paragraph in ex["paragraphs"]:
                 passage = paragraph["context"]
@@ -958,6 +959,7 @@ class SQuADTask(SpanPredictionTask):
                                            aligner_fn=aligner_fn,
                                        )
                     if remapped_result["answer_token_span"][1] >= self.max_seq_len:
+                        skipped += 1
                         continue # skipe for now 
                     example_list.append(
                         {   
@@ -969,7 +971,6 @@ class SQuADTask(SpanPredictionTask):
                             "space_processed_token_map": remapped_result["space_processed_token_map"],
                         }
                     )
-
         return example_list
 
     def _process_sentence(self, sent):

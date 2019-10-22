@@ -964,8 +964,6 @@ class MultiTaskModel(nn.Module):
         sent_embs, sent_mask = self.sent_encoder(batch["inputs"], task)
         module = getattr(self, "%s_mdl" % task.name)
         logits_dict = module.forward(sent_embs, sent_mask)
-        print("batch[span_start]:", batch["span_start"])
-        print("logits_dict[span_end]: ", logits_dict["span_end"])
         out = {
             "logits": logits_dict,
             "n_exs": get_batch_size(batch, self._cuda_device),
@@ -989,9 +987,6 @@ class MultiTaskModel(nn.Module):
             pred_span_end_i = pred_span_end[i] - batch["start_offset"][i]
 
             # Ensure that predictions fit within the range of valid tokens
-            print("bsz: ", batch_size)
-            print("token map: ", len(batch["space_processed_token_map"]))
-            print("i: ", i)
             try: 
                 pred_span_start_i = min(
                     pred_span_start_i, len(batch["space_processed_token_map"][i]) - 1
