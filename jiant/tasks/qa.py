@@ -8,6 +8,7 @@ import collections
 import gzip
 import random
 from typing import Iterable, Sequence, Type, Dict
+import copy
 
 import torch
 from allennlp.training.metrics import Average, F1Measure
@@ -922,18 +923,7 @@ class SQuADTask(SpanPredictionTask):
                 doc_tokens = []
                 char_to_word_offset = []
                 prev_is_whitespace = True
-                for c in passage:
-                    if is_whitespace(c):
-                        prev_is_whitespace = True
-                    else:
-                        if prev_is_whitespace:
-                            doc_tokens.append(c)
-                        else:
-                            doc_tokens[-1] += c
-                        prev_is_whitespace = False
-                    char_to_word_offset.append(len(doc_tokens) - 1)
 
-                passage=passage.split()
                 for qa in paragraph['qas']:
                     qas_id = qa["id"]
                     question = qa["question"]
@@ -946,6 +936,7 @@ class SQuADTask(SpanPredictionTask):
                         is_impossible=qa["is_impossible"]
 
                     if is_impossible:
+                        continue
                         start_position = -1
                         end_position = -1 
                         orig_answer_text = ""
@@ -957,14 +948,17 @@ class SQuADTask(SpanPredictionTask):
                         orig_answer_text = answer["text"]
                         answer_offset = answer["answer_start"]
                         answer_length = len(orig_answer_text)
-                        start_position = char_to_word_offset[answer_offset]
-                        end_position = char_to_word_offset[answer_offset + answer_length  - 1]                    
-                    remapped_result = remap_ptb_passage_and_answer_spans(
-                                           ptb_tokens=passage,
+                        start_position = answer_offset
+                        end_position = answer_offset + answer_length  - 1                    
+ 
+                    remapped_result = squad_map_passage_and_answer(
+                                           sentence=passage,
                                            answer_span=(start_position, end_position),
                                            moses=moses,
                                            aligner_fn=aligner_fn,
-                                      )
+                                       )
+                    if remapped_result["answer_token_span"][1] >= self.max_seq_len:
+                        continue # skipe for now 
                     example_list.append(
                         {   
                             "passage": self._process_sentence(remapped_result["detok_sent"]),
@@ -984,3 +978,34 @@ class SQuADTask(SpanPredictionTask):
         )
 
 
+def squad_map_passage_and_answer(sentence, answer_span, moses, aligner_fn):
+    # We space-tokenize, with the accompanying char-indices.
+    # We use the char-indices to map the answers to space-tokens.
+    ans_char_start, ans_char_end = answer_span
+    answer_str = sentence[ans_char_start:ans_char_end].strip()
+    space_tokens_with_spans = space_tokenize_with_spans(sentence)
+    ans_space_token_span = find_space_token_span(
+        space_tokens_with_spans=space_tokens_with_spans,
+        char_start=ans_char_start,
+        char_end=ans_char_end,
+    )
+    # We project the space-tokenized answer to processed-tokens (e.g. BERT).
+    # The latter is used for training/predicting.
+    aligner, processed_sentence_tokens = aligner_fn(sentence)
+    answer_token_span = aligner.project_span(*ans_space_token_span)
+    # space_processed_token_map is a list of tuples
+    #   (space_token, processed_token (e.g. BERT), space_token_index)
+    # We will need this to map from token predictions to str spans
+    space_processed_token_map = []
+    for space_token_i, (space_token, char_start, char_end) in enumerate(space_tokens_with_spans):
+        processed_token_span = aligner.project_span(space_token_i, space_token_i + 1)
+        for p_token_i in range(*processed_token_span):
+            space_processed_token_map.append(
+                (processed_sentence_tokens[p_token_i], space_token, space_token_i)
+            )
+    return {
+        "detok_sent": sentence,
+        "answer_token_span": answer_token_span,
+        "answer_str": answer_str,
+        "space_processed_token_map": space_processed_token_map,
+    }
