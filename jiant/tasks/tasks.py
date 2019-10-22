@@ -1274,14 +1274,9 @@ class FollowupsMultilabelTask(SingleClassificationTask):
         return process_single_pair_task_split(
             split, indexers, model_preprocessing_interface, is_pair=False, multilabel=True
         )
-        
-    def get_metrics(self, reset=False):
-        acc = self.scorer1.compute()
-        # weight accuraced 
-        if reset:
-            self.scorer1.reset()
-        return {"f1": acc.mean(), "acc_label_0": acc[0], "acc_label_1": acc[1], "acc_label_2": acc[2], "acc_label_3": acc[3], "acc_label_4": acc[4], "acc_label_5": acc[5], "acc_label_6": acc[6]}
 
+    def get_metrics(self, reset=False):
+        return {"MacroF1": self.scorer1.get_metric(reset=reset)}
     def get_all_labels(self):
         non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
         return non_trivial_labels

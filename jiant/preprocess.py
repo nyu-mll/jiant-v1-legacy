@@ -427,7 +427,7 @@ def _get_task(name, args, data_path, scratch_path):
         )
         task.load_data()
         utils.maybe_make_dir(os.path.dirname(pkl_path))
-        #pkl.dump(task, open(pkl_path, "wb"))
+        pkl.dump(task, open(pkl_path, "wb"))
 
     return task
 
