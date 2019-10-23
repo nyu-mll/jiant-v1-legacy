@@ -1,6 +1,7 @@
 import collections
 import json
 import gzip
+import os
 
 def candidates_iter(e):
   """Yield's the candidates that should not be skipped in an example."""
@@ -134,10 +135,6 @@ def create_example_from_jsonl(line):
       "span_end": -1,
       "input_text": "long",
     }
-    print("annotation: ", annotation)
-    print("answer: ", answer)
-    print(question)
-    print(e.keys())
 
     context_idxs = [-1]
     context_list = [{"id": -1, "type": get_candidate_type_and_position(e, -1)}]
@@ -200,20 +197,18 @@ def create_example_from_jsonl(line):
     example["contexts_map"] = single_map
     if annotated_idx in context_idxs:
         expected = example["contexts"][answer["span_start"]:answer["span_end"]]
-
-    assert expected == answer["span_text"], (expected, answer["span_text"])
+        assert expected == answer["span_text"], (expected, answer["span_text"])
 
     return example
     
 
 def get_nq_examples(gzip_nq):
-    gzip_files = [f for f in listdir(gzip_nq)]
+    gzip_files = [os.path.join(gzip_nq,f) for f in os.listdir(gzip_nq)]
     input_data = []
     for gzip_f in gzip_files:
         with gzip.GzipFile(gzip_f) as input_file:
             for line in input_file:
                 input_data.append(create_example_from_jsonl(line))
-        break
 
     return input_data
 

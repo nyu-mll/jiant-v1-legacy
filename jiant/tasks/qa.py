@@ -936,7 +936,7 @@ class SQuADTask(SpanPredictionTask):
                     if is_impossible:
                         continue
                         start_position = -1
-                        end_position = -1 
+                        end_position = -1  
                         orig_answer_text = ""
                     else:
                         try:
@@ -947,7 +947,7 @@ class SQuADTask(SpanPredictionTask):
                         answer_offset = answer["answer_start"]
                         answer_length = len(orig_answer_text)
                         start_position = answer_offset
-                        end_position = answer_offset + answer_length  - 1                    
+                        end_position = answer_offset + answer_length  #- 1  exclusive                  
  
                     remapped_result = squad_map_passage_and_answer(
                                            sentence=passage,
@@ -1112,15 +1112,18 @@ class SQuADTask(SpanPredictionTask):
         skipped = 0 
         for ex in data:
             passage = ex["contexts"]
-            start_position=ex["answers"]["span_start"]
-            end_position=ex["answers"]["span_end"] 
+            start_position=ex["answers"][0]["span_start"]
+            end_position=ex["answers"][0]["span_end"] 
             remapped_result = squad_map_passage_and_answer(
                                   sentence=passage,
                                   answer_span=(start_position, end_position),
                                   moses=moses,
                                   aligner_fn=aligner_fn,
                                 )
-            if remapped_result["answer_str"] != ex["answers"]["span_text"]
+            if remapped_result["answer_str"] != ex["answers"][0]["span_text"]:
+                print("span not match")
+                print("ex[answers][span_text]: ", ex["answers"][0]["span_text"])
+                print("remapped_result[answer_str]: ", remapped_result["answer_str"])
             if remapped_result["answer_token_span"][1] >= self.max_seq_len:             
                 skipped += 1
                 continue # skipe for now 

@@ -1017,6 +1017,8 @@ class MultiTaskModel(nn.Module):
                 ).strip()
             )
         task.update_metrics(pred_str_list=pred_str_list, gold_str_list=batch["answer_str"])
+        print("pred_str_list: ", pred_str_list)
+        print("gold_str_list: ", batch["answer_str"])
 
         if predict:
             out["preds"] = {
