@@ -911,9 +911,10 @@ class MultiTaskModel(nn.Module):
                 loss = nn.BCEWithLogitsLoss(reduction='none')
                 out["loss"] = format_output(loss(logits, labels.float()), self._cuda_device)
                 out["loss"] = (out["loss"] * torch.FloatTensor(task.class_weights)).mean()
-                task.scorer1.update((torch.sigmoid(logits), labels))
+                binary_preds = logits.ge(0).long()
+                task.scorer1(binary_preds, labels)
             else:
-                out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
+                out["loss"] = format_output(F.cross_entropy(logits, labels, weight=torch.Tensor(task.class_weights)), self._cuda_device)
                 task.scorer1(logits, labels)
         if predict:
             if isinstance(task, RegressionTask):
@@ -924,8 +925,11 @@ class MultiTaskModel(nn.Module):
                     logits = logits.squeeze(-1)
                 out["preds"] = logits
             else:
-                binary_preds = logits.ge(0).long() 
-                out["preds"] = binary_preds
+                if "multilabel" in task.name:
+                    binary_preds = logits.ge(0).long() 
+                    out["preds"] = binary_preds
+                else:
+                    out["preds"] = torch.max(logits, dim=1)[1]
         #how to get the 
         return out
 

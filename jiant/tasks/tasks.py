@@ -1208,42 +1208,6 @@ class MultiNLITask(PairClassificationTask):
         )
         log.info("\tFinished loading MNLI data.")
 
-class LabelwiseAccuracy(IgniteAccuracy):
-    def __init__(self, output_transform=lambda x: x, is_multilabel=True):
-        self._num_correct = None
-        self._num_examples = None
-        self.output_transform = output_transform
-        super(LabelwiseAccuracy, self).__init__(output_transform=output_transform, is_multilabel=is_multilabel)
-
-    def reset(self):
-        self._num_correct = None
-        self._num_examples = 0
-        super(LabelwiseAccuracy, self).reset()
-
-    def update(self, output):
-        output = self.output_transform(output)
-        y_pred, y = output
-        self._check_shape(output)
-        self._check_type((y_pred, y))
-
-        num_classes = y_pred.size(1)
-        last_dim = y_pred.ndimension()
-        y_pred = torch.transpose(y_pred, 1, last_dim - 1).reshape(-1, num_classes)
-        y = torch.transpose(y, 1, last_dim - 1).reshape(-1, num_classes)
-        correct_exact = torch.all(y == y_pred.type_as(y), dim=-1)  # Sample-wise
-        correct_elementwise = torch.sum(y == y_pred.type_as(y), dim=0)
-
-        if self._num_correct is not None:
-            self._num_correct = torch.add(self._num_correct,
-                                                    correct_elementwise)
-        else:
-            self._num_correct = correct_elementwise
-        self._num_examples += correct_exact.shape[0]
-
-    def compute(self):
-        if self._num_examples == 0:
-            raise NotComputableError('Accuracy must have at least one example before it can be computed.')
-        return self._num_correct.type(torch.float) / self._num_examples
 
 @register_task("followups_multilabel", rel_path="followups_classification")
 class FollowupsMultilabelTask(SingleClassificationTask):
@@ -1276,7 +1240,8 @@ class FollowupsMultilabelTask(SingleClassificationTask):
         )
 
     def get_metrics(self, reset=False):
-        return {"MacroF1": self.scorer1.get_metric(reset=reset)}
+        return {"f1": self.scorer1.get_metric(reset=reset)}
+
     def get_all_labels(self):
         non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
         return non_trivial_labels
@@ -1352,6 +1317,8 @@ class FollowupsClassificationTask(SingleClassificationTask):
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
+        self.scorer1 = CategoricalAccuracy()
+        self.val_metric = "%s_accuracy" % self.name
         self.split = split
 
     def get_all_labels(self):
