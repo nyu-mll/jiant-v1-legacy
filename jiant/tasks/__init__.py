@@ -1,9 +1,6 @@
 # Import task definitions to register their tasks.
-<<<<<<< HEAD
-from jiant.tasks import edge_probing, lm, nli_probing, qa, seq2seq, tasks
-=======
+
 from jiant.tasks import edge_probing, lm, nli_probing, qa, seq2seq, tasks, senteval_probing
->>>>>>> master
 
 # REGISTRY needs to be available to modules within this package,
 # but we also import it here to make it available at the package level.

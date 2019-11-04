@@ -8,10 +8,8 @@ from typing import Any, Dict, Iterable, List, Sequence, Type
 import numpy as np
 import pandas as pd
 import torch
-<<<<<<< HEAD
 import pickle
-=======
->>>>>>> master
+
 
 
 # Fields for instance processing
@@ -23,25 +21,17 @@ from allennlp.data.fields import (
     MultiLabelField,
     SpanField,
     TextField,
-<<<<<<< HEAD
     SequenceLabelField
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure, SpanBasedF1Measure
-=======
-)
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure
->>>>>>> master
 from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation
 from jiant.allennlp_mods.numeric_field import NumericField
-<<<<<<< HEAD
 from jiant.utils import utils, i2b2_utils
-=======
-from jiant.utils import utils
->>>>>>> master
 from jiant.utils.data_loaders import (
     get_tag_list,
     load_diagnostic_tsv,
@@ -53,14 +43,10 @@ from jiant.utils.data_loaders import (
 from jiant.utils.tokenizers import get_tokenizer
 from jiant.tasks.registry import register_task  # global task registry
 from jiant.metrics.winogender_metrics import GenderParity
-<<<<<<< HEAD
 from jiant.metrics.IgniteF1 import IgniteMacroF1
 # from jiant.metrics.icd_prediction_evaluation import macro_accuracy
 
 from ignite.metrics import Precision, Recall
-=======
->>>>>>> master
-
 """Define the tasks and code for loading their data.
 
 - As much as possible, following the existing task hierarchy structure.
@@ -101,13 +87,9 @@ def process_single_pair_task_split(
     model_preprocessing_interface,
     is_pair=True,
     classification=True,
-<<<<<<< HEAD
-    is_symmetrical_pair=False,
-=======
     label_namespace="labels",
     is_symmetrical_pair=False,
     skip_indexing=True,
->>>>>>> master
 ):
     """
     Convert a dataset of sentences into padded sequences of indices. Shared
@@ -151,16 +133,10 @@ def process_single_pair_task_split(
                 )
                 d["sent2_str"] = MetadataField(" ".join(input2))
         if classification:
-<<<<<<< HEAD
             d["labels"] =  MultiLabelField(
                 labels.split(","), label_namespace="tags",  num_labels=12963
             )
 
-=======
-            d["labels"] = LabelField(
-                labels, label_namespace=label_namespace, skip_indexing=skip_indexing
-            )
->>>>>>> master
         else:
             d["labels"] = NumericField(labels)
 
@@ -173,19 +149,10 @@ def process_single_pair_task_split(
         split[1] = itertools.repeat(None)
     if len(split) < 4:  # counting iterator for idx
         assert len(split) == 3
-        split.append(itertools.count())
-<<<<<<< HEAD
-        #import pdb; pdb.set_trace()
+        split.append(itertools.count())        #import pdb; pdb.set_trace()
     # Map over columns: input1, (input2), labels, idx
     instances = map(_make_instance, *split)
-#     import pdb; pdb.set_trace()
-=======
-
-    # Map over columns: input1, (input2), labels, idx
-    instances = map(_make_instance, *split)
->>>>>>> master
     return instances  # lazy iterator
-
 
 def create_subset_scorers(count, scorer_type, **args_to_scorer):
     """
@@ -368,7 +335,6 @@ class SingleClassificationTask(ClassificationTask):
             split, indexers, model_preprocessing_interface, is_pair=False
         )
 
-<<<<<<< HEAD
 @register_task("icd_prediction_full", rel_path="mimic/")
 class MIMICICDPredictionFullTask(SingleClassificationTask):
     def __init__(self, path, max_seq_len, name, **kw):  
@@ -513,8 +479,6 @@ class MIMICICDPredictionTask(SingleClassificationTask):
         # hey_train, and now we're here. 
         self.labels = list(set(hey_train)) + list(set(hey_val)) + list(set(hey_test))
         log.info("\t Done with MIMIC")
-=======
->>>>>>> master
 
 class PairClassificationTask(ClassificationTask):
     """ Generic sentence pair classification """
@@ -636,10 +600,7 @@ class SSTTask(SingleClassificationTask):
     """ Task class for Stanford Sentiment Treebank.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
+
         super(SSTTask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -739,10 +700,6 @@ class CoLANPITask(SingleClassificationTask):
        Note: Used for an NYU seminar, data not yet public"""
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
         super(CoLANPITask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -803,10 +760,7 @@ class CoLATask(SingleClassificationTask):
     """Class for Warstdadt acceptability task"""
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
+
         super(CoLATask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -963,11 +917,7 @@ class CoLAAnalysisTask(SingleClassificationTask):
             d["sent1_str"] = MetadataField(" ".join(input1))
             d["labels"] = LabelField(labels, label_namespace="labels", skip_indexing=True)
             d["tagmask"] = MultiLabelField(
-<<<<<<< HEAD
-                tagids, label_namespace="tags", skip_indexing=True, num_labels=len(907)
-=======
                 tagids, label_namespace="tags", skip_indexing=True, num_labels=len(self.tag_list)
->>>>>>> master
             )
             return Instance(d)
 
@@ -1164,10 +1114,6 @@ class STSBTask(PairRegressionTask):
     """ Task class for Sentence Textual Similarity Benchmark.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
         super(STSBTask, self).__init__(name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -1927,10 +1873,6 @@ class RTETask(PairClassificationTask):
     """ Task class for Recognizing Textual Entailment 1, 2, 3, 5 """
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
         super().__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -2448,7 +2390,6 @@ class TaggingTask(Task):
         return self.all_labels
 
 
-<<<<<<< HEAD
 @register_task("i2b2-2010-concepts", rel_path="n2c2_2010")
 class i2b22010ConceptsTask(TaggingTask):
     def __init__(self, path, max_seq_len, name="i2b2-2010-concepts", **kw):
@@ -2544,8 +2485,7 @@ class i2b22010ConceptsTask(TaggingTask):
 
 
 
-=======
->>>>>>> master
+
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
     """ CCG supertagging as a task.
@@ -2556,17 +2496,11 @@ class CCGTaggingTask(TaggingTask):
         self.path = path
         super().__init__(name, 1363, **kw)
         self.INTRODUCED_TOKEN = "1363"
-<<<<<<< HEAD
-        self.bert_tokenization = self._tokenizer_name.startswith("bert-")
-        self.max_seq_len = max_seq_len
-        if self._tokenizer_name.startswith("bert-"):
-=======
         from jiant.pytorch_transformers_interface import input_module_uses_pytorch_transformers
 
         self.subword_tokenization = input_module_uses_pytorch_transformers(self._tokenizer_name)
         self.max_seq_len = max_seq_len
         if self.subword_tokenization:
->>>>>>> master
             # the +1 is for the tokenization added token
             self.num_tags = self.num_tags + 1
 
@@ -2578,15 +2512,10 @@ class CCGTaggingTask(TaggingTask):
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
-<<<<<<< HEAD
-        sent[0] = model_preprocessing_interface.apply_boundary_tokens(sent[0])
-        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
-=======
         inputs = [
             sentence_to_text_field(model_preprocessing_interface.boundary_token_fn(sent), indexers)
             for sent in split[0]
         ]
->>>>>>> master
         targs = [
             TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
             for sent in split[2]
@@ -2641,11 +2570,7 @@ class CCGTaggingTask(TaggingTask):
         # experiment
         # [BERT: Pretraining of Deep Bidirectional Transformers for Language Understanding]
         # (https://arxiv.org/abs/1810.04805)
-<<<<<<< HEAD
-        if self.bert_tokenization:
-=======
         if self.subword_tokenization:
->>>>>>> master
             import numpy.ma as ma
 
             masks = []
@@ -2777,11 +2702,8 @@ class SpanClassificationTask(Task):
     def make_instance(self, record, idx, indexers, model_preprocessing_interface) -> Type[Instance]:
         """Convert a single record to an AllenNLP Instance."""
         tokens = record["text"].split()
-<<<<<<< HEAD
-        tokens = model_preprocessing_interface.boundary_token_fn(tokens)
-=======
+
         tokens, offset = model_preprocessing_interface.boundary_token_fn(tokens, get_offset=True)
->>>>>>> master
         text_field = sentence_to_text_field(tokens, indexers)
 
         example = {}
@@ -2791,11 +2713,7 @@ class SpanClassificationTask(Task):
 
         for i in range(self.num_spans):
             example["span" + str(i + 1) + "s"] = ListField(
-<<<<<<< HEAD
-                [self._make_span_field(record["target"]["span" + str(i + 1)], text_field, 1)]
-=======
                 [self._make_span_field(record["target"]["span" + str(i + 1)], text_field, offset)]
->>>>>>> master
             )
         example["labels"] = LabelField(
             record["label"], label_namespace="labels", skip_indexing=True
@@ -2993,20 +2911,7 @@ class WiCTask(PairClassificationTask):
             d["sent1_str"] = MetadataField(" ".join(input1))
             d["sent2_str"] = MetadataField(" ".join(input2))
             if model_preprocessing_interface.model_flags["uses_pair_embedding"]:
-<<<<<<< HEAD
-                inp = model_preprocessing_interface.boundary_token_fn(input1, input2)
-                d["inputs"] = sentence_to_text_field(inp, indexers)
-                idxs2 = (idxs2[0] + len(input1), idxs2[1] + len(input1))
-            else:
-                d["input1"] = sentence_to_text_field(
-                    model_preprocessing_interface.boundary_token_fn(input1), indexers
-                )
-                d["input2"] = sentence_to_text_field(
-                    model_preprocessing_interface.boundary_token_fn(input2), indexers
-                )
-            d["idx1"] = ListField([NumericField(i) for i in range(idxs1[0], idxs1[1])])
-            d["idx2"] = ListField([NumericField(i) for i in range(idxs2[0], idxs2[1])])
-=======
+
                 inp, offset1, offset2 = model_preprocessing_interface.boundary_token_fn(
                     input1, input2, get_offset=True
                 )
@@ -3026,7 +2931,6 @@ class WiCTask(PairClassificationTask):
             d["idx2"] = ListField(
                 [NumericField(i) for i in range(idxs2[0] + offset2, idxs2[1] + offset2)]
             )
->>>>>>> master
             d["labels"] = LabelField(labels, label_namespace="labels", skip_indexing=True)
             d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
 
@@ -3051,8 +2955,6 @@ class MultipleChoiceTask(Task):
     pass
 
 
-<<<<<<< HEAD
-=======
 @register_task("SocialIQA", rel_path="SocialIQA/")
 class SocialIQATask(MultipleChoiceTask):
     """ Task class for SocialIQA.
@@ -3159,16 +3061,12 @@ class SpanPredictionTask(Task):
     n_classes = 2
 
 
->>>>>>> master
 @register_task("copa", rel_path="COPA/")
 class COPATask(MultipleChoiceTask):
     """ Task class for Choice of Plausible Alternatives Task.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
+
         super().__init__(name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -3228,11 +3126,7 @@ class COPATask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-<<<<<<< HEAD
-        """ Process split text into a list of AlleNNLP Instances. """
-=======
-        """ Process split text into a list of AllenNLP Instances. """
->>>>>>> master
+
 
         def _make_instance(context, choices, question, label, idx):
             d = {}
@@ -3318,11 +3212,6 @@ class SWAGTask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-<<<<<<< HEAD
-        """ Process split text into a list of AlleNNLP Instances. """
-=======
-        """ Process split text into a list of AllenNLP Instances. """
->>>>>>> master
 
         def _make_instance(question, choices, label, idx):
             d = {}
@@ -3355,8 +3244,7 @@ class SWAGTask(MultipleChoiceTask):
         return {"accuracy": acc}
 
 
-<<<<<<< HEAD
-=======
+
 @register_task("hellaswag", rel_path="HellaSwag/")
 class HellaSwagTask(MultipleChoiceTask):
     """ Task class for HellaSwag.  """
@@ -3446,7 +3334,6 @@ class HellaSwagTask(MultipleChoiceTask):
         return {"accuracy": acc}
 
 
->>>>>>> master
 @register_task("winograd-coreference", rel_path="WSC")
 class WinogradCoreferenceTask(SpanClassificationTask):
     def __init__(self, path, **kw):
@@ -3536,11 +3423,6 @@ class BooleanQuestionTask(PairClassificationTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-<<<<<<< HEAD
-        """ Process split text into a list of AlleNNLP Instances. """
-=======
-        """ Process split text into a list of AllenNLP Instances. """
->>>>>>> master
 
         def _make_instance(d, idx):
             new_d = {}
@@ -3584,8 +3466,7 @@ class BooleanQuestionTask(PairClassificationTask):
         for split in splits:
             st = self.get_split_text(split)
             self.example_counts[split] = len(st)
-<<<<<<< HEAD
-=======
+
 
 
 @register_task("anli", rel_path="aNLI")
@@ -3744,4 +3625,3 @@ class SciTailTask(PairClassificationTask):
             + self.val_data_text[1]
         )
         log.info("\tFinished loading SciTail")
->>>>>>> master
