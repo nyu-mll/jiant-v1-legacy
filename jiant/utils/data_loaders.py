@@ -147,7 +147,6 @@ def load_tsv(
         keep_default_na=False,
         encoding="utf-8",
     )
-
     if filter_idx and filter_value:
         rows = rows[rows[filter_idx] == filter_value]
     # Filter for sentence1s that are of length 0

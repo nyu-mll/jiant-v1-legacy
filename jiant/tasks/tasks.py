@@ -404,7 +404,17 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         hey_test = [x.split(",") for x in self.test_data_text[2]]
         hey_test = [x for y in hey_test for x in y]
         # hey_train, and now we're here. 
-        self.labels = list(set(hey_train)) + list(set(hey_val)) + list(set(hey_test))
+        self.labels_raw = list(hey_train) + list(hey_val) + list(hey_test)
+        self.labels = list(set(self.labels_raw))
+        weights = []
+        import collections
+        from collections import Counter
+        import pdb; pdb.set_trace()
+        cnt = Counter(self.labels_raw)
+        # oh right, so these ones are mnay of them. 
+        for label in self.labels:
+            weights.append(float(1)/float(cnt[label]))
+        self.class_weights = weights
         log.info("\t Done with MIMIC")
 
 @register_task("icd_prediction", rel_path="mimic/")
@@ -477,7 +487,16 @@ class MIMICICDPredictionTask(SingleClassificationTask):
         hey_test = [x.split(",") for x in self.test_data_text[2]]
         hey_test = [x for y in hey_test for x in y]
         # hey_train, and now we're here. 
-        self.labels = list(set(hey_train)) + list(set(hey_val)) + list(set(hey_test))
+        self.labels_raw = list(hey_train) + list(hey_val) + list(hey_test)
+        self.labels = list(set(labels_raw))
+        weights = []
+        import collections
+        from collections import Counter
+        import pdb; pdb.set_trace()
+        cnt = Counter(self.labels_raw)
+        for label in self.labels:
+            weights.append(float(1)/float(cnt[label]))
+        self.class_weights = weights
         log.info("\t Done with MIMIC")
 
 class PairClassificationTask(ClassificationTask):

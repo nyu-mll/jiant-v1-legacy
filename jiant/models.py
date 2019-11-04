@@ -910,7 +910,8 @@ class MultiTaskModel(nn.Module):
             else:
                 labels = batch["labels"].squeeze(-1)
             if "icd" in task.name:
-                out["loss"] = format_output(F.binary_cross_entropy(torch.sigmoid(logits), labels.float()), self._cuda_device)
+                class_weights = torch.Tensor(task.class_weights).repeat((len(logits), 1)).cuda()
+                out["loss"] = format_output(F.binary_cross_entropy(torch.sigmoid(logits), labels.float(), class_weights), self._cuda_device)
             else:
                 out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
             tagmask = batch.get("tagmask", None)
