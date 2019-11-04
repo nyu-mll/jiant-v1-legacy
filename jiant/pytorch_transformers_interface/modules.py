@@ -9,11 +9,7 @@ from allennlp.modules import scalar_mix
 
 import pytorch_transformers
 
-<<<<<<< HEAD
-from jiant.preprocess import parse_task_list_arg
-=======
 from jiant.utils.options import parse_task_list_arg
->>>>>>> master
 from jiant.utils import utils
 from jiant.pytorch_transformers_interface import input_module_tokenizer_name
 
@@ -27,7 +23,6 @@ class PytorchTransformersEmbedderModule(nn.Module):
 
     def __init__(self, args):
         super(PytorchTransformersEmbedderModule, self).__init__()
-<<<<<<< HEAD
         if args.input_module == "clinicalBERT":
              self.cache_dir = args.load_eval_checkpoint
         else:
@@ -36,14 +31,6 @@ class PytorchTransformersEmbedderModule(nn.Module):
               os.path.join(args.exp_dir, "pytorch_transformers_cache"),
               )
             utils.maybe_make_dir(self.cache_dir)
-=======
-
-        self.cache_dir = os.getenv(
-            "PYTORCH_PRETRAINED_BERT_CACHE",
-            os.path.join(args.exp_dir, "pytorch_transformers_cache"),
-        )
-        utils.maybe_make_dir(self.cache_dir)
->>>>>>> master
 
         self.output_mode = args.pytorch_transformers_output_mode
         self.input_module = args.input_module
@@ -103,19 +90,7 @@ class PytorchTransformersEmbedderModule(nn.Module):
     def correct_sent_indexing(self, sent):
         """ Correct id difference between pytorch_transformers and AllenNLP.
         The AllenNLP indexer adds'@@UNKNOWN@@' token as index 1, and '@@PADDING@@' as index 0
-<<<<<<< HEAD
-        
-        args:
-            sent: batch dictionary, in which 
-                sent[self.tokenizer_required]: <long> [batch_size, var_seq_len] input token IDs
-        
-=======
 
-        args:
-            sent: batch dictionary, in which
-                sent[self.tokenizer_required]: <long> [batch_size, var_seq_len] input token IDs
-
->>>>>>> master
         returns:
             ids: <long> [bath_size, var_seq_len] corrected token IDs
             input_mask: <long> [bath_size, var_seq_len] mask of input sequence
@@ -126,17 +101,6 @@ class PytorchTransformersEmbedderModule(nn.Module):
         ids = sent[self.tokenizer_required]
 
         input_mask = (ids != 0).long()
-<<<<<<< HEAD
-        ids[ids == 0] = self._pad_id + 2
-        # map AllenNLP @@PADDING@@ to _pad_id in specific pytorch_transformer
-        if self._unk_id is not None:
-            ids[ids == 1] = self._unk_id + 2
-            # map AllenNLP @@UNKNOWN@@ to _unk_id in specific pytorch_transformer
-        ids -= 2  # shift indexes to match pretrained token embedding indexes
-        assert (
-            ids >= 0
-        ).all(), "out-of-vocabulary token found in the input, but _unk_id of pytorch_transformers model is not specified"
-=======
         pad_mask = (ids == 0).long()
         # map AllenNLP @@PADDING@@ to _pad_id in specific pytorch_transformer
         unk_mask = (ids == 1).long()
@@ -150,16 +114,12 @@ class PytorchTransformersEmbedderModule(nn.Module):
             assert (
                 unk_mask == 0
             ).all(), "out-of-vocabulary token found in the input, but _unk_id of pytorch_transformers model is not specified"
->>>>>>> master
         if self.max_pos is not None:
             assert (
                 ids.size()[-1] <= self.max_pos
             ), "input length exceeds position embedding capacity, reduce max_seq_len"
 
-<<<<<<< HEAD
-=======
         sent[self.tokenizer_required] = ids
->>>>>>> master
         return ids, input_mask
 
     def prepare_output(self, lex_seq, hidden_states, input_mask):
@@ -228,20 +188,6 @@ class PytorchTransformersEmbedderModule(nn.Module):
         return seg_ids
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        """
-        A function that appliese the appropriate EOS/SOS/SEP/CLS tokens to token sequence or
-        token sequence pair for most tasks. 
-        This function should be implmented in subclasses.
-        
-        args:
-            s1: list[str], tokens from sentence 1
-            s2: list[str] (optional), tokens from sentence 2, used for pair embedding
-        
-        returns
-            s: list[str], token sequence with boundry tokens
-=======
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         """
         A function that appliese the appropriate EOS/SOS/SEP/CLS tokens to token sequence or
@@ -257,28 +203,16 @@ class PytorchTransformersEmbedderModule(nn.Module):
             s: list[str], token sequence with boundry tokens
             offset_s1 (optional): int, index offset of s1
             offset_s2 (optional): int, index offset of s2
->>>>>>> master
         """
         raise NotImplementedError
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_lm_boundary_tokens(s1):
-=======
+
     def apply_lm_boundary_tokens(s1, get_offset=False):
->>>>>>> master
         """
         A function that appliese the appropriate EOS/SOS/SEP/CLS tokens to a token sequence for
         language modeling tasks.
         This function should be implmented in subclasses.
-<<<<<<< HEAD
-        
-        args:
-            s1: list[str], tokens from sentence
-        
-        returns
-            s: list[str], token sequence with boundry tokens
-=======
 
         args:
             s1: list[str], tokens from sentence
@@ -287,24 +221,15 @@ class PytorchTransformersEmbedderModule(nn.Module):
         returns
             s: list[str], token sequence with boundry tokens
             offset_s1 (optional): int, index offset of s1
->>>>>>> master
         """
         raise NotImplementedError
 
     def forward(self, sent, task_name):
-<<<<<<< HEAD
-        """ Run pytorch_transformers model and return output representation 
-        This function should be implmented in subclasses.
-        
-        args:
-            sent: batch dictionary, in which 
-=======
         """ Run pytorch_transformers model and return output representation
         This function should be implmented in subclasses.
 
         args:
             sent: batch dictionary, in which
->>>>>>> master
                 sent[self.tokenizer_required]: <long> [batch_size, var_seq_len] input token IDs
             task_name: task_name string, this can used to implement different mixing scalars for
                 differnt tasks. See the TODO in parameter_setup for more details.
@@ -319,11 +244,7 @@ class PytorchTransformersEmbedderModule(nn.Module):
         weight to the input token embedding. In most cases, this module needs to work with
         output_mode as "top" or "none"
         This function should be implmented in subclasses.
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> master
         returns:
             lm_head: module [*, hidden_size] -> [*, vocab_size]
         """
@@ -336,7 +257,6 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
 
     def __init__(self, args):
         super(BertEmbedderModule, self).__init__(args)
-<<<<<<< HEAD
         input_module = "bert-base-cased" if args.input_module == "clinicalBERT" else args.input_module
         if args.input_module == "clinicalBERT":
             self.model = pytorch_transformers.BertModel.from_pretrained("/beegfs/yp913/jiant_cleanup/clinicalBERT", output_hidden_states=True)
@@ -362,26 +282,10 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
 #             self.tokenizer = pytorch_transformers.BertTokenizer.from_pretrained(
 #                 input_module, cache_dir=self.cache_dir, do_lower_case="uncased" in args.tokenizer
 #             )  # TODO: Speed things up slightly by reusing the previously-loaded tokenizer.
-=======
-
-        self.model = pytorch_transformers.BertModel.from_pretrained(
-            args.input_module, cache_dir=self.cache_dir, output_hidden_states=True
-        )
-        self.max_pos = self.model.config.max_position_embeddings
-
-        self.tokenizer = pytorch_transformers.BertTokenizer.from_pretrained(
-            args.input_module, cache_dir=self.cache_dir, do_lower_case="uncased" in args.tokenizer
-        )  # TODO: Speed things up slightly by reusing the previously-loaded tokenizer.
-        self._sep_id = self.tokenizer.convert_tokens_to_ids("[SEP]")
-        self._cls_id = self.tokenizer.convert_tokens_to_ids("[CLS]")
-        self._pad_id = self.tokenizer.convert_tokens_to_ids("[PAD]")
-        self._unk_id = self.tokenizer.convert_tokens_to_ids("[UNK]")
->>>>>>> master
 
         self.parameter_setup(args)
 
     @staticmethod
-<<<<<<< HEAD
     def apply_boundary_tokens(s1, s2=None):
         # BERT-style boundary token padding on string token sequences
         if s2:
@@ -397,22 +301,7 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
             ids -= 1 # beuase vocab sets @@PADDING@@ to index 0. 
         else:
             ids, input_mask = self.correct_sent_indexing(sent)
-=======
-    def apply_boundary_tokens(s1, s2=None, get_offset=False):
-        # BERT-style boundary token padding on string token sequences
-        if s2:
-            s = ["[CLS]"] + s1 + ["[SEP]"] + s2 + ["[SEP]"]
-            if get_offset:
-                return s, 1, len(s1) + 2
-        else:
-            s = ["[CLS]"] + s1 + ["[SEP]"]
-            if get_offset:
-                return s, 1
-        return s
 
-    def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
-        ids, input_mask = self.correct_sent_indexing(sent)
->>>>>>> master
         hidden_states, lex_seq = [], None
         if self.output_mode not in ["none", "top"]:
             lex_seq = self.model.embeddings.word_embeddings(ids)
@@ -420,17 +309,10 @@ class BertEmbedderModule(PytorchTransformersEmbedderModule):
         if self.output_mode != "only":
             token_types = self.get_seg_ids(ids, input_mask)
             _, output_pooled_vec, hidden_states = self.model(
-<<<<<<< HEAD
                 ids, token_type_ids=token_types, attention_mask=input_mask            )
         return self.prepare_output(lex_seq, hidden_states, input_mask)
 
 
-=======
-                ids, token_type_ids=token_types, attention_mask=input_mask
-            )
-        return self.prepare_output(lex_seq, hidden_states, input_mask)
-
->>>>>>> master
     def get_pretrained_lm_head(self):
         model_with_lm_head = pytorch_transformers.BertForMaskedLM.from_pretrained(
             self.input_module, cache_dir=self.cache_dir
@@ -463,14 +345,6 @@ class RobertaEmbedderModule(PytorchTransformersEmbedderModule):
         self.parameter_setup(args)
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        # RoBERTa-style boundary token padding on string token sequences
-        if s2:
-            return ["<s>"] + s1 + ["</s>", "</s>"] + s2 + ["</s>"]
-        else:
-            return ["<s>"] + s1 + ["</s>"]
-=======
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         # RoBERTa-style boundary token padding on string token sequences
         if s2:
@@ -482,7 +356,6 @@ class RobertaEmbedderModule(PytorchTransformersEmbedderModule):
             if get_offset:
                 return s, 1
         return s
->>>>>>> master
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
@@ -532,14 +405,7 @@ class XLNetEmbedderModule(PytorchTransformersEmbedderModule):
         self._SEG_ID_SEP = 3
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        # XLNet-style boundary token marking on string token sequences
-        if s2:
-            return s1 + ["<sep>"] + s2 + ["<sep>", "<cls>"]
-        else:
-            return s1 + ["<sep>", "<cls>"]
-=======
+
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         # XLNet-style boundary token marking on string token sequences
         if s2:
@@ -551,7 +417,6 @@ class XLNetEmbedderModule(PytorchTransformersEmbedderModule):
             if get_offset:
                 return s, 0
         return s
->>>>>>> master
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
@@ -599,19 +464,6 @@ class OpenAIGPTEmbedderModule(PytorchTransformersEmbedderModule):
         self.parameter_setup(args)
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        # OpenAI-GPT-style boundary token marking on string token sequences
-        if s2:
-            return ["<start>"] + s1 + ["<delim>"] + s2 + ["<extract>"]
-        else:
-            return ["<start>"] + s1 + ["<extract>"]
-
-    @staticmethod
-    def apply_lm_boundary_tokens(s1):
-        # OpenAI-GPT-style boundary token marking on string token sequences for LM tasks
-        return ["\n</w>"] + s1 + ["\n</w>"]
-=======
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         # OpenAI-GPT-style boundary token marking on string token sequences
         if s2:
@@ -631,7 +483,6 @@ class OpenAIGPTEmbedderModule(PytorchTransformersEmbedderModule):
         if get_offset:
             return s, 1
         return s
->>>>>>> master
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
@@ -675,19 +526,6 @@ class GPT2EmbedderModule(PytorchTransformersEmbedderModule):
         self.parameter_setup(args)
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        # GPT-2-style boundary token marking on string token sequences
-        if s2:
-            return ["<start>"] + s1 + ["<delim>"] + s2 + ["<extract>"]
-        else:
-            return ["<start>"] + s1 + ["<extract>"]
-
-    @staticmethod
-    def apply_lm_boundary_tokens(s1):
-        # GPT-2-style boundary token marking on string token sequences for LM tasks
-        return ["<|endoftext|>"] + s1 + ["<|endoftext|>"]
-=======
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         # GPT-2-style boundary token marking on string token sequences
         if s2:
@@ -707,7 +545,6 @@ class GPT2EmbedderModule(PytorchTransformersEmbedderModule):
         if get_offset:
             return s, 1
         return s
->>>>>>> master
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
@@ -751,19 +588,6 @@ class TransfoXLEmbedderModule(PytorchTransformersEmbedderModule):
         self.parameter_setup(args)
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        # TransformerXL-style boundary token marking on string token sequences
-        if s2:
-            return ["<start>"] + s1 + ["<delim>"] + s2 + ["<extract>"]
-        else:
-            return ["<start>"] + s1 + ["<extract>"]
-
-    @staticmethod
-    def apply_lm_boundary_tokens(s1):
-        # TransformerXL-style boundary token marking on string token sequences for LM tasks
-        return ["<\n>"] + s1 + ["<\n>"]
-=======
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         # TransformerXL-style boundary token marking on string token sequences
         if s2:
@@ -783,7 +607,6 @@ class TransfoXLEmbedderModule(PytorchTransformersEmbedderModule):
         if get_offset:
             return s, 1
         return s
->>>>>>> master
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)
@@ -832,14 +655,6 @@ class XLMEmbedderModule(PytorchTransformersEmbedderModule):
         self.parameter_setup(args)
 
     @staticmethod
-<<<<<<< HEAD
-    def apply_boundary_tokens(s1, s2=None):
-        # XLM-style boundary token marking on string token sequences
-        if s2:
-            return ["</s>"] + s1 + ["</s>"] + s2 + ["</s>"]
-        else:
-            return ["</s>"] + s1 + ["</s>"]
-=======
     def apply_boundary_tokens(s1, s2=None, get_offset=False):
         # XLM-style boundary token marking on string token sequences
         if s2:
@@ -851,7 +666,6 @@ class XLMEmbedderModule(PytorchTransformersEmbedderModule):
             if get_offset:
                 return s, 1, len(s1) + 1
         return s
->>>>>>> master
 
     def forward(self, sent: Dict[str, torch.LongTensor], task_name: str = "") -> torch.FloatTensor:
         ids, input_mask = self.correct_sent_indexing(sent)

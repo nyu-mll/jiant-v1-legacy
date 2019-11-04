@@ -4,20 +4,6 @@ import re
 import json
 import string
 import collections
-<<<<<<< HEAD
-from typing import Iterable, Sequence, Type
-
-import torch
-from allennlp.training.metrics import Average, F1Measure
-from allennlp.data.fields import LabelField, MetadataField
-from allennlp.data import Instance
-
-from jiant.utils.data_loaders import tokenize_and_truncate
-
-from jiant.tasks.tasks import Task
-from jiant.tasks.tasks import sentence_to_text_field
-from jiant.tasks.registry import register_task
-=======
 import gzip
 import random
 from typing import Iterable, Sequence, Type
@@ -36,7 +22,6 @@ from jiant.tasks.tasks import Task, SpanPredictionTask, MultipleChoiceTask
 from jiant.tasks.tasks import sentence_to_text_field
 from jiant.tasks.registry import register_task
 from ..utils.retokenize import get_aligner_fn
->>>>>>> master
 
 
 def normalize_answer(s):
@@ -96,10 +81,7 @@ class MultiRCTask(Task):
     See paper at https://cogcomp.org/multirc/ """
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
+
         super().__init__(name, **kw)
         self.scorer1 = F1Measure(positive_label=1)
         self.scorer2 = Average()  # to delete
@@ -266,10 +248,7 @@ class ReCoRDTask(Task):
     See paper at https://sheng-z.github.io/ReCoRD-explorer """
 
     def __init__(self, path, max_seq_len, name, **kw):
-<<<<<<< HEAD
-        """ """
-=======
->>>>>>> master
+
         super().__init__(name, **kw)
         self.val_metric = "%s_avg" % self.name
         self.val_metric_decreases = False
@@ -468,8 +447,7 @@ class ReCoRDTask(Task):
             self._score_tracker = collections.defaultdict(list)
 
         return {"f1": f1, "em": em, "avg": (f1 + em) / 2}
-<<<<<<< HEAD
-=======
+
 
 
 @register_task("qasrl", rel_path="QASRL/")
@@ -726,4 +704,3 @@ class CommonsenseQATask(MultipleChoiceTask):
         """Get metrics specific to the task"""
         acc = self.scorer1.get_metric(reset)
         return {"accuracy": acc}
->>>>>>> master

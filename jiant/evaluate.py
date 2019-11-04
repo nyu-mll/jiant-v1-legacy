@@ -9,7 +9,6 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 import pandas as pd
 import torch
-<<<<<<< HEAD
 from allennlp.data.iterators import BasicIterator
 from allennlp.nn.util import move_to_device
 from jiant import tasks as tasks_module

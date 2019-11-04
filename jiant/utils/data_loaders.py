@@ -93,10 +93,7 @@ def load_tsv(
     filter_value=None,
     tag_vocab=None,
     tag2idx_dict=None,
-<<<<<<< HEAD
     header=None,
-=======
->>>>>>> master
 ):
     """
     Load a tsv.
@@ -144,20 +141,13 @@ def load_tsv(
         data_file,
         sep=delimiter,
         error_bad_lines=False,
-<<<<<<< HEAD
         header=header,
-=======
-        header=None,
->>>>>>> master
         skiprows=skip_rows,
         quoting=quote_level,
         keep_default_na=False,
         encoding="utf-8",
     )
-<<<<<<< HEAD
-=======
 
->>>>>>> master
     if filter_idx and filter_value:
         rows = rows[rows[filter_idx] == filter_value]
     # Filter for sentence1s that are of length 0
@@ -200,10 +190,6 @@ def load_tsv(
             for coarse_tag, idx in tag2idx_dict.items()
         ]
         tagids = [[tid for column in tid_temp for tid in column[idx]] for idx in range(len(rows))]
-<<<<<<< HEAD
-    import pdb; pdb.set_trace()
-=======
->>>>>>> master
     if return_indices:
         idxs = rows.index.tolist()
         # Get indices of the remaining rows after filtering
@@ -317,9 +303,6 @@ def get_tag_list(tag_vocab):
 def tokenize_and_truncate(tokenizer_name, sent, max_seq_len):
     """Truncate and tokenize a sentence or paragraph."""
     max_seq_len -= 2  # For boundary tokens.
-<<<<<<< HEAD
-    return sent
-=======
     tokenizer = get_tokenizer(tokenizer_name)
 
     if isinstance(sent, str):
@@ -327,4 +310,3 @@ def tokenize_and_truncate(tokenizer_name, sent, max_seq_len):
     elif isinstance(sent, list):
         assert isinstance(sent[0], str), "Invalid sentence found!"
         return sent[:max_seq_len]
->>>>>>> master

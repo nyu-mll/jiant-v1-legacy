@@ -234,8 +234,7 @@ class PairClassifier(nn.Module):
         pair_emb = torch.cat([emb1, emb2, torch.abs(emb1 - emb2), emb1 * emb2], 1)
         logits = self.classifier(pair_emb)
         return logits
-<<<<<<< HEAD
-=======
+
 
 
 class TokenProjectionEncoder(nn.Module):
@@ -261,4 +260,3 @@ class TokenMultiProjectionEncoder(nn.Module):
 
     def forward(self, sequence, mask):
         return {name: projection(sequence, mask) for name, projection in self.projections.items()}
->>>>>>> master
