@@ -162,6 +162,7 @@ def _index_split(task, split, indexers, vocab, record_file, model_preprocessing_
             yield elem
 
     instance_iter = _counter_iter(instance_iter)
+
     # Actually call generators and stream to disk.
     serialize.write_records(_indexed_instance_generator(instance_iter, vocab), record_file)
     log.info("%s: Saved %d instances to %s", log_prefix, _instance_counter, record_file)
@@ -247,6 +248,7 @@ def _build_vocab(args, tasks, tokenizer, vocab_path: str,):
     if input_module_uses_pytorch_transformers(args.input_module):
         # Add pre-computed vocabulary of corresponding tokenizer for pytorch_transformers models.
         add_pytorch_transformers_vocab(vocab, args.tokenizer)
+
     vocab.save_to_files(vocab_path)
     log.info("\tSaved vocab to %s", vocab_path)
     #  del word2freq, char2freq, target2freq
@@ -281,6 +283,7 @@ def build_indexers(args):
         indexers[tokenizer_name] = SingleIdTokenIndexer(tokenizer_name)
     return indexers
 
+
 def build_tasks(args):
     """Main logic for preparing tasks, doing so by
     1) creating / loading the tasks
@@ -301,6 +304,7 @@ def build_tasks(args):
     assert len(set(tokenizer_names.values())) == 1, (
         f"Error: mixing tasks with different tokenizers!" " Tokenizations: {tokenizer_names:s}"
     )
+
     # 2) build / load vocab and indexers
     indexers = build_indexers(args)
 
@@ -425,7 +429,7 @@ def _get_task(name, args, data_path, scratch_path):
         )
         task.load_data()
         utils.maybe_make_dir(os.path.dirname(pkl_path))
-        sys.setrecursionlimit(10000)
+
         pkl.dump(task, open(pkl_path, "wb"))
 
     return task
@@ -514,6 +518,7 @@ def get_words(tasks):
     return word2freq, char2freq
 
 
+
 def get_vocab(word2freq, char2freq, max_v_sizes, tokenizer):
     """Build vocabulary by selecting the most frequent tokens"""
     vocab = Vocabulary(counter=None, max_vocab_size=max_v_sizes, pretrained_files="/beegfs/yp913/jiant_cleanup/cilnicalBERT/vocab.txt")
@@ -526,6 +531,7 @@ def get_vocab(word2freq, char2freq, max_v_sizes, tokenizer):
     words_by_freq.sort(key=lambda x: x[1], reverse=True)
     for word, _ in words_by_freq[: max_v_sizes["word"]]:
         vocab.add_token_to_namespace(special, "scispacy" if tokenizer == "scispacy" else "tokens")
+
     chars_by_freq = [(char, freq) for char, freq in char2freq.items()]
     chars_by_freq.sort(key=lambda x: x[1], reverse=True)
     for char, _ in chars_by_freq[: max_v_sizes["char"]]:
@@ -578,6 +584,7 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
     do_lower_case = "uncased" in tokenizer_name
     if tokenizer_name.startswith("sci"):
         tokenizer = SciSpacyTokenizer()
+
     if tokenizer_name.startswith("bert-"):
         tokenizer = BertTokenizer.from_pretrained(tokenizer_name, do_lower_case=do_lower_case)
     elif tokenizer_name.startswith("roberta-"):
@@ -603,6 +610,7 @@ def add_pytorch_transformers_vocab(vocab, tokenizer_name):
         )
     # TODO: this is another place can be simplified by "model-before-preprocess" reorganization
     # we can pass tokenizer created in model here, see issue <TBD>
+
     vocab_size = len(tokenizer)
     # do not use tokenizer.vocab_size, it does not include newly added token
     if tokenizer_name.startswith("roberta-"):

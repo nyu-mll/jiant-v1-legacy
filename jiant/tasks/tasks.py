@@ -8,7 +8,10 @@ from typing import Any, Dict, Iterable, List, Sequence, Type
 import numpy as np
 import pandas as pd
 import torch
+<<<<<<< HEAD
 import pickle
+=======
+>>>>>>> master
 
 
 # Fields for instance processing
@@ -20,15 +23,25 @@ from allennlp.data.fields import (
     MultiLabelField,
     SpanField,
     TextField,
+<<<<<<< HEAD
     SequenceLabelField
 )
 from allennlp.data.token_indexers import SingleIdTokenIndexer
 from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure, FBetaMeasure, SpanBasedF1Measure
+=======
+)
+from allennlp.data.token_indexers import SingleIdTokenIndexer
+from allennlp.training.metrics import Average, BooleanAccuracy, CategoricalAccuracy, F1Measure
+>>>>>>> master
 from sklearn.metrics import mean_squared_error
 
 from jiant.allennlp_mods.correlation import Correlation
 from jiant.allennlp_mods.numeric_field import NumericField
+<<<<<<< HEAD
 from jiant.utils import utils, i2b2_utils
+=======
+from jiant.utils import utils
+>>>>>>> master
 from jiant.utils.data_loaders import (
     get_tag_list,
     load_diagnostic_tsv,
@@ -40,10 +53,13 @@ from jiant.utils.data_loaders import (
 from jiant.utils.tokenizers import get_tokenizer
 from jiant.tasks.registry import register_task  # global task registry
 from jiant.metrics.winogender_metrics import GenderParity
+<<<<<<< HEAD
 from jiant.metrics.IgniteF1 import IgniteMacroF1
 # from jiant.metrics.icd_prediction_evaluation import macro_accuracy
 
 from ignite.metrics import Precision, Recall
+=======
+>>>>>>> master
 
 """Define the tasks and code for loading their data.
 
@@ -85,7 +101,13 @@ def process_single_pair_task_split(
     model_preprocessing_interface,
     is_pair=True,
     classification=True,
+<<<<<<< HEAD
     is_symmetrical_pair=False,
+=======
+    label_namespace="labels",
+    is_symmetrical_pair=False,
+    skip_indexing=True,
+>>>>>>> master
 ):
     """
     Convert a dataset of sentences into padded sequences of indices. Shared
@@ -129,10 +151,16 @@ def process_single_pair_task_split(
                 )
                 d["sent2_str"] = MetadataField(" ".join(input2))
         if classification:
+<<<<<<< HEAD
             d["labels"] =  MultiLabelField(
                 labels.split(","), label_namespace="tags",  num_labels=12963
             )
 
+=======
+            d["labels"] = LabelField(
+                labels, label_namespace=label_namespace, skip_indexing=skip_indexing
+            )
+>>>>>>> master
         else:
             d["labels"] = NumericField(labels)
 
@@ -146,10 +174,16 @@ def process_single_pair_task_split(
     if len(split) < 4:  # counting iterator for idx
         assert len(split) == 3
         split.append(itertools.count())
+<<<<<<< HEAD
         #import pdb; pdb.set_trace()
     # Map over columns: input1, (input2), labels, idx
     instances = map(_make_instance, *split)
 #     import pdb; pdb.set_trace()
+=======
+
+    # Map over columns: input1, (input2), labels, idx
+    instances = map(_make_instance, *split)
+>>>>>>> master
     return instances  # lazy iterator
 
 
@@ -334,6 +368,7 @@ class SingleClassificationTask(ClassificationTask):
             split, indexers, model_preprocessing_interface, is_pair=False
         )
 
+<<<<<<< HEAD
 @register_task("icd_prediction_full", rel_path="mimic/")
 class MIMICICDPredictionFullTask(SingleClassificationTask):
     def __init__(self, path, max_seq_len, name, **kw):  
@@ -478,6 +513,8 @@ class MIMICICDPredictionTask(SingleClassificationTask):
         # hey_train, and now we're here. 
         self.labels = list(set(hey_train)) + list(set(hey_val)) + list(set(hey_test))
         log.info("\t Done with MIMIC")
+=======
+>>>>>>> master
 
 class PairClassificationTask(ClassificationTask):
     """ Generic sentence pair classification """
@@ -599,7 +636,10 @@ class SSTTask(SingleClassificationTask):
     """ Task class for Stanford Sentiment Treebank.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super(SSTTask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -699,7 +739,10 @@ class CoLANPITask(SingleClassificationTask):
        Note: Used for an NYU seminar, data not yet public"""
 
     def __init__(self, path, max_seq_len, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super(CoLANPITask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -760,7 +803,10 @@ class CoLATask(SingleClassificationTask):
     """Class for Warstdadt acceptability task"""
 
     def __init__(self, path, max_seq_len, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super(CoLATask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -917,7 +963,11 @@ class CoLAAnalysisTask(SingleClassificationTask):
             d["sent1_str"] = MetadataField(" ".join(input1))
             d["labels"] = LabelField(labels, label_namespace="labels", skip_indexing=True)
             d["tagmask"] = MultiLabelField(
+<<<<<<< HEAD
                 tagids, label_namespace="tags", skip_indexing=True, num_labels=len(907)
+=======
+                tagids, label_namespace="tags", skip_indexing=True, num_labels=len(self.tag_list)
+>>>>>>> master
             )
             return Instance(d)
 
@@ -1114,7 +1164,10 @@ class STSBTask(PairRegressionTask):
     """ Task class for Sentence Textual Similarity Benchmark.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super(STSBTask, self).__init__(name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -1874,7 +1927,10 @@ class RTETask(PairClassificationTask):
     """ Task class for Recognizing Textual Entailment 1, 2, 3, 5 """
 
     def __init__(self, path, max_seq_len, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super().__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -2392,6 +2448,7 @@ class TaggingTask(Task):
         return self.all_labels
 
 
+<<<<<<< HEAD
 @register_task("i2b2-2010-concepts", rel_path="n2c2_2010")
 class i2b22010ConceptsTask(TaggingTask):
     def __init__(self, path, max_seq_len, name="i2b2-2010-concepts", **kw):
@@ -2487,6 +2544,8 @@ class i2b22010ConceptsTask(TaggingTask):
 
 
 
+=======
+>>>>>>> master
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
     """ CCG supertagging as a task.
@@ -2497,9 +2556,17 @@ class CCGTaggingTask(TaggingTask):
         self.path = path
         super().__init__(name, 1363, **kw)
         self.INTRODUCED_TOKEN = "1363"
+<<<<<<< HEAD
         self.bert_tokenization = self._tokenizer_name.startswith("bert-")
         self.max_seq_len = max_seq_len
         if self._tokenizer_name.startswith("bert-"):
+=======
+        from jiant.pytorch_transformers_interface import input_module_uses_pytorch_transformers
+
+        self.subword_tokenization = input_module_uses_pytorch_transformers(self._tokenizer_name)
+        self.max_seq_len = max_seq_len
+        if self.subword_tokenization:
+>>>>>>> master
             # the +1 is for the tokenization added token
             self.num_tags = self.num_tags + 1
 
@@ -2511,8 +2578,15 @@ class CCGTaggingTask(TaggingTask):
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
         """ Process a tagging task """
+<<<<<<< HEAD
         sent[0] = model_preprocessing_interface.apply_boundary_tokens(sent[0])
         inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
+=======
+        inputs = [
+            sentence_to_text_field(model_preprocessing_interface.boundary_token_fn(sent), indexers)
+            for sent in split[0]
+        ]
+>>>>>>> master
         targs = [
             TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
             for sent in split[2]
@@ -2567,7 +2641,11 @@ class CCGTaggingTask(TaggingTask):
         # experiment
         # [BERT: Pretraining of Deep Bidirectional Transformers for Language Understanding]
         # (https://arxiv.org/abs/1810.04805)
+<<<<<<< HEAD
         if self.bert_tokenization:
+=======
+        if self.subword_tokenization:
+>>>>>>> master
             import numpy.ma as ma
 
             masks = []
@@ -2699,7 +2777,11 @@ class SpanClassificationTask(Task):
     def make_instance(self, record, idx, indexers, model_preprocessing_interface) -> Type[Instance]:
         """Convert a single record to an AllenNLP Instance."""
         tokens = record["text"].split()
+<<<<<<< HEAD
         tokens = model_preprocessing_interface.boundary_token_fn(tokens)
+=======
+        tokens, offset = model_preprocessing_interface.boundary_token_fn(tokens, get_offset=True)
+>>>>>>> master
         text_field = sentence_to_text_field(tokens, indexers)
 
         example = {}
@@ -2709,7 +2791,11 @@ class SpanClassificationTask(Task):
 
         for i in range(self.num_spans):
             example["span" + str(i + 1) + "s"] = ListField(
+<<<<<<< HEAD
                 [self._make_span_field(record["target"]["span" + str(i + 1)], text_field, 1)]
+=======
+                [self._make_span_field(record["target"]["span" + str(i + 1)], text_field, offset)]
+>>>>>>> master
             )
         example["labels"] = LabelField(
             record["label"], label_namespace="labels", skip_indexing=True
@@ -2907,6 +2993,7 @@ class WiCTask(PairClassificationTask):
             d["sent1_str"] = MetadataField(" ".join(input1))
             d["sent2_str"] = MetadataField(" ".join(input2))
             if model_preprocessing_interface.model_flags["uses_pair_embedding"]:
+<<<<<<< HEAD
                 inp = model_preprocessing_interface.boundary_token_fn(input1, input2)
                 d["inputs"] = sentence_to_text_field(inp, indexers)
                 idxs2 = (idxs2[0] + len(input1), idxs2[1] + len(input1))
@@ -2919,6 +3006,27 @@ class WiCTask(PairClassificationTask):
                 )
             d["idx1"] = ListField([NumericField(i) for i in range(idxs1[0], idxs1[1])])
             d["idx2"] = ListField([NumericField(i) for i in range(idxs2[0], idxs2[1])])
+=======
+                inp, offset1, offset2 = model_preprocessing_interface.boundary_token_fn(
+                    input1, input2, get_offset=True
+                )
+                d["inputs"] = sentence_to_text_field(inp, indexers)
+            else:
+                inp1, offset1 = model_preprocessing_interface.boundary_token_fn(
+                    input1, get_offset=True
+                )
+                inp2, offset2 = model_preprocessing_interface.boundary_token_fn(
+                    input2, get_offset=True
+                )
+                d["input1"] = sentence_to_text_field(inp1, indexers)
+                d["input2"] = sentence_to_text_field(inp2, indexers)
+            d["idx1"] = ListField(
+                [NumericField(i) for i in range(idxs1[0] + offset1, idxs1[1] + offset1)]
+            )
+            d["idx2"] = ListField(
+                [NumericField(i) for i in range(idxs2[0] + offset2, idxs2[1] + offset2)]
+            )
+>>>>>>> master
             d["labels"] = LabelField(labels, label_namespace="labels", skip_indexing=True)
             d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
 
@@ -2943,12 +3051,124 @@ class MultipleChoiceTask(Task):
     pass
 
 
+<<<<<<< HEAD
+=======
+@register_task("SocialIQA", rel_path="SocialIQA/")
+class SocialIQATask(MultipleChoiceTask):
+    """ Task class for SocialIQA.
+    Paper: https://homes.cs.washington.edu/~msap/pdfs/sap2019socialIQa.pdf
+    Website and data: https://maartensap.github.io/social-iqa/
+    """
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+        self.scorer1 = CategoricalAccuracy()
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_accuracy" % name
+        self.val_metric_decreases = False
+        self.n_choices = 3
+        self._label_namespace = self.name + "_tags"
+
+    def get_all_labels(self):
+        return ["A", "B", "C", "D"]
+
+    def load_data(self):
+        """ Process the dataset located at path.  """
+
+        def _load_split(data_file):
+            contexts, questions, choices, targs = [], [], [], []
+            data = [json.loads(l) for l in open(data_file, encoding="utf-8")]
+            for example in data:
+                context = example["context"]
+                choice1 = example["answerA"]
+                choice2 = example["answerB"]
+                choice3 = example["answerC"]
+                question = example["question"]
+                choice = [
+                    tokenize_and_truncate(self._tokenizer_name, choice, self.max_seq_len)
+                    for choice in [choice1, choice2, choice3]
+                ]
+                targ = example["correct"] if "correct" in example else 0
+                contexts.append(
+                    tokenize_and_truncate(self._tokenizer_name, context, self.max_seq_len)
+                )
+                choices.append(choice)
+                questions.append(
+                    tokenize_and_truncate(self._tokenizer_name, question, self.max_seq_len)
+                )
+                targs.append(targ)
+            return [contexts, choices, questions, targs]
+
+        self.train_data_text = _load_split(os.path.join(self.path, "socialIQa_v1.4_trn.jsonl"))
+        self.val_data_text = _load_split(os.path.join(self.path, "socialIQa_v1.4_dev.jsonl"))
+        self.test_data_text = _load_split(os.path.join(self.path, "socialIQa_v1.4_tst.jsonl"))
+        self.sentences = (
+            self.train_data_text[0]
+            + self.val_data_text[0]
+            + [choice for choices in self.train_data_text[1] for choice in choices]
+            + [choice for choices in self.val_data_text[1] for choice in choices]
+        )
+        log.info("\tFinished loading SocialIQA data.")
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+
+        def _make_instance(context, choices, question, label, idx):
+            d = {}
+            d["question_str"] = MetadataField(" ".join(context))
+            if not model_preprocessing_interface.model_flags["uses_pair_embedding"]:
+                d["question"] = sentence_to_text_field(
+                    model_preprocessing_interface.boundary_token_fn(context), indexers
+                )
+            for choice_idx, choice in enumerate(choices):
+                inp = (
+                    model_preprocessing_interface.boundary_token_fn(context, question + choice)
+                    if model_preprocessing_interface.model_flags["uses_pair_embedding"]
+                    else model_preprocessing_interface.boundary_token_fn(choice)
+                )
+                d["choice%d" % choice_idx] = sentence_to_text_field(inp, indexers)
+                d["choice%d_str" % choice_idx] = MetadataField(" ".join(choice))
+            d["label"] = LabelField(label, label_namespace=self._label_namespace)
+            d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
+            return Instance(d)
+
+        split = list(split)
+        if len(split) < 5:
+            split.append(itertools.count())
+        instances = map(_make_instance, *split)
+        return instances
+
+    def get_metrics(self, reset=False):
+        """Get metrics specific to the task"""
+        acc = self.scorer1.get_metric(reset)
+        return {"accuracy": acc}
+
+
+class SpanPredictionTask(Task):
+    """ Generic task class for predicting a span """
+
+    n_classes = 2
+
+
+>>>>>>> master
 @register_task("copa", rel_path="COPA/")
 class COPATask(MultipleChoiceTask):
     """ Task class for Choice of Plausible Alternatives Task.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super().__init__(name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -3008,7 +3228,11 @@ class COPATask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
+<<<<<<< HEAD
         """ Process split text into a list of AlleNNLP Instances. """
+=======
+        """ Process split text into a list of AllenNLP Instances. """
+>>>>>>> master
 
         def _make_instance(context, choices, question, label, idx):
             d = {}
@@ -3094,7 +3318,11 @@ class SWAGTask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
+<<<<<<< HEAD
         """ Process split text into a list of AlleNNLP Instances. """
+=======
+        """ Process split text into a list of AllenNLP Instances. """
+>>>>>>> master
 
         def _make_instance(question, choices, label, idx):
             d = {}
@@ -3127,6 +3355,98 @@ class SWAGTask(MultipleChoiceTask):
         return {"accuracy": acc}
 
 
+<<<<<<< HEAD
+=======
+@register_task("hellaswag", rel_path="HellaSwag/")
+class HellaSwagTask(MultipleChoiceTask):
+    """ Task class for HellaSwag.  """
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+        self.scorer1 = CategoricalAccuracy()
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_accuracy" % name
+        self.val_metric_decreases = False
+        self.n_choices = 4
+
+    def load_data(self):
+        """ Process the dataset located at path.  """
+
+        def _load_split(data_file):
+            questions, choicess, targs, idxs = [], [], [], []
+            data = [json.loads(l) for l in open(data_file, encoding="utf-8")]
+            for example in data:
+                sent1 = tokenize_and_truncate(
+                    self._tokenizer_name, example["ctx_a"], self.max_seq_len
+                )
+                questions.append(sent1)
+                sent2_prefix = example["ctx_b"]
+                choices = [
+                    tokenize_and_truncate(
+                        self._tokenizer_name, sent2_prefix + " " + ending, self.max_seq_len
+                    )
+                    for ending in example["endings"]
+                ]
+                choicess.append(choices)
+                targ = example["label"] if "label" in example else 0
+                idx = example["ind"]
+                targs.append(targ)
+                idxs.append(idx)
+            return [questions, choicess, targs, idxs]
+
+        self.train_data_text = _load_split(os.path.join(self.path, "hellaswag_train.jsonl"))
+        self.val_data_text = _load_split(os.path.join(self.path, "hellaswag_val.jsonl"))
+        self.test_data_text = _load_split(os.path.join(self.path, "hellaswag_test.jsonl"))
+        self.sentences = (
+            self.train_data_text[0]
+            + self.val_data_text[0]
+            + [choice for choices in self.train_data_text[1] for choice in choices]
+            + [choice for choices in self.val_data_text[1] for choice in choices]
+        )
+        log.info("\tFinished loading HellaSwag data.")
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+
+        def _make_instance(question, choices, label, idx):
+            d = {}
+            d["question_str"] = MetadataField(" ".join(question))
+            if not model_preprocessing_interface.model_flags["uses_pair_embedding"]:
+                d["question"] = sentence_to_text_field(
+                    model_preprocessing_interface.boundary_token_fn(question), indexers
+                )
+            for choice_idx, choice in enumerate(choices):
+                inp = (
+                    model_preprocessing_interface.boundary_token_fn(question, choice)
+                    if model_preprocessing_interface.model_flags["uses_pair_embedding"]
+                    else model_preprocessing_interface.boundary_token_fn(choice)
+                )
+                d["choice%d" % choice_idx] = sentence_to_text_field(inp, indexers)
+                d["choice%d_str" % choice_idx] = MetadataField(" ".join(choice))
+            d["label"] = LabelField(label, label_namespace="labels", skip_indexing=True)
+            d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
+            return Instance(d)
+
+        split = list(split)
+        instances = map(_make_instance, *split)
+        return instances
+
+    def get_metrics(self, reset=False):
+        """Get metrics specific to the task"""
+        acc = self.scorer1.get_metric(reset)
+        return {"accuracy": acc}
+
+
+>>>>>>> master
 @register_task("winograd-coreference", rel_path="WSC")
 class WinogradCoreferenceTask(SpanClassificationTask):
     def __init__(self, path, **kw):
@@ -3216,7 +3536,11 @@ class BooleanQuestionTask(PairClassificationTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
+<<<<<<< HEAD
         """ Process split text into a list of AlleNNLP Instances. """
+=======
+        """ Process split text into a list of AllenNLP Instances. """
+>>>>>>> master
 
         def _make_instance(d, idx):
             new_d = {}
@@ -3260,3 +3584,164 @@ class BooleanQuestionTask(PairClassificationTask):
         for split in splits:
             st = self.get_split_text(split)
             self.example_counts[split] = len(st)
+<<<<<<< HEAD
+=======
+
+
+@register_task("anli", rel_path="aNLI")
+class AlphaNLITask(MultipleChoiceTask):
+    """
+    Task class for Abductive Natural Language Inference.
+
+    Paper: https://arxiv.org/abs/1908.05739
+    Website: https://leaderboard.allenai.org/anli/submissions/get-started
+    """
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+        self.scorer1 = CategoricalAccuracy()
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_accuracy" % name
+        self.val_metric_decreases = False
+        self.n_choices = 2
+
+    def load_data(self):
+        """ Process the dataset located at path.  """
+
+        def _load_split(inputs_file, labels_file):
+            obs1, hyp1, hyp2, obs2 = [], [], [], []
+            with open(inputs_file, encoding="utf-8") as f:
+                for line in f:
+                    row = json.loads(line)
+                    obs1.append(
+                        tokenize_and_truncate(self._tokenizer_name, row["obs1"], self.max_seq_len)
+                    )
+                    hyp1.append(
+                        tokenize_and_truncate(self._tokenizer_name, row["hyp1"], self.max_seq_len)
+                    )
+                    hyp2.append(
+                        tokenize_and_truncate(self._tokenizer_name, row["hyp2"], self.max_seq_len)
+                    )
+                    obs2.append(
+                        tokenize_and_truncate(self._tokenizer_name, row["obs2"], self.max_seq_len)
+                    )
+            with open(labels_file) as f:
+                labels = [int(i) - 1 for i in f.read().split()]  # -1 to get {0, 1} labels
+            return [obs1, hyp1, hyp2, obs2, labels]
+
+        self.train_data_text = _load_split(
+            inputs_file=os.path.join(self.path, "train.jsonl"),
+            labels_file=os.path.join(self.path, "train-labels.lst"),
+        )
+        self.val_data_text = _load_split(
+            inputs_file=os.path.join(self.path, "dev.jsonl"),
+            labels_file=os.path.join(self.path, "dev-labels.lst"),
+        )
+
+        log.warning("aNLI has no public test set, so we reuse the dev set as a stand-in")
+        self.test_data_text = self.val_data_text
+        self.sentences = (
+            self.train_data_text[0]
+            + self.train_data_text[1]
+            + self.train_data_text[2]
+            + self.train_data_text[3]
+            + self.val_data_text[0]
+            + self.val_data_text[1]
+            + self.val_data_text[2]
+            + self.val_data_text[3]
+        )
+        log.info("\tFinished loading aNLI data.")
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+
+        def _make_instance(obs1, hyp1, hyp2, obs2, label, idx):
+            d = {}
+            if not model_preprocessing_interface.model_flags["uses_pair_embedding"]:
+                # We're combining obs1 and obs2 in a potentially suboptimal way here
+                d["question"] = sentence_to_text_field(
+                    model_preprocessing_interface.boundary_token_fn(obs1 + obs2), indexers
+                )
+                d["question_str"] = MetadataField(" ".join(obs1 + obs2))
+                for hyp_idx, hyp in enumerate([hyp1, hyp2]):
+                    d["choice%d" % hyp_idx] = sentence_to_text_field(
+                        model_preprocessing_interface.boundary_token_fn(hyp), indexers
+                    )
+                    d["choice%d_str" % hyp_idx] = MetadataField(" ".join(hyp))
+            else:
+                for hyp_idx, hyp in enumerate([hyp1, hyp2]):
+                    inp = (
+                        model_preprocessing_interface.boundary_token_fn(obs1 + hyp, obs2)
+                        if model_preprocessing_interface.model_flags["uses_pair_embedding"]
+                        else model_preprocessing_interface.boundary_token_fn(hyp)
+                    )
+                    d["choice%d" % hyp_idx] = sentence_to_text_field(inp, indexers)
+                    d["choice%d_str" % hyp_idx] = MetadataField(" ".join(inp))
+            d["label"] = LabelField(label, label_namespace="labels", skip_indexing=True)
+            d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
+            return Instance(d)
+
+        split = list(split)
+        if len(split) < 6:
+            split.append(itertools.count())
+        instances = map(_make_instance, *split)
+        return instances
+
+    def get_metrics(self, reset=False):
+        """Get metrics specific to the task"""
+        acc = self.scorer1.get_metric(reset)
+        return {"accuracy": acc}
+
+
+@register_task("scitail", rel_path="SciTailV1.1/tsv_format/")
+class SciTailTask(PairClassificationTask):
+    """ Task class for SciTail http://data.allenai.org/scitail/ """
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, n_classes=2, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def load_data(self):
+        """Process and load Scitail data"""
+        targ_map = {"neutral": 0, "entails": 1}
+        self.train_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "scitail_1.0_train.tsv"),
+            max_seq_len=self.max_seq_len,
+            label_fn=targ_map.__getitem__,
+        )
+        self.val_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "scitail_1.0_dev.tsv"),
+            max_seq_len=self.max_seq_len,
+            label_fn=targ_map.__getitem__,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "scitail_1.0_test.tsv"),
+            max_seq_len=self.max_seq_len,
+            label_fn=targ_map.__getitem__,
+            return_indices=True,
+        )
+        self.sentences = (
+            self.train_data_text[0]
+            + self.train_data_text[1]
+            + self.val_data_text[0]
+            + self.val_data_text[1]
+        )
+        log.info("\tFinished loading SciTail")
+>>>>>>> master

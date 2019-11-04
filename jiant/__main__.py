@@ -308,6 +308,7 @@ def get_best_checkpoint_path(args, phase, task_name=None):
 
 def evaluate_and_write(args, model, tasks, splits_to_write, cuda_device):
     """ Evaluate a model on dev and/or test, then write predictions """
+    val_results, val_preds = evaluate.evaluate(model, tasks, args.batch_size, cuda_device, "val")
     if "val" in splits_to_write:
         evaluate.write_preds(
             tasks, val_preds, args.run_dir, "val", strict_glue_format=args.write_strict_glue_format
@@ -490,7 +491,7 @@ def load_model_for_target_train_run(args, ckpt_path, model, strict, task, cuda_d
         )
         # Only train task-specific module
 
-        pred_module = get_model_attribute(model, "%s_mdl" % task.name, uses_cuda(cuda_devices))
+        pred_module = get_model_attribute(model, "%s_mdl" % task.name, cuda_devices)
         to_train = [(n, p) for n, p in pred_module.named_parameters() if p.requires_grad]
         to_train += elmo_scalars
     model = model.cuda() if uses_cuda(cuda_devices) else model
@@ -510,7 +511,7 @@ def get_num_vocab_text(texts, vocab_dict):
             else:
                 total_not += 1
         total_nums.append(float(total_in)/float(total_in + total_not))
-    return total_nums
+    return total_numsr
 
 def main(cl_arguments):
     """ Train a model for multitask-training."""
@@ -637,7 +638,7 @@ def main(cl_arguments):
         # Evaluate on target_tasks.
         for task in target_tasks:
             # Find the task-specific best checkpoint to evaluate on.
-            task_params = get_model_attribute(model, "_get_task_params", uses_cuda(cuda_device))
+            task_params = get_model_attribute(model, "_get_task_params", cuda_device)
             task_to_use = task_params(task.name).get("use_classifier", task.name)
             ckpt_path = get_best_checkpoint_path(args, "eval", task_to_use)
             assert ckpt_path is not None

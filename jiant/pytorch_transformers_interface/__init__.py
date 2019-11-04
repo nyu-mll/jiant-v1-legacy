@@ -26,7 +26,10 @@ def input_module_uses_pytorch_transformers(input_module):
         or input_module.startswith("openai-gpt")
         or input_module.startswith("transfo-xl-")
         or input_module.startswith("xlm-")
+<<<<<<< HEAD
         or input_module == "clinicalBERT"
+=======
+>>>>>>> master
     )
 
 
@@ -38,8 +41,11 @@ def input_module_tokenizer_name(input_module):
         "bert-large-uncased-whole-word-masking-finetuned-squad": "bert_uncased",
         "bert-base-cased": "bert_cased",
         "bert-large-cased": "bert_cased",
+<<<<<<< HEAD
         "clinicalBERT": "scispacy",
         "scispacy": "scispacy",
+=======
+>>>>>>> master
         "bert-large-cased-whole-word-masking": "bert_cased",
         "bert-large-cased-whole-word-masking-finetuned-squad": "bert_cased",
         "bert-base-cased-finetuned-mrpc": "bert_cased",

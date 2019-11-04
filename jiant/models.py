@@ -3,6 +3,7 @@ import copy
 import json
 import logging as log
 import os
+from typing import Dict, List
 
 import numpy as np
 import torch
@@ -29,6 +30,7 @@ from jiant.modules.simple_modules import (
     SingleClassifier,
     PairClassifier,
     NullPhraseLayer,
+    TokenMultiProjectionEncoder,
 )
 from jiant.modules.attn_pair_encoder import AttnPairEncoder
 from jiant.modules.sentence_encoder import SentenceEncoder
@@ -57,6 +59,7 @@ from jiant.tasks.tasks import (
     SequenceGenerationTask,
     SingleClassificationTask,
     SpanClassificationTask,
+    SpanPredictionTask,
     STSBTask,
     TaggingTask,
     WiCTask,
@@ -530,6 +533,11 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
     elif isinstance(task, (PairClassificationTask, PairRegressionTask, PairOrdinalRegressionTask)):
         module = build_pair_sentence_module(task, d_sent, model=model, params=task_params)
         setattr(model, "%s_mdl" % task.name, module)
+    elif isinstance(task, SpanPredictionTask):
+        module = TokenMultiProjectionEncoder(
+            projection_names=["span_start", "span_end"], d_inp=d_sent
+        )
+        setattr(model, "%s_mdl" % task.name, module)
     elif isinstance(task, LanguageModelingParsingTask):
         # The LM Parsing task does not support embeddings that use skip_embs.
         hid2voc = build_lm(task, d_sent, args)
@@ -661,6 +669,7 @@ def build_single_sentence_module(task, d_inp: int, project_before_pooling: bool,
     )
     d_out = params["d_proj"] if project_before_pooling else d_inp
     classifier = Classifier.from_params(d_out, 12963, params)
+
     module = SingleClassifier(pooler, classifier)
     return module
 
@@ -861,6 +870,9 @@ class MultiTaskModel(nn.Module):
             out = self._multiple_choice_reading_comprehension_forward(batch, task, predict)
         elif isinstance(task, SpanClassificationTask):
             out = self._span_forward(batch, task, predict)
+
+        elif isinstance(task, SpanPredictionTask):
+            out = self._span_prediction_forward(batch, task, predict)
         else:
             raise ValueError("Task-specific components not found!")
         return out
@@ -881,6 +893,7 @@ class MultiTaskModel(nn.Module):
     def _single_sentence_forward(self, batch, task, predict):
         out = {}
         batch["input1"]["roberta"] = batch["input1"]["roberta"].cuda()
+
         # embed the sentence
         word_embs_in_context, sent_mask = self.sent_encoder(batch["input1"], task)
         # pass to a task specific classifier
@@ -917,7 +930,6 @@ class MultiTaskModel(nn.Module):
                 binary_preds = logits.ge(0).long() 
 #                 binary_preds = binary_preds.view((binary_preds.shape[0] * binary_preds.shape[1]))
                 out["preds"] = binary_preds
-        #how to get the 
         return out
 
     def _nli_diagnostic_forward(self, batch, task, predict):
@@ -950,6 +962,46 @@ class MultiTaskModel(nn.Module):
             _, predicted = logits.max(dim=1)
             out["preds"] = predicted
 
+        return out
+
+
+    def _span_forward(self, batch, task, predict):
+        sent_embs, sent_mask = self.sent_encoder(batch["input1"], task)
+        module = getattr(self, "%s_mdl" % task.name)
+        out = module.forward(batch, sent_embs, sent_mask, task, predict)
+        return out
+
+    def _span_prediction_forward(self, batch, task, predict):
+        sent_embs, sent_mask = self.sent_encoder(batch["inputs"], task)
+        module = getattr(self, "%s_mdl" % task.name)
+        logits_dict = module.forward(sent_embs, sent_mask)
+        out = {"logits": logits_dict, "n_exs": get_batch_size(batch)}
+        if "span_start" in batch:
+            out["start_loss"] = F.cross_entropy(
+                input=logits_dict["span_start"], target=batch["span_start"].long().squeeze(dim=1)
+            )
+            out["end_loss"] = F.cross_entropy(
+                input=logits_dict["span_end"], target=batch["span_end"].long().squeeze(dim=1)
+            )
+            out["loss"] = (out["start_loss"] + out["end_loss"]) / 2
+            task.update_metrics(
+                logits=logits_dict,
+                labels={"span_start": batch["span_start"], "span_end": batch["span_end"]},
+            )
+
+        if predict:
+            span_start = torch.argmax(logits_dict["span_start"], dim=1)
+            span_end = torch.argmax(logits_dict["span_end"], dim=1)
+            out["preds"] = {
+                "span_start": span_start,
+                "span_end": span_end,
+                # raw_sentence/question is space-separated
+                # Adjust -1 for [CLS]/<SOS>
+                "span": [
+                    " ".join(raw_sentence.split()[span_start[i] - 1 : span_end[i]])
+                    for i, raw_sentence in enumerate(batch["raw_sentence"])
+                ],
+            }
         return out
 
     def _pair_sentence_forward(self, batch, task, predict):
@@ -1005,6 +1057,35 @@ class MultiTaskModel(nn.Module):
                 _, out["preds"] = logits.max(dim=1)
         return out
 
+
+    def _seq_gen_forward(self, batch, task, predict):
+        """ For sequence generation tasks """
+        out = {}
+        sent, sent_mask = self.sent_encoder(batch["inputs"], task)
+        out["n_exs"] = get_batch_size(batch, self._cuda_device)
+
+        decoder = getattr(self, "%s_decoder" % task.name)
+        out.update(decoder.forward(sent, sent_mask, batch["targs"], generate=predict))
+        # Loss is not computed during generation.
+        if "loss" in out:
+            task.scorer1(out["loss"].item())
+
+        if "targs" in batch:
+            # logits: batch_size * seq_len * tgt_voc_size
+            target = batch["targs"]["words"][:, 1:].contiguous()
+            target_mask = out["target_mask"]
+
+            assert "predictions" in out
+
+            task.update_metrics(
+                logits=None,
+                labels=target,
+                tagmask=target_mask[:, 1:].contiguous(),
+                predictions=out["predictions"],
+            )
+
+        return out
+
     def _tagger_forward(self, batch: dict, task: TaggingTask, predict: bool) -> dict:
         """
         This function is for sequence tagging (one-to-one mapping between words and tags).
@@ -1029,11 +1110,10 @@ class MultiTaskModel(nn.Module):
             sent = sent[:, 1:-1, :]
             hid2tag = self._get_classifier(task)
             logits = hid2tag(sent)
-            import pdb; pdb.set_trace()
             logits = logits.view(b_size * seq_len, -1)
             out["logits"] = logits
-            import pdb; pdb.set_trace()
             targs = batch["targs"][:, :seq_len].contiguous().view(-1)
+
         if "mask" in batch:
             # Prevent backprop for tags generated for tokenization-introduced tokens
             # such as word boundaries
@@ -1126,8 +1206,41 @@ class MultiTaskModel(nn.Module):
                 logit = module(inp, inp_mask)
                 logits.append(logit)
         logits = torch.cat(logits, dim=1)
+        out["logits"] = logits
         out["n_exs"] = get_batch_size(batch, self._cuda_device, keyword="choice0")
+        if "label" in batch:
+            labels = batch["label"]
+            out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
+            task.update_metrics(logits, labels)
 
+        if predict:
+            out["preds"] = logits.argmax(dim=-1)
+        return out
+
+    def _lm_only_lr_forward(self, batch, task):
+        """Only left to right pass for LM model - non-bidirectional models.
+           Used for language modeling training only in one direction.
+        Args:
+            batch: indexed input data
+            task: (Task obejct)
+        return:
+            out: (dict)
+                - 'logits': output layer, dimension: [batchSize * timeSteps, outputDim]
+                    is output layer from forward layer
+                - 'loss': size average CE loss
+        """
+
+        out = {}
+        assert_for_log(
+            "targs" in batch and "words" in batch["targs"], "Batch missing target words!"
+        )
+        pad_idx = self.vocab.get_token_index(self.vocab._padding_token, "tokens")
+        b_size, seq_len = batch["targs"]["words"].size()
+        # pad_idx is the token used to pad till max_seq_len
+        n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
+        # No of examples: only left to right, every unit in the sequence length is
+        # a training example only once.
+        out["n_exs"] = format_output(b_size * seq_len - n_pad, self._cuda_device)
         sent, mask = self.sent_encoder(batch["input"], task)
         sent = sent.masked_fill(1 - mask.byte(), 0)
         hid2voc = getattr(self, "%s_hid2voc" % task.name)

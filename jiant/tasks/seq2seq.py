@@ -26,7 +26,10 @@ class Seq2SeqTask(SequenceGenerationTask):
     """Sequence-to-sequence Task"""
 
     def __init__(self, path, max_seq_len, max_targ_v_size, name, **kw):
+<<<<<<< HEAD
         """ """
+=======
+>>>>>>> master
         super().__init__(name, **kw)
         self.scorer2 = BooleanAccuracy()
         self.scorers.append(self.scorer2)

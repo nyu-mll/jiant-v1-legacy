@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 import pandas as pd
 import torch
+<<<<<<< HEAD
 from allennlp.data.iterators import BasicIterator
 from allennlp.nn.util import move_to_device
 from jiant import tasks as tasks_module
@@ -25,9 +26,26 @@ from jiant.tasks.tasks import (
 from jiant.tasks.lm import LanguageModelingTask
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask
 from jiant.tasks.edge_probing import EdgeProbingTask
+from jiant.tasks.qa import MultiRCTask, ReCoRDTask, QASRLTask
+from jiant.tasks.edge_probing import EdgeProbingTask
+from jiant.utils.utils import get_output_attribute
 
 
 LOG_INTERVAL = 30
+
+
+def _format_preds(preds):
+    if isinstance(preds, (list, torch.Tensor)):
+        preds = _coerce_list(preds)
+        assert isinstance(preds, list), "Convert predictions to list!"
+        cols = {"preds": preds}
+    elif isinstance(preds, dict):
+        cols = {}
+        for k, v in preds.items():
+            cols[f"preds_{k}"] = _coerce_list(v)
+    else:
+        raise TypeError(type(preds))
+    return cols
 
 
 def _coerce_list(preds) -> List:
@@ -47,7 +65,7 @@ def parse_write_preds_arg(write_preds_arg: str) -> List[str]:
 
 
 def evaluate(
-    model, tasks: Sequence[tasks_module.Task], batch_size: int, cuda_device: int, split="val"
+    model, tasks: Sequence[tasks_module.Task], batch_size: int, cuda_device, split="val"
 ) -> Tuple[Dict, pd.DataFrame]:
     """Evaluate on a dataset
     {par,qst,ans}_idx are used for MultiRC and other question answering dataset"""
@@ -75,6 +93,7 @@ def evaluate(
     all_preds = {}
     n_examples_overall = 0  # n examples over all tasks
     assert len(tasks) > 0, "Configured to evaluate, but specified no task to evaluate."
+
     for task in tasks:
         log.info("Evaluating on: %s, split: %s", task.name, split)
         last_log = time.time()
@@ -85,15 +104,14 @@ def evaluate(
         generator = iterator(dataset, num_epochs=1, shuffle=False)
         for batch_idx, batch in enumerate(generator):
             with torch.no_grad():
-                batch = move_to_device(batch, cuda_device)
+                if isinstance(cuda_device, int):
+                    batch = move_to_device(batch, cuda_device)
                 out = model.forward(task, batch, predict=True)
-            n_task_examples += out["n_exs"]
+            n_task_examples += get_output_attribute(out, "n_exs", cuda_device)
             # get predictions
             if "preds" not in out:
                 continue
-            preds = _coerce_list(out["preds"])
-            assert isinstance(preds, list), "Convert predictions to list!"
-            cols = {"preds": preds}
+            cols = _format_preds(out["preds"])
             if task.name in IDX_REQUIRED_TASK_NAMES:
                 assert "idx" in batch, f"'idx' field missing from batches " "for task {task.name}!"
             for field in FIELDS_TO_EXPORT:
@@ -145,7 +163,7 @@ def evaluate(
 
 
 def write_preds(
-    tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False, vocab=None
+    tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False
 ) -> None:
     for task in tasks:
         if task.name not in all_preds:
@@ -214,6 +232,8 @@ def write_preds(
             _write_concept_preds(
                 task, preds_df, pred_dir, split_name, strict_glue_format=False
                 )
+        elif isinstance(task, QASRLTask):
+            _write_simple_tsv_preds(task, preds_df, pred_dir, split_name)
         else:
             log.warning("Task '%s' not supported by write_preds().", task.name)
             continue
@@ -226,6 +246,7 @@ def write_preds(
 GLUE_NAME_MAP = {
     "cola": "CoLA",
     "diagnostic": "AX",
+    "glue-diagnostic": "AX",
     "mnli-mm": "MNLI-mm",
     "mnli-m": "MNLI-m",
     "mrpc": "MRPC",
@@ -257,6 +278,15 @@ def _get_pred_filename(task_name, pred_dir, split_name, strict_glue_format):
         file = GLUE_NAME_MAP[task_name] + ".tsv"
     elif strict_glue_format and task_name in SUPERGLUE_NAME_MAP:
         file = SUPERGLUE_NAME_MAP[task_name] + ".jsonl"
+        if split_name == "test":
+            file = "%s.tsv" % (GLUE_NAME_MAP[task_name])
+        else:
+            file = "%s_%s.tsv" % (GLUE_NAME_MAP[task_name], split_name)
+    elif strict_glue_format and task_name in SUPERGLUE_NAME_MAP:
+        if split_name == "test":
+            file = "%s.jsonl" % (SUPERGLUE_NAME_MAP[task_name])
+        else:
+            file = "%s_%s.jsonl" % (SUPERGLUE_NAME_MAP[task_name], split_name)
     else:
         file = "%s_%s.tsv" % (task_name, split_name)
     return os.path.join(pred_dir, file)
@@ -373,6 +403,7 @@ def _write_boolq_preds(
             else:
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
+
 
 def _write_lm_preds(
     task: str, 
@@ -509,6 +540,12 @@ def _write_rte_preds(
             else:
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
+
+
+
+def _write_simple_tsv_preds(task, preds_df: pd.DataFrame, pred_dir: str, split_name: str):
+    preds_file = _get_pred_filename(task.name, pred_dir, split_name, strict_glue_format=False)
+    preds_df.to_csv(preds_file, sep="\t")
 
 
 def _write_diagnostics_preds(
