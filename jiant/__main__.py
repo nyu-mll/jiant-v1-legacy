@@ -527,12 +527,6 @@ def main(cl_arguments):
     import pytorch_transformers
     tokenizer = pytorch_transformers.BertTokenizer.from_pretrained("/beegfs/yp913/jiant_cleanup/clinicalBERT/vocab.txt")
     vocab_size= len(tokenizer)
-    vocab_dict = tokenizer.convert_ids_to_tokens(range(vocab_size))
-    vocab_dict = {vocab_dict[i]: i for i in range(len(vocab_dict))}
-    train_vocab_arr = get_num_vocab_text(target_tasks[0].train_data_text[0], vocab_dict)
-    dev_vocab_arr = get_num_vocab_text(target_tasks[0].val_data_text[0], vocab_dict)
-    test_vocab_arr = get_num_vocab_text(target_tasks[0].test_data_text[0], vocab_dict)
-    import pdb; pdb.set_trace()
     cuda_device = parse_cuda_list_arg(args.cuda)
     tasks = sorted(set(pretrain_tasks + target_tasks), key=lambda x: x.name)
     log.info("\tFinished loading tasks in %.3fs", time.time() - start_time)
