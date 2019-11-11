@@ -892,7 +892,7 @@ class MultiTaskModel(nn.Module):
 
     def _single_sentence_forward(self, batch, task, predict):
         out = {}
-        batch["input1"]["roberta"] = batch["input1"]["roberta"].cuda()
+        batch["input1"]["roberta"] = batch["input1"]["roberta"]
 
         # embed the sentence
         word_embs_in_context, sent_mask = self.sent_encoder(batch["input1"], task)
@@ -911,7 +911,17 @@ class MultiTaskModel(nn.Module):
                 labels = batch["labels"].squeeze(-1)
             if "icd" in task.name:
                 class_weights = torch.Tensor(task.class_weights).repeat((len(logits), 1)).cuda()
-                out["loss"] = format_output(F.binary_cross_entropy(torch.sigmoid(logits), labels.float(), class_weights), self._cuda_device)
+                import collections
+                from collections import Counter
+                # oh right, so these ones are mnay of them. 
+                class_weights = []
+                for label in labels:
+                    c_w = []
+                    cnt = Counter(label.cpu().numpy())
+                    for lab in label.cpu().numpy():
+                        c_w.append(float(1)/float(cnt[lab]))
+                    class_weights.append(c_w)
+                out["loss"] = format_output(F.binary_cross_entropy(torch.sigmoid(logits), labels.float(), torch.Tensor(class_weights).cuda()), self._cuda_device)
             else:
                 out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
             tagmask = batch.get("tagmask", None)
