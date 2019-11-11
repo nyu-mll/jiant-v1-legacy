@@ -361,9 +361,11 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         """ Load data """
         self.train_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "icd_train.csv"),
+            os.path.join(self.path, "icd_train_sections.csv"),
+            filter_idx="section",
+            filter_value="brief summary of hospital course",
             max_seq_len=self.max_seq_len,
-            s1_idx='TEXT',
+            s1_idx="text",
             s2_idx=None,
             quote_level=1,
             delimiter=",",
@@ -374,9 +376,11 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         
         self.val_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "icd_val.csv"),
+                       os.path.join(self.path, "icd_val_sections.csv"),
+            filter_idx="section",
+            filter_value="brief summary of hospital course",
             max_seq_len=self.max_seq_len,
-            s1_idx='TEXT',
+            s1_idx='text',
             s2_idx=None,
             quote_level=1,
             delimiter=",",
@@ -386,9 +390,11 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         )
         self.test_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "icd_test.csv"),
+            os.path.join(self.path, "icd_test_sections.csv"),
+            filter_idx="section",
+            filter_value="brief summary of hospital course",
             max_seq_len=self.max_seq_len,
-            s1_idx='TEXT',
+            s1_idx='text',
             s2_idx=None,
             quote_level=1,
             delimiter=",",
@@ -410,7 +416,6 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         weights = []
         import collections
         from collections import Counter
-        import pdb; pdb.set_trace()
         cnt = Counter(self.labels_raw)
         # oh right, so these ones are mnay of them. 
         for label in self.labels:
