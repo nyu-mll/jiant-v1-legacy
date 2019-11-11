@@ -525,8 +525,8 @@ def main(cl_arguments):
     start_time = time.time()
     pretrain_tasks, target_tasks, vocab, word_embs = build_tasks(args)
     import pytorch_transformers
-    tokenizer = pytorch_transformers.BertTokenizer.from_pretrained("/beegfs/yp913/jiant_cleanup/clinicalBERT/vocab.txt")
-    vocab_size= len(tokenizer)
+    #tokenizer = pytorch_transformers.BertTokenizer.from_pretrained("/beegfs/yp913/jiant_cleanup/clinicalBERT/vocab.txt")
+    #vocab_size= len(tokenizer)
     cuda_device = parse_cuda_list_arg(args.cuda)
     tasks = sorted(set(pretrain_tasks + target_tasks), key=lambda x: x.name)
     log.info("\tFinished loading tasks in %.3fs", time.time() - start_time)

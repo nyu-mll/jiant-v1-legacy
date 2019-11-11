@@ -90,6 +90,7 @@ def process_single_pair_task_split(
     label_namespace="labels",
     is_symmetrical_pair=False,
     skip_indexing=True,
+    n_classes=2
 ):
     """
     Convert a dataset of sentences into padded sequences of indices. Shared
@@ -134,7 +135,7 @@ def process_single_pair_task_split(
                 d["sent2_str"] = MetadataField(" ".join(input2))
         if classification:
             d["labels"] =  MultiLabelField(
-                labels.split(","), label_namespace="tags",  num_labels=12963
+                labels.split(","), label_namespace="tags",  num_labels=n_classes
             )
 
         else:
@@ -338,7 +339,7 @@ class SingleClassificationTask(ClassificationTask):
 @register_task("icd_prediction_full", rel_path="mimic/")
 class MIMICICDPredictionFullTask(SingleClassificationTask):
     def __init__(self, path, max_seq_len, name, **kw):  
-        super(MIMICICDPredictionFullTask, self).__init__(name, n_classes=12963, **kw)
+        super(MIMICICDPredictionFullTask, self).__init__(name, n_classes=6919, **kw)
         self.path = path
         self.name = name
         self.max_seq_len = max_seq_len
@@ -360,7 +361,7 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         """ Load data """
         self.train_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "mimic_train.csv"),
+            os.path.join(self.path, "icd_train.csv"),
             max_seq_len=self.max_seq_len,
             s1_idx='TEXT',
             s2_idx=None,
@@ -373,7 +374,7 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         
         self.val_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "mimic_val.csv"),
+            os.path.join(self.path, "icd_val.csv"),
             max_seq_len=self.max_seq_len,
             s1_idx='TEXT',
             s2_idx=None,
@@ -385,7 +386,7 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         )
         self.test_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "mimic_test.csv"),
+            os.path.join(self.path, "icd_test.csv"),
             max_seq_len=self.max_seq_len,
             s1_idx='TEXT',
             s2_idx=None,
@@ -415,7 +416,15 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         for label in self.labels:
             weights.append(float(1)/float(cnt[label]))
         self.class_weights = weights
+        self.n_classes = len(weights)
         log.info("\t Done with MIMIC")
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+        return process_single_pair_task_split(
+            split, indexers, model_preprocessing_interface, is_pair=False, n_classes=self.n_classes
+        )
 
 @register_task("icd_prediction", rel_path="mimic/")
 class MIMICICDPredictionTask(SingleClassificationTask):

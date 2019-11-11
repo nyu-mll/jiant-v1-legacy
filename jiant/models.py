@@ -668,7 +668,7 @@ def build_single_sentence_module(task, d_inp: int, project_before_pooling: bool,
         pool_type=params["pool_type"],
     )
     d_out = params["d_proj"] if project_before_pooling else d_inp
-    classifier = Classifier.from_params(d_out, 12963, params)
+    classifier = Classifier.from_params(d_out,task.n_classes, params)
 
     module = SingleClassifier(pooler, classifier)
     return module
