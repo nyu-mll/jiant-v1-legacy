@@ -654,7 +654,6 @@ class SamplingMultiTaskTrainer:
                         self._model, "utilization", self._cuda_device
                     ).get_metric()
                     log.info("TRAINING BATCH UTILIZATION: %.3f", batch_util)
-
             # Validation
             if n_step % validation_interval == 0:
 
@@ -853,13 +852,12 @@ class SamplingMultiTaskTrainer:
         if self._val_data_limit >= 0:
             max_data_points = min(task.n_val_examples, self._val_data_limit)
         else:
-            max_data_points = task.n_val_examples
+            max_data_points = task.n_val_examples # check what tis is. 
         val_generator = BasicIterator(batch_size, instances_per_epoch=max_data_points)(
             task.val_data, num_epochs=1, shuffle=False
         )
         n_val_batches = math.ceil(max_data_points / batch_size)
         all_val_metrics["%s_loss" % task.name] = 0.0
-        import pdb; pdb.set_trace()
         for batch in val_generator:
             batch_num += 1
             with torch.no_grad():

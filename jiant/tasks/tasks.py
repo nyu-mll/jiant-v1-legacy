@@ -134,8 +134,12 @@ def process_single_pair_task_split(
                 )
                 d["sent2_str"] = MetadataField(" ".join(input2))
         if classification:
+            if not isinstance(labels, int):
+                labels = [int(x) for x in labels.split(",")]
+            else:
+                labels = [labels]
             d["labels"] =  MultiLabelField(
-                labels.split(","), label_namespace="tags",  num_labels=n_classes
+                labels, label_namespace="tags",  num_labels=n_classes, skip_indexing=True
             )
 
         else:
@@ -336,10 +340,10 @@ class SingleClassificationTask(ClassificationTask):
             split, indexers, model_preprocessing_interface, is_pair=False
         )
 
-@register_task("icd_prediction_full", rel_path="mimic/")
+@register_task("icd-prediction-full", rel_path="mimic/")
 class MIMICICDPredictionFullTask(SingleClassificationTask):
     def __init__(self, path, max_seq_len, name, **kw):  
-        super(MIMICICDPredictionFullTask, self).__init__(name, n_classes=6919, **kw)
+        super(MIMICICDPredictionFullTask, self).__init__(name, n_classes=10, **kw)
         self.path = path
         self.name = name
         self.max_seq_len = max_seq_len
@@ -361,68 +365,65 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
         """ Load data """
         self.train_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "icd_train_sections.csv"),
-            filter_idx="section",
-            filter_value="brief summary of hospital course",
+            os.path.join(self.path, "icd_train.csv"),
+            #filter_idx="section",
+            #filter_value="brief summary of hospital course",
             max_seq_len=self.max_seq_len,
-            s1_idx="text",
+            s1_idx="TEXT",
             s2_idx=None,
             quote_level=1,
             delimiter=",",
             header=0,
-            label_idx="ICD9_CODE",
+            label_idx="CCS",
             skip_rows=0,
         )
         
         self.val_data_text = load_tsv(
             self._tokenizer_name,
-                       os.path.join(self.path, "icd_val_sections.csv"),
-            filter_idx="section",
-            filter_value="brief summary of hospital course",
+            os.path.join(self.path, "ccs_val_10.csv"),
+            #filter_idx="section",
+            #filter_value="brief summary of hospital course",
             max_seq_len=self.max_seq_len,
-            s1_idx='text',
+            s1_idx="TEXT",
             s2_idx=None,
             quote_level=1,
             delimiter=",",
             header=0,
-            label_idx="ICD9_CODE",
+            label_idx="CCS",
             skip_rows=0,
         )
         self.test_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "icd_test_sections.csv"),
-            filter_idx="section",
-            filter_value="brief summary of hospital course",
+            os.path.join(self.path, "ccs_test_10.csv"),
+            #filter_idx="section",
+            #filter_value="brief summary of hospital course",
             max_seq_len=self.max_seq_len,
-            s1_idx='text',
+            s1_idx='TEXT',
             s2_idx=None,
             quote_level=1,
             delimiter=",",
             header=0,
-            label_idx="ICD9_CODE",
+            label_idx="CCS",
             skip_rows=0,
         )
         #import pdb; pdb.set_trace()
         self.sentences = self.train_data_text[0] + self.val_data_text[0]
-        hey_train = [x.split(",") for x in self.train_data_text[2]]
-        hey_train = [x for y in hey_train for x in y]
-        hey_val = [x.split(",") for x in self.val_data_text[2]]
-        hey_val = [x for y in hey_val for x in y]
-        hey_test = [x.split(",") for x in self.test_data_text[2]]
-        hey_test = [x for y in hey_test for x in y]
-        # hey_train, and now we're here. 
-        self.labels_raw = list(hey_train) + list(hey_val) + list(hey_test)
-        self.labels = list(set(self.labels_raw))
-        weights = []
-        import collections
-        from collections import Counter
-        cnt = Counter(self.labels_raw)
-        # oh right, so these ones are mnay of them. 
-        for label in self.labels:
-            weights.append(float(1)/float(cnt[label]))
-        self.class_weights = weights
-        self.n_classes = len(weights)
+        try:
+            hey_train = [x.split(",") for x in self.train_data_text[2]]
+            hey_train = [x for y in hey_train for x in y]
+            hey_val = [x.split(",") for x in self.val_data_text[2]]
+            hey_val = [x for y in hey_val for x in y]
+            hey_test = [x.split(",") for x in self.test_data_text[2]]
+            hey_test = [x for y in hey_test for x in y]
+            self.labels_raw = list(hey_train) + list(hey_val) + list(hey_test)
+            self.labels_length = len(list(set(self.labels_raw)))
+        except:
+            self.labels_length = 10
+        import pdb; pdb.set_trace()
+        self.labels = [str(x) for x in range(self.labels_length)]
+        self.n_classes = len(self.labels)
         log.info("\t Done with MIMIC")
+
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:

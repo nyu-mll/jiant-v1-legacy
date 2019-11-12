@@ -910,7 +910,7 @@ class MultiTaskModel(nn.Module):
             else:
                 labels = batch["labels"].squeeze(-1)
             if "icd" in task.name:
-                class_weights = torch.Tensor(task.class_weights).repeat((len(logits), 1)).cuda()
+                #class_weights = torch.Tensor(task.class_weights).repeat((len(logits), 1)).cuda()
                 import collections
                 from collections import Counter
                 # oh right, so these ones are mnay of them. 
