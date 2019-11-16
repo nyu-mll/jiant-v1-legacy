@@ -313,4 +313,4 @@ class IgniteMacroF1():
         if reset:
             self.precision.reset()
             self.recall.reset()
-        return f1
+        return f1, precision, recall
