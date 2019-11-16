@@ -435,7 +435,7 @@ class MIMICICDPredictionFullTask(SingleClassificationTask):
 @register_task("icd_prediction", rel_path="mimic/")
 class MIMICICDPredictionTask(SingleClassificationTask):
     def __init__(self, path, max_seq_len, name, **kw):  
-        super(MIMICICDPredictionTask, self).__init__(name, n_classes=283, **kw)
+        super(MIMICICDPredictionTask, self).__init__(name, n_classes=10, **kw)
         self.path = path
         self.name = name
         self.max_seq_len = max_seq_len
@@ -453,7 +453,8 @@ class MIMICICDPredictionTask(SingleClassificationTask):
     def get_all_labels(self):
         return self.labels
     def get_metrics(self, reset=False):
-        return {"MacroF1": self.scorer1.get_metric(reset=reset)}
+        f1, precision, recall = self.scorer1.get_metric(reset=reset)
+        return {"MacroF1": f1, "Precision": precision, "Recall": recall}
     def load_data(self):
         """ Load data """
         self.train_data_text = load_tsv(
