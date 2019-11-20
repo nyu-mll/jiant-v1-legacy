@@ -447,6 +447,56 @@ class RankingTask(Task):
 
     pass
 
+@register_task("followups_binary", rel_path="followups_detection_i2b2")
+class FollowupsTask(SingleCLassificationTask):
+    # followups_dataset_i2b2_binary
+    def __init__(self, path, max_seq_len, name, **kw):
+        """ """
+        super(SSTTask, self).__init__(name, n_classes=2, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+        self.scorer2 = F1Measure(1)
+        self.scorers = [self.scorer1, self.scorer2]
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+   def __init__(self, path, max_seq_len, name, **kw):
+        """ Load data """
+        self.train_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "i2b2_binary_train.csv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=0,
+            s2_idx=None,
+            label_idx=1,
+            sep=",",
+            skip_rows=1,
+        )
+        self.val_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "i2b2_binary_dev.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=0,
+            sep=",",
+            s2_idx=None,
+            label_idx=1,
+            skip_rows=1,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "i2b2_binary_test.tsv"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=1,
+            s2_idx=None,
+            sep=",",
+            has_labels=False,
+            return_indices=True,
+            skip_rows=1,
+        )
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+        log.info("\tFinished loading Followups Task data.")
+
 
 @register_task("sst", rel_path="SST-2/")
 class SSTTask(SingleClassificationTask):
@@ -2397,6 +2447,8 @@ class TaggingTask(Task):
     def get_all_labels(self) -> List[str]:
         return self.all_labels
 
+
+    
 @register_task("followups", rel_path="followups")
 class FollowupsTask(TaggingTask):
     def __init__(self, path, max_seq_len, name="followups", **kw):
