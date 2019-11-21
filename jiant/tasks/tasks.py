@@ -2229,7 +2229,7 @@ class TaggingTask(Task):
         self.val_metric_decreases = False
         self.all_labels = [str(i) for i in range(self.num_tags)]
         self._label_namespace = self.name + "_tags"
-        self.target_indexer = {"words": SingleIdTokenIndexer(namespace=self._label_namespace)}
+        self.target_indexer = {"ccg_tags": SingleIdTokenIndexer(namespace=self._label_namespace)}
 
         self.train_data_text = None
         self.val_data_text = None
@@ -2265,6 +2265,10 @@ class CCGTaggingTask(TaggingTask):
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
+        hey = open("/beegfs/yp913/fresh_jiant/data/CCG/tags_to_id.json", "rb")
+        yo = hey.readlines()
+        yo = eval(yo[0])
+        self.all_labels = list(yo.keys())
 
     def process_split(
         self, split, indexers, model_preprocessing_interface
@@ -2274,12 +2278,16 @@ class CCGTaggingTask(TaggingTask):
             sentence_to_text_field(model_preprocessing_interface.boundary_token_fn(sent), indexers)
             for sent in split[0]
         ]
+        try:
+            targ_raw = [eval(" ".join(x)) for x in split[2]]
+        except:
+            targ_raw = split[2]
         targs = [
             TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
-            for sent in split[2]
+            for sent in targ_raw
         ]
         mask = [
-            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
+            MultiLabelField(mask, label_namespace="ccg_tags", skip_indexing=True, num_labels=511)
             for mask in split[3]
         ]
         instances = [
@@ -2328,6 +2336,7 @@ class CCGTaggingTask(TaggingTask):
         # experiment
         # [BERT: Pretraining of Deep Bidirectional Transformers for Language Understanding]
         # (https://arxiv.org/abs/1810.04805)
+        masks = [[list(range(len(x))) for x in te_data[0]],  [list(range(len(x))) for x in te_data[0]]] 
         if self.subword_tokenization:
             import numpy.ma as ma
 
@@ -2344,9 +2353,9 @@ class CCGTaggingTask(TaggingTask):
                     mask_indices = np.where(mask)[0].tolist()
                     dataset_mask.append(mask_indices)
                 masks.append(dataset_mask)
-
+        import pdb; pdb.set_trace()
         # mock labels for test data (tagging)
-        te_targs = [["0"] * len(x) for x in te_data[0]]
+        te_targs = [["N/N"] * len(x) for x in te_data[0]]
         te_mask = [list(range(len(x))) for x in te_data[0]]
         self.train_data_text = list(tr_data) + [masks[0]]
         self.val_data_text = list(val_data) + [masks[1]]

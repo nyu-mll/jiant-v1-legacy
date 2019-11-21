@@ -358,7 +358,7 @@ def build_embeddings(args, vocab, tasks, pretrained_embs=None):
             trainable=(args.embeddings_train == 1),
             padding_index=vocab.get_token_index("@@PADDING@@"),
         )
-        token_embedders["words"] = embeddings
+        token_embedders["tokens"] = embeddings
         d_emb += d_word
 
     # Handle cove
@@ -1086,7 +1086,7 @@ class MultiTaskModel(nn.Module):
 
         if "targs" in batch:
             # logits: batch_size * seq_len * tgt_voc_size
-            target = batch["targs"]["words"][:, 1:].contiguous()
+            target = batch["targs"]["tokens"][:, 1:].contiguous()
             target_mask = out["target_mask"]
 
             assert "predictions" in out
@@ -1120,13 +1120,13 @@ class MultiTaskModel(nn.Module):
         out["n_exs"] = get_batch_size(batch, self._cuda_device)
         if not isinstance(sent_encoder, BiLMEncoder):
             sent, mask = sent_encoder(batch["inputs"], task)
-            sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
+            #sent = sent.masked_fill(1 - mask.byte(), 0)  # avoid NaNs
             sent = sent[:, 1:-1, :]
             hid2tag = self._get_classifier(task)
             logits = hid2tag(sent)
             logits = logits.view(b_size * seq_len, -1)
             out["logits"] = logits
-            targs = batch["targs"]["words"][:, :seq_len].contiguous().view(-1)
+            targs = batch["targs"]["ccg_tags"][:, :seq_len].contiguous().view(-1)
         if "mask" in batch:
             # Prevent backprop for tags generated for tokenization-introduced tokens
             # such as word boundaries
@@ -1165,11 +1165,11 @@ class MultiTaskModel(nn.Module):
             "Not using LM for language modeling task!",
         )
         assert_for_log(
-            "targs" in batch and "words" in batch["targs"], "Batch missing target words!"
+            "targs" in batch and "tokens" in batch["targs"], "Batch missing target words!"
         )
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token, "tokens")
-        b_size, seq_len = batch["targs"]["words"].size()
-        n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
+        b_size, seq_len = batch["targs"]["tokens"].size()
+        n_pad = batch["targs"]["tokens"].eq(pad_idx).sum().item()
         out["n_exs"] = format_output(((b_size * seq_len - n_pad) * 2), self._cuda_device)
 
         sent, mask = sent_encoder(batch["input"], task)
@@ -1189,8 +1189,8 @@ class MultiTaskModel(nn.Module):
         logits_bwd = hid2voc(bwd).view(b_size * seq_len, -1)
         logits = torch.cat([logits_fwd, logits_bwd], dim=0)
         out["logits"] = logits
-        trg_fwd = batch["targs"]["words"].view(-1)
-        trg_bwd = batch["targs_b"]["words"].view(-1)
+        trg_fwd = batch["targs"]["tokens"].view(-1)
+        trg_bwd = batch["targs_b"]["tokens"].view(-1)
         targs = torch.cat([trg_fwd, trg_bwd], dim=0)
         assert logits.size(0) == targs.size(0), "Number of logits and targets differ!"
         out["loss"] = format_output(
@@ -1247,12 +1247,12 @@ class MultiTaskModel(nn.Module):
 
         out = {}
         assert_for_log(
-            "targs" in batch and "words" in batch["targs"], "Batch missing target words!"
+            "targs" in batch and "tokens" in batch["targs"], "Batch missing target words!"
         )
         pad_idx = self.vocab.get_token_index(self.vocab._padding_token, "tokens")
-        b_size, seq_len = batch["targs"]["words"].size()
+        b_size, seq_len = batch["targs"]["tokens"].size()
         # pad_idx is the token used to pad till max_seq_len
-        n_pad = batch["targs"]["words"].eq(pad_idx).sum().item()
+        n_pad = batch["targs"]["tokens"].eq(pad_idx).sum().item()
         # No of examples: only left to right, every unit in the sequence length is
         # a training example only once.
         out["n_exs"] = format_output(b_size * seq_len - n_pad, self._cuda_device)
@@ -1261,7 +1261,7 @@ class MultiTaskModel(nn.Module):
         hid2voc = getattr(self, "%s_hid2voc" % task.name)
         logits = hid2voc(sent).view(b_size * seq_len, -1)
         out["logits"] = logits
-        trg_fwd = batch["targs"]["words"].view(-1)
+        trg_fwd = batch["targs"]["tokens"].view(-1)
         assert logits.size(0) == trg_fwd.size(0), "Number of logits and targets differ!"
         out["loss"] = format_output(
             F.cross_entropy(logits, trg_fwd, ignore_index=pad_idx), self._cuda_device

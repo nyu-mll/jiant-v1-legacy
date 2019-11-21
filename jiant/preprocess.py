@@ -256,8 +256,9 @@ def _build_vocab(args, tasks, vocab_path: str):
 def build_indexers(args):
     indexers = {}
     if args.input_module in ["scratch", "glove", "fastText"]:
-        indexers["words"] = SingleIdTokenIndexer()
+        indexers["tokens"] = SingleIdTokenIndexer()
     elif args.input_module in ["elmo", "elmo-chars-only"]:
+        import pdb; pdb.set_trace()
         indexers["elmo"] = ELMoTokenCharactersIndexer("elmo")
         assert args.tokenizer in {"", "MosesTokenizer"}
 
@@ -332,7 +333,6 @@ def build_tasks(args):
 
     # 4) Set up model_preprocessing_interface
     model_preprocessing_interface = ModelPreprocessingInterface(args)
-
     # 5) Index tasks using vocab (if preprocessed copy not available).
     preproc_dir = os.path.join(args.exp_dir, "preproc")
     utils.maybe_make_dir(preproc_dir)
@@ -356,7 +356,6 @@ def build_tasks(args):
                 record_file = _get_serialized_record_path(task.name, split, preproc_dir)
                 if os.path.exists(record_file) and os.path.islink(record_file):
                     os.remove(record_file)
-
                 _index_split(
                     task, split, indexers, vocab, record_file, model_preprocessing_interface
                 )
