@@ -83,7 +83,13 @@ function hyperparameter_sweep() {
     for i in 0 1 2 3 4 5 6 7
     do
         EXP_OVERRIDES="${OVERRIDES}, run_name=$1config$i"
-        run_exp "jiant/config/taskmaster/base_roberta.conf" "${EXP_OVERRIDES}" $i
+        TASK_TYPE=${TASK_TYPE_MAP[$1]}
+        if [ ${TASK_TYPE} == "edge" ]; then
+            BASE_CONFIG_FILE="base_edgeprobe"
+        elif [ ${TASK_TYPE} == "regular" ]; then
+            BASE_CONFIG_FILE="base_roberta"
+        fi
+        run_exp "jiant/config/taskmaster/${BASE_CONFIG_FILE}.conf" "${EXP_OVERRIDES}" $i
     done
 
 }
