@@ -13,7 +13,6 @@ dependencies:
     - ipykernel=5.1.1
     - pytz=2017.3
     - jsondiff
-    - filelock=3.0.12
     - pip
     - pip:
         - allennlp==0.8.4
@@ -46,3 +45,4 @@ dependencies:
         # This AllenNLP issue is relevant: https://github.com/allenai/allennlp/issues/3067
         - sacremoses
         - pytorch-transformers==1.2.0
+        - filelock==3.0.12
