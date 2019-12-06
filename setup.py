@@ -57,7 +57,7 @@ setuptools.setup(
     ],
     install_requires=[
         "torch==1.0.*",
-        "numpy==1.14.5",
+        "numpy==1.15.0",
         "pandas==0.23.0",
         "allennlp==0.8.4",
         "jsondiff",
@@ -68,6 +68,7 @@ setuptools.setup(
         "pytorch-transformers==1.2.0",
         "ftfy",
         "spacy",
+        "filelock==3.0.12",
     ],
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
