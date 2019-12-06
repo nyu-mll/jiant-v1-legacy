@@ -13,6 +13,7 @@ dependencies:
     - ipykernel=5.1.1
     - pytz=2017.3
     - jsondiff
+    - filelock=3.0.12
     - pip
     - pip:
         - allennlp==0.8.4
