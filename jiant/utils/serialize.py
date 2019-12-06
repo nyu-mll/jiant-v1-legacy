@@ -6,6 +6,8 @@ import _pickle as pkl
 import base64
 from zlib import crc32
 
+from filelock import FileLock
+
 
 def _serialize(examples, fd, flush_every):
     for i, example in enumerate(examples):
@@ -25,8 +27,10 @@ def write_records(examples, filename, flush_every=10000):
       filename: path to file to write
       flush_every: (int), flush to disk after this many examples consumed
     """
-    with open(filename, "wb") as fd:
-        _serialize(examples, fd, flush_every)
+    lock = FileLock(filename + ".lock")
+    with lock:
+        with open(filename, "wb") as fd:
+            _serialize(examples, fd, flush_every)
 
 
 class RepeatableIterator(object):
@@ -73,6 +77,9 @@ def read_records(filename, repeatable=False, fraction=None):
     """
 
     def _iter_fn():
+        lock = FileLock(filename + ".lock")
+        with lock:
+            pass
         with open(filename, "rb") as fd:
             for line in fd:
                 blob = base64.b64decode(line)
