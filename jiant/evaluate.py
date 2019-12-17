@@ -20,7 +20,8 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
-    AdversarialNLITask)
+    AdversarialNLITask,
+)
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask, QASRLTask
 from jiant.tasks.edge_probing import EdgeProbingTask
 from jiant.utils.utils import get_output_attribute
@@ -680,4 +681,3 @@ def write_results(results, results_file, run_name):
     with open(results_file, "a") as results_fh:
         results_fh.write("%s\t%s\n" % (run_name, all_metrics_str))
     log.info(all_metrics_str)
-
