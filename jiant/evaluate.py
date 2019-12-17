@@ -20,7 +20,7 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
-)
+    AdversarialNLITask)
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask, QASRLTask
 from jiant.tasks.edge_probing import EdgeProbingTask
 from jiant.utils.utils import get_output_attribute
@@ -221,6 +221,10 @@ def write_preds(
             )
         elif isinstance(task, QASRLTask):
             _write_simple_tsv_preds(task, preds_df, pred_dir, split_name)
+        elif isinstance(task, AdversarialNLITask):
+            _write_adversarial_nli_preds(
+                task, preds_df, pred_dir, split_name, strict_glue_format=strict_glue_format
+            )
         else:
             log.warning("Task '%s' not supported by write_preds().", task.name)
             continue
@@ -365,6 +369,25 @@ def _write_boolq_preds(
         for row_idx, row in preds_df.iterrows():
             if strict_glue_format:
                 out_d = {"idx": int(row["idx"]), "label": pred_map[row["preds"]]}
+            else:
+                out_d = row.to_dict()
+            preds_fh.write("{0}\n".format(json.dumps(out_d)))
+
+
+def _write_adversarial_nli_preds(
+    task: str,
+    preds_df: pd.DataFrame,
+    pred_dir: str,
+    split_name: str,
+    strict_glue_format: bool = False,
+):
+    """ Write predictions for Adversarial NLI task.  """
+    pred_map = {0: "n", 1: "e", 2: "c"}
+    preds_file = _get_pred_filename(task.name, pred_dir, split_name, strict_glue_format)
+    with open(preds_file, "w", encoding="utf-8") as preds_fh:
+        for row_idx, row in preds_df.iterrows():
+            if strict_glue_format:
+                out_d = {"idx": row["idx"], "label": pred_map[row["preds"]]}
             else:
                 out_d = row.to_dict()
             preds_fh.write("{0}\n".format(json.dumps(out_d)))
@@ -657,3 +680,4 @@ def write_results(results, results_file, run_name):
     with open(results_file, "a") as results_fh:
         results_fh.write("%s\t%s\n" % (run_name, all_metrics_str))
     log.info(all_metrics_str)
+
