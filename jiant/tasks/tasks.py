@@ -2726,7 +2726,7 @@ class WiCTask(PairClassificationTask):
 
         def _process_preserving_word(sent, word):
             """ Find out the index of the [first] instance of the word in the original sentence,
-            and project the span containing marked word to the span containing tokens created from 
+            and project the span containing marked word to the span containing tokens created from
             the marked word. """
             token_aligner, sent_tok = aligner_fn(sent)
             raw_start_idx = len(sent.split(word)[0].split(" ")) - 1
@@ -3323,7 +3323,7 @@ class BooleanQuestionTask(PairClassificationTask):
                 )
             else:  # BERT/XLNet
                 psg_qst = model_preprocessing_interface.boundary_token_fn(
-                    d["passage"], d["question"]
+                    d["passage"], d["question"], trunc_strategy="trunc_s1"
                 )
                 new_d["inputs"] = sentence_to_text_field(psg_qst, indexers)
             new_d["labels"] = LabelField(d["label"], label_namespace="labels", skip_indexing=True)
