@@ -138,12 +138,8 @@ def load_tsv(
     # This reads the data file given the delimiter, skipping over any rows
     # (usually header row)\
     rows = pd.read_csv(data_file,
-        sep=delimiter,
-        header=header,
-        skiprows=0,
-        quoting=quote_level,
-        keep_default_na=False,
-        encoding="utf-8",
+        skiprows=None,
+        header=header
     )
     if filter_idx and filter_value:
         rows = rows[rows[filter_idx] == filter_value]
