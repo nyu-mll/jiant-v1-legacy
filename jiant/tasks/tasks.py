@@ -37,12 +37,13 @@ from jiant.utils.data_loaders import (
     load_pair_nli_jsonl,
 )
 from jiant.utils.tokenizers import get_tokenizer
+from jiant.utils.retokenize import get_aligner_fn
 from jiant.tasks.registry import register_task  # global task registry
 from jiant.metrics.winogender_metrics import GenderParity
 from jiant.utils.i2b2_utils import preprocess_tagging
 import ignite
 from jiant.metrics.IgniteF1 import IgniteMacroF1
-
+from jiant.metrics.nli_metrics import NLITwoClassAccuracy
 
 """Define the tasks and code for loading their data.
 
@@ -84,7 +85,9 @@ def process_single_pair_task_split(
     is_pair=True,
     classification=True,
     multilabel=False,
+    label_namespace="labels",
     is_symmetrical_pair=False,
+    skip_indexing=True,
 ):
     """
     Convert a dataset of sentences into padded sequences of indices. Shared
@@ -131,7 +134,7 @@ def process_single_pair_task_split(
                     labels, label_namespace="tags",  num_labels=7, skip_indexing=True
                 )
             else:
-                d["labels"] = LabelField(labels, label_namespace="tags", skip_indexing=True)
+                d["labels"] = LabelField(labels, label_namespace=label_namespace, skip_indexing=skip_indexing)
         else:
             d["labels"] = NumericField(labels)
 
@@ -247,10 +250,6 @@ class Task(object):
             count = self.get_num_examples(st)
             self.example_counts[split] = count
 
-    def tokenizer_is_supported(self, tokenizer_name):
-        """ Check if the tokenizer is supported for this task. """
-        return get_tokenizer(tokenizer_name) is not None
-
     @property
     def tokenizer_name(self):
         return self._tokenizer_name
@@ -290,10 +289,14 @@ class Task(object):
     def get_scorers(self):
         return self.scorers
 
-    def update_metrics(self, logits, labels, tagmask=None):
-        assert len(self.get_scorers()) > 0, "Please specify a score metric"
-        for scorer in self.get_scorers():
-            scorer(logits, labels)
+    def update_metrics(self, out, batch):
+        raise NotImplementedError
+
+    def handle_preds(self, preds, batch):
+        """
+        Function that does task-specific processing of predictions.
+        """
+        return preds
 
 
 class ClassificationTask(Task):
@@ -332,6 +335,13 @@ class SingleClassificationTask(ClassificationTask):
             split, indexers, model_preprocessing_interface, is_pair=False
         )
 
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
+
 
 class PairClassificationTask(ClassificationTask):
     """ Generic sentence pair classification """
@@ -358,6 +368,13 @@ class PairClassificationTask(ClassificationTask):
             split, indexers, model_preprocessing_interface, is_pair=True
         )
 
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
+
 
 class PairRegressionTask(RegressionTask):
     """ Generic sentence pair classification """
@@ -382,6 +399,13 @@ class PairRegressionTask(RegressionTask):
         return process_single_pair_task_split(
             split, indexers, model_preprocessing_interface, is_pair=True, classification=False
         )
+
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
 
 
 class PairOrdinalRegressionTask(RegressionTask):
@@ -411,10 +435,12 @@ class PairOrdinalRegressionTask(RegressionTask):
             split, indexers, model_preprocessing_interface, is_pair=True, classification=False
         )
 
-    def update_metrics(self, logits, labels, tagmask=None):
-        self.scorer1(mean_squared_error(logits, labels))  # update average MSE
-        self.scorer2(logits, labels)
-        return
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
 
 
 class SequenceGenerationTask(Task):
@@ -436,7 +462,7 @@ class SequenceGenerationTask(Task):
         bleu = self.scorer1.get_metric(reset)
         return {"bleu": bleu}
 
-    def update_metrics(self):
+    def update_metrics(self, out, batch):
         # currently don't support metrics for regression task
         # TODO(Yada): support them!
         return
@@ -493,7 +519,6 @@ class SSTTask(SingleClassificationTask):
     """ Task class for Stanford Sentiment Treebank.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
-        """ """
         super(SSTTask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -536,64 +561,63 @@ class SSTTask(SingleClassificationTask):
         log.info("\tFinished loading SST data.")
 
 
-@register_task("npi_adv_li", rel_path="NPI/probing/adverbs/licensor")
-@register_task("npi_adv_sc", rel_path="NPI/probing/adverbs/scope_with_licensor")
-@register_task("npi_adv_pr", rel_path="NPI/probing/adverbs/npi_present")
-@register_task("npi_cond_li", rel_path="NPI/probing/conditionals/licensor")
-@register_task("npi_cond_sc", rel_path="NPI/probing/conditionals/scope_with_licensor")
-@register_task("npi_cond_pr", rel_path="NPI/probing/conditionals/npi_present")
-@register_task("npi_negdet_li", rel_path="NPI/probing/determiner_negation_biclausal/licensor")
+@register_task("npi-adv-li", rel_path="NPI/probing/adverbs/licensor")
+@register_task("npi-adv-sc", rel_path="NPI/probing/adverbs/scope_with_licensor")
+@register_task("npi-adv-pr", rel_path="NPI/probing/adverbs/npi_present")
+@register_task("npi-cond-li", rel_path="NPI/probing/conditionals/licensor")
+@register_task("npi-cond-sc", rel_path="NPI/probing/conditionals/scope_with_licensor")
+@register_task("npi-cond-pr", rel_path="NPI/probing/conditionals/npi_present")
+@register_task("npi-negdet-li", rel_path="NPI/probing/determiner_negation_biclausal/licensor")
 @register_task(
-    "npi_negdet_sc", rel_path="NPI/probing/determiner_negation_biclausal/scope_with_licensor"
+    "npi-negdet-sc", rel_path="NPI/probing/determiner_negation_biclausal/scope_with_licensor"
 )
-@register_task("npi_negdet_pr", rel_path="NPI/probing/determiner_negation_biclausal/npi_present")
-@register_task("npi_negsent_li", rel_path="NPI/probing/sentential_negation_biclausal/licensor")
+@register_task("npi-negdet-pr", rel_path="NPI/probing/determiner_negation_biclausal/npi_present")
+@register_task("npi-negsent-li", rel_path="NPI/probing/sentential_negation_biclausal/licensor")
 @register_task(
-    "npi_negsent_sc", rel_path="NPI/probing/sentential_negation_biclausal/scope_with_licensor"
+    "npi-negsent-sc", rel_path="NPI/probing/sentential_negation_biclausal/scope_with_licensor"
 )
-@register_task("npi_negsent_pr", rel_path="NPI/probing/sentential_negation_biclausal/npi_present")
-@register_task("npi_only_li", rel_path="NPI/probing/only/licensor")
-@register_task("npi_only_sc", rel_path="NPI/probing/only/scope_with_licensor")
-@register_task("npi_only_pr", rel_path="NPI/probing/only/npi_present")
-@register_task("npi_qnt_li", rel_path="NPI/probing/quantifiers/licensor")
-@register_task("npi_qnt_sc", rel_path="NPI/probing/quantifiers/scope_with_licensor")
-@register_task("npi_qnt_pr", rel_path="NPI/probing/quantifiers/npi_present")
-@register_task("npi_ques_li", rel_path="NPI/probing/questions/licensor")
-@register_task("npi_ques_sc", rel_path="NPI/probing/questions/scope_with_licensor")
-@register_task("npi_ques_pr", rel_path="NPI/probing/questions/npi_present")
-@register_task("npi_quessmp_li", rel_path="NPI/probing/simplequestions/licensor")
-@register_task("npi_quessmp_sc", rel_path="NPI/probing/simplequestions/scope_with_licensor")
-@register_task("npi_quessmp_pr", rel_path="NPI/probing/simplequestions/npi_present")
-@register_task("npi_sup_li", rel_path="NPI/probing/superlative/licensor")
-@register_task("npi_sup_sc", rel_path="NPI/probing/superlative/scope_with_licensor")
-@register_task("npi_sup_pr", rel_path="NPI/probing/superlative/npi_present")
-@register_task("cola_npi_adv", rel_path="NPI/splits/adverbs")
-@register_task("cola_npi_cond", rel_path="NPI/splits/conditionals")
-@register_task("cola_npi_negdet", rel_path="NPI/splits/determiner_negation_biclausal")
-@register_task("cola_npi_negsent", rel_path="NPI/splits/sentential_negation_biclausal")
-@register_task("cola_npi_only", rel_path="NPI/splits/only")
-@register_task("cola_npi_ques", rel_path="NPI/splits/questions")
-@register_task("cola_npi_quessmp", rel_path="NPI/splits/simplequestions")
-@register_task("cola_npi_qnt", rel_path="NPI/splits/quantifiers")
-@register_task("cola_npi_sup", rel_path="NPI/splits/superlative")
-@register_task("all_cola_npi", rel_path="NPI/combs/all_env")
-@register_task("wilcox_npi", rel_path="NPI/wilcox")
-@register_task("hd_cola_npi_adv", rel_path="NPI/combs/minus_adverbs")
-@register_task("hd_cola_npi_cond", rel_path="NPI/combs/minus_conditionals")
-@register_task("hd_cola_npi_negdet", rel_path="NPI/combs/minus_determiner_negation_biclausal")
-@register_task("hd_cola_npi_negsent", rel_path="NPI/combs/minus_sentential_negation_biclausal")
-@register_task("hd_cola_npi_only", rel_path="NPI/combs/minus_only")
-@register_task("hd_cola_npi_ques", rel_path="NPI/combs/minus_questions")
-@register_task("hd_cola_npi_quessmp", rel_path="NPI/combs/minus_simplequestions")
-@register_task("hd_cola_npi_qnt", rel_path="NPI/combs/minus_quantifiers")
-@register_task("hd_cola_npi_sup", rel_path="NPI/combs/minus_superlative")
+@register_task("npi-negsent-pr", rel_path="NPI/probing/sentential_negation_biclausal/npi_present")
+@register_task("npi-only-li", rel_path="NPI/probing/only/licensor")
+@register_task("npi-only-sc", rel_path="NPI/probing/only/scope_with_licensor")
+@register_task("npi-only-pr", rel_path="NPI/probing/only/npi_present")
+@register_task("npi-qnt-li", rel_path="NPI/probing/quantifiers/licensor")
+@register_task("npi-qnt-sc", rel_path="NPI/probing/quantifiers/scope_with_licensor")
+@register_task("npi-qnt-pr", rel_path="NPI/probing/quantifiers/npi_present")
+@register_task("npi-ques-li", rel_path="NPI/probing/questions/licensor")
+@register_task("npi-ques-sc", rel_path="NPI/probing/questions/scope_with_licensor")
+@register_task("npi-ques-pr", rel_path="NPI/probing/questions/npi_present")
+@register_task("npi-quessmp-li", rel_path="NPI/probing/simplequestions/licensor")
+@register_task("npi-quessmp-sc", rel_path="NPI/probing/simplequestions/scope_with_licensor")
+@register_task("npi-quessmp-pr", rel_path="NPI/probing/simplequestions/npi_present")
+@register_task("npi-sup-li", rel_path="NPI/probing/superlative/licensor")
+@register_task("npi-sup-sc", rel_path="NPI/probing/superlative/scope_with_licensor")
+@register_task("npi-sup-pr", rel_path="NPI/probing/superlative/npi_present")
+@register_task("cola-npi-adv", rel_path="NPI/splits/adverbs")
+@register_task("cola-npi-cond", rel_path="NPI/splits/conditionals")
+@register_task("cola-npi-negdet", rel_path="NPI/splits/determiner_negation_biclausal")
+@register_task("cola-npi-negsent", rel_path="NPI/splits/sentential_negation_biclausal")
+@register_task("cola-npi-only", rel_path="NPI/splits/only")
+@register_task("cola-npi-ques", rel_path="NPI/splits/questions")
+@register_task("cola-npi-quessmp", rel_path="NPI/splits/simplequestions")
+@register_task("cola-npi-qnt", rel_path="NPI/splits/quantifiers")
+@register_task("cola-npi-sup", rel_path="NPI/splits/superlative")
+@register_task("all-cola-npi", rel_path="NPI/combs/all_env")
+@register_task("wilcox-npi", rel_path="NPI/wilcox")
+@register_task("hd-cola-npi-adv", rel_path="NPI/combs/minus_adverbs")
+@register_task("hd-cola-npi-cond", rel_path="NPI/combs/minus_conditionals")
+@register_task("hd-cola-npi-negdet", rel_path="NPI/combs/minus_determiner_negation_biclausal")
+@register_task("hd-cola-npi-negsent", rel_path="NPI/combs/minus_sentential_negation_biclausal")
+@register_task("hd-cola-npi-only", rel_path="NPI/combs/minus_only")
+@register_task("hd-cola-npi-ques", rel_path="NPI/combs/minus_questions")
+@register_task("hd-cola-npi-quessmp", rel_path="NPI/combs/minus_simplequestions")
+@register_task("hd-cola-npi-qnt", rel_path="NPI/combs/minus_quantifiers")
+@register_task("hd-cola-npi-sup", rel_path="NPI/combs/minus_superlative")
 class CoLANPITask(SingleClassificationTask):
     """Class for NPI-related task; same with Warstdadt acceptability task but outputs labels for
        test-set
        Note: Used for an NYU seminar, data not yet public"""
 
     def __init__(self, path, max_seq_len, name, **kw):
-        """ """
         super(CoLANPITask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -641,7 +665,9 @@ class CoLANPITask(SingleClassificationTask):
     def get_metrics(self, reset=False):
         return {"mcc": self.scorer1.get_metric(reset), "accuracy": self.scorer2.get_metric(reset)}
 
-    def update_metrics(self, logits, labels, tagmask=None):
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
         logits, labels = logits.detach(), labels.detach()
         _, preds = logits.max(dim=1)
         self.scorer1(preds, labels)
@@ -654,7 +680,6 @@ class CoLATask(SingleClassificationTask):
     """Class for Warstdadt acceptability task"""
 
     def __init__(self, path, max_seq_len, name, **kw):
-        """ """
         super(CoLATask, self).__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -704,7 +729,9 @@ class CoLATask(SingleClassificationTask):
     def get_metrics(self, reset=False):
         return {"mcc": self.scorer1.get_metric(reset), "accuracy": self.scorer2.get_metric(reset)}
 
-    def update_metrics(self, logits, labels, tagmask=None):
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
         logits, labels = logits.detach(), labels.detach()
         _, preds = logits.max(dim=1)
         self.scorer1(preds, labels)
@@ -818,7 +845,10 @@ class CoLAAnalysisTask(SingleClassificationTask):
         instances = map(_make_instance, *split)
         return instances  # lazy iterator
 
-    def update_metrics(self, logits, labels, tagmask=None):
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = out["labels"]
+        tagmask = batch.get("tagmask", None)
         logits, labels = logits.detach(), labels.detach()
         _, preds = logits.max(dim=1)
         self.scorer1(preds, labels)
@@ -865,6 +895,13 @@ class QQPTask(PairClassificationTask):
 
     def load_data(self):
         """Process the dataset located at data_file."""
+
+        def label_fn(x):
+            if x == "":
+                return 0
+            else:
+                return int(x)
+
         self.train_data_text = load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "train.tsv"),
@@ -872,7 +909,7 @@ class QQPTask(PairClassificationTask):
             s1_idx=3,
             s2_idx=4,
             label_idx=5,
-            label_fn=int,
+            label_fn=label_fn,
             skip_rows=1,
         )
         self.val_data_text = load_tsv(
@@ -882,7 +919,7 @@ class QQPTask(PairClassificationTask):
             s1_idx=3,
             s2_idx=4,
             label_idx=5,
-            label_fn=int,
+            label_fn=label_fn,
             skip_rows=1,
         )
         self.test_data_text = load_tsv(
@@ -1008,7 +1045,6 @@ class STSBTask(PairRegressionTask):
     """ Task class for Sentence Textual Similarity Benchmark.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
-        """ """
         super(STSBTask, self).__init__(name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -1099,6 +1135,7 @@ class SNLITask(PairClassificationTask):
     def load_data(self):
         """ Process the dataset located at path.  """
         targ_map = {"neutral": 0, "entailment": 1, "contradiction": 2}
+
         self.train_data_text = load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "train.tsv"),
@@ -1138,8 +1175,107 @@ class SNLITask(PairClassificationTask):
         log.info("\tFinished loading SNLI data.")
 
 
+@register_task("adversarial-nli-a1", rel_path="AdversarialNLI/", datasets=["R1"])
+@register_task("adversarial-nli-a2", rel_path="AdversarialNLI/", datasets=["R2"])
+@register_task("adversarial-nli-a3", rel_path="AdversarialNLI/", datasets=["R3"])
+@register_task("adversarial-nli", rel_path="AdversarialNLI/", datasets=["R1", "R2", "R3"])
+class AdversarialNLITask(PairClassificationTask):
+    """Task class for use with Adversarial Natural Language Inference dataset.
+
+    Configures a 3-class PairClassificationTask using Adversarial NLI data.
+    Requires original ANLI dataset file structure under the relative path.
+    Data: https://dl.fbaipublicfiles.com/anli/anli_v0.1.zip
+    Paper: https://arxiv.org/abs/1910.14599
+
+    Attributes:
+        path (str): AdversarialNLI path relative to JIANT_DATA_DIR
+        max_seq_len (int): max tokens allowed in a sequence
+        train_data_text (list[list[str], list[str], list[int]]):
+            list of lists of context, hypothesis, and target training data
+        val_data_text (list[list[str], list[str], list[int]]):
+            list of lists of context, hypothesis, and target val data
+        test_data_text (list[list[str], list[str], list[int]]):
+            list of lists of context, hypothesis, and target test data
+        datasets (list[str]): list of sub-datasets used in task (e.g., R1)
+        sentences (list): list of all (tokenized) context and hypothesis
+            texts from train and val data.
+    """
+
+    def __init__(self, path, max_seq_len, name, datasets, **kw):
+        """Initialize an AdversarialNLITask task.
+
+        Args:
+            path (str): AdversarialNLI path relative to the data dir
+            max_seq_len (int): max tokens allowed in a sequence
+            name (str): task name, specified in @register_task
+            datasets (list[str]): list of ANLI sub-datasets used in task
+        """
+        super(AdversarialNLITask, self).__init__(name, n_classes=3, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+        self.datasets = datasets
+
+    def _read_data(self, path: str) -> pd.core.frame.DataFrame:
+        """Read json, tokenize text, encode labels as int, return dataframe."""
+        df = pd.read_json(path_or_buf=path, encoding="UTF-8", lines=True)
+        # for ANLI datasets n=neutral, e=entailment, c=contradiction
+        df["target"] = df["label"].map({"n": 0, "e": 1, "c": 2})
+        tokenizer = get_tokenizer(self._tokenizer_name)
+        df["context"] = df["context"].apply(tokenizer.tokenize)
+        df["hypothesis"] = df["hypothesis"].apply(tokenizer.tokenize)
+        return df[["context", "hypothesis", "target"]]
+
+    def load_data(self):
+        """Read, preprocess and load data into an AdversarialNLITask.
+
+        Assumes original dataset file structure under `self.rel_path`.
+        Loads only the datasets (e.g., "R1") specified in the `datasets` attr.
+        Populates task train_, val_, test_data_text and `sentence` attr.
+        """
+        train_dfs, val_dfs, test_dfs = [], [], []
+        for dataset in self.datasets:
+            train_dfs.append(self._read_data(os.path.join(self.path, dataset, "train.jsonl")))
+            val_dfs.append(self._read_data(os.path.join(self.path, dataset, "dev.jsonl")))
+            test_dfs.append(self._read_data(os.path.join(self.path, dataset, "test.jsonl")))
+        train_df = pd.concat(train_dfs, axis=0, ignore_index=True)
+        val_df = pd.concat(val_dfs, axis=0, ignore_index=True)
+        test_df = pd.concat(test_dfs, axis=0, ignore_index=True)
+
+        self.train_data_text = [
+            train_df["context"].tolist(),
+            train_df["hypothesis"].tolist(),
+            train_df["target"].tolist(),
+        ]
+        self.val_data_text = [
+            val_df["context"].tolist(),
+            val_df["hypothesis"].tolist(),
+            val_df["target"].tolist(),
+        ]
+        self.test_data_text = [
+            test_df["context"].tolist(),
+            test_df["hypothesis"].tolist(),
+            test_df["target"].tolist(),
+        ]
+
+        self.sentences = (
+            train_df["context"].tolist()
+            + train_df["hypothesis"].tolist()
+            + val_df["context"].tolist()
+            + val_df["hypothesis"].tolist()
+        )
+
+        log.info("\tFinished loading ANLI data: " + self.name)
+
+
 @register_task("mnli", rel_path="MNLI/")
-# second copy for different params
+# Alternate version with a modified evaluation metric. For use in transfer evaluations on
+# two-class test sets like RTE. Example config override:
+#   pretrain_tasks = mnli, target_tasks = \"mnli-two,rte\", rte += {use_classifier = mnli-two}
+@register_task("mnli-two", rel_path="MNLI/", two_class_evaluation=True)
+# Second copy that can be assigned separate task-specific config options.
 @register_task("mnli-alt", rel_path="MNLI/")
 @register_task("mnli-fiction", rel_path="MNLI/", genre="fiction")
 @register_task("mnli-slate", rel_path="MNLI/", genre="slate")
@@ -1149,17 +1285,23 @@ class SNLITask(PairClassificationTask):
 class MultiNLITask(PairClassificationTask):
     """ Task class for Multi-Genre Natural Language Inference. """
 
-    def __init__(self, path, max_seq_len, name, genre=None, **kw):
+    def __init__(self, path, max_seq_len, name, genre=None, two_class_evaluation=False, **kw):
         """Set up the MNLI task object.
 
         When genre is set to one of the ten MNLI genres, only examples matching that genre will be
         loaded in any split. That may result in some of the sections (train, dev mismatched, ...)
         being empty.
+
+        When two_class_evaluation is set, merge the contradiction and neutral labels, for both
+        predictions and gold labels, in the metric when evaluating on this task.
         """
         super(MultiNLITask, self).__init__(name, n_classes=3, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
         self.genre = genre
+        if two_class_evaluation:
+            self.scorer1 = NLITwoClassAccuracy()
+            self.scorers = [self.scorer1]
 
         self.train_data_text = None
         self.val_data_text = None
@@ -1410,6 +1552,7 @@ class FollowupsClassificationTask(SingleClassificationTask):
         self.class_weights = compute_class_weight('balanced', np.unique(self.train_data_text[2]), self.train_data_text[2])
 
 @register_task("mnli-ho", rel_path="MNLI/")
+@register_task("mnli-two-ho", rel_path="MNLI/", two_class_evaluation=True)
 @register_task("mnli-fiction-ho", rel_path="MNLI/", genre="fiction")
 @register_task("mnli-slate-ho", rel_path="MNLI/", genre="slate")
 @register_task("mnli-government-ho", rel_path="MNLI/", genre="government")
@@ -1418,17 +1561,24 @@ class FollowupsClassificationTask(SingleClassificationTask):
 class MultiNLIHypothesisOnlyTask(SingleClassificationTask):
     """ Task class for MultiNLI hypothesis-only classification. """
 
-    def __init__(self, path, max_seq_len, name, genre=None, **kw):
+    def __init__(self, path, max_seq_len, name, genre=None, two_class_evaluation=False, **kw):
         """Set up the MNLI-HO task object.
 
         When genre is set to one of the ten MNLI genres, only examples matching that genre will be
         loaded in any split. That may result in some of the sections (train, dev mismatched, ...)
         being empty.
+
+        When two_class_evaluation is set, merge the contradiction and neutral labels, for both
+        predictions and gold labels, in the metric when evaluating on this task.
         """
         super(MultiNLIHypothesisOnlyTask, self).__init__(name, n_classes=3, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
         self.genre = genre
+
+        if two_class_evaluation:
+            self.scorer1 = NLITwoClassAccuracy()
+            self.scorers = [self.scorer1]
 
         self.train_data_text = None
         self.val_data_text = None
@@ -1606,6 +1756,9 @@ class GLUEDiagnosticTask(PairClassificationTask):
         self._scorer_all_mcc = Correlation("matthews")  # score all examples according to MCC
         self._scorer_all_acc = CategoricalAccuracy()  # score all examples according to acc
         log.info("\tFinished creating score functions for diagnostic data.")
+
+    def update_metrics(self, out, batch):
+        self.update_diagnostic_metrics(out["logits"], batch["labels"], batch)
 
     def update_diagnostic_metrics(self, logits, labels, batch):
         # Updates scorer for every tag in a given column (tag_group) and also the
@@ -1851,7 +2004,7 @@ class WinogenderTask(GLUEDiagnosticTask):
 
         self.train_data_text = None
         self.val_data_text = None
-        self.test_data = None
+        self.test_data_text = None
         self.acc_scorer = BooleanAccuracy()
         self.gender_parity_scorer = GenderParity()
         self.val_metric = "%s_accuracy" % name
@@ -1929,7 +2082,6 @@ class RTETask(PairClassificationTask):
     """ Task class for Recognizing Textual Entailment 1, 2, 3, 5 """
 
     def __init__(self, path, max_seq_len, name, **kw):
-        """ """
         super().__init__(name, n_classes=2, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -2180,7 +2332,7 @@ class JOCITask(PairOrdinalRegressionTask):
         log.info("\tFinished loading JOCI data.")
 
 
-@register_task("wiki103_classif", rel_path="WikiText103/")
+@register_task("wiki103-classif", rel_path="WikiText103/")
 class Wiki103Classification(PairClassificationTask):
     """Pair Classificaiton Task using Wiki103"""
 
@@ -2426,8 +2578,9 @@ class TaggingTask(Task):
     def __init__(self, name, num_tags, **kw):
         super().__init__(name, **kw)
         assert num_tags > 0
-        self.num_tags = num_tags + 2  # add tags for unknown and padding
+        self.num_tags = num_tags
         self.scorer1 = CategoricalAccuracy()
+        self.scorers = [self.scorer1]
         self.val_metric = "%s_accuracy" % self.name
         self.val_metric_decreases = False
         self.all_labels = [str(i) for i in range(self.num_tags)]
@@ -2447,6 +2600,13 @@ class TaggingTask(Task):
     def get_all_labels(self) -> List[str]:
         return self.all_labels
 
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = batch["labels"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
+
 
     
 @register_task("ccg", rel_path="CCG/")
@@ -2454,37 +2614,48 @@ class CCGTaggingTask(TaggingTask):
     """ CCG supertagging as a task.
         Using the supertags from CCGbank. """
 
-    def __init__(self, path, max_seq_len, name="ccg", **kw):
+    def __init__(self, path, max_seq_len, name, tokenizer_name, **kw):
         """ There are 1363 supertags in CCGBank without introduced token. """
-        self.path = path
-        super().__init__(name, 1363, **kw)
-        self.INTRODUCED_TOKEN = "1363"
-        self.bert_tokenization = self._tokenizer_name.startswith("bert-")
-        self.max_seq_len = max_seq_len
-        if self._tokenizer_name.startswith("bert-"):
-            # the +1 is for the tokenization added token
-            self.num_tags = self.num_tags + 1
+        from jiant.huggingface_transformers_interface import input_module_uses_transformers
 
+        subword_tokenization = input_module_uses_transformers(tokenizer_name)
+        super().__init__(
+            name, 1363 + int(subword_tokenization), tokenizer_name=tokenizer_name, **kw
+        )
+        self.path = path
+        self.INTRODUCED_TOKEN = "1363"
+        self.subword_tokenization = subword_tokenization
+        self.max_seq_len = max_seq_len
         self.train_data_text = None
         self.val_data_text = None
         self.test_data_text = None
 
+    def update_metrics(self, out, batch):
+        logits, labels = out["logits"], out["labels"]
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
+
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-        """ Process a tagging task """
-        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
-        targs = [
-            TextField(list(map(Token, sent)), token_indexers=self.target_indexer)
-            for sent in split[2]
-        ]
-        mask = [
-            MultiLabelField(mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511)
-            for mask in split[3]
-        ]
-        instances = [
-            Instance({"inputs": x, "targs": t, "mask": m}) for (x, t, m) in zip(inputs, targs, mask)
-        ]
+        """ Process a CCG tagging task """
+
+        def _make_instance(input1, input2, target, mask):
+            d = {}
+            d["inputs"] = sentence_to_text_field(
+                model_preprocessing_interface.boundary_token_fn(input1), indexers
+            )
+            d["sent1_str"] = MetadataField(" ".join(input1))
+            d["targs"] = sentence_to_text_field(target, self.target_indexer)
+            d["mask"] = MultiLabelField(
+                mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511
+            )
+            return Instance(d)
+
+        split = list(split)
+        split[1] = itertools.repeat(None)
+
+        instances = map(_make_instance, *split)
         return instances
 
     def load_data(self):
@@ -2528,7 +2699,7 @@ class CCGTaggingTask(TaggingTask):
         # experiment
         # [BERT: Pretraining of Deep Bidirectional Transformers for Language Understanding]
         # (https://arxiv.org/abs/1810.04805)
-        if self.bert_tokenization:
+        if self.subword_tokenization:
             import numpy.ma as ma
 
             masks = []
@@ -2563,12 +2734,6 @@ class SpanClassificationTask(Task):
     half-open token intervals [i, j).
     The number of spans is constant across examples.
     """
-
-    def tokenizer_is_supported(self, tokenizer_name):
-        """ Check if the tokenizer is supported for this task. """
-        # Assume all tokenizers supported; if retokenized data not found
-        # for this particular task, we'll just crash on file loading.
-        return True
 
     def __init__(
         self,
@@ -2706,6 +2871,13 @@ class SpanClassificationTask(Task):
         metrics["f1"] = f1
         return metrics
 
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = batch["labels"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
+
 
 @register_task("commitbank", rel_path="CB/")
 class CommitmentTask(PairClassificationTask):
@@ -2806,16 +2978,18 @@ class WiCTask(PairClassificationTask):
 
         trg_map = {"true": 1, "false": 0, True: 1, False: 0}
 
+        aligner_fn = get_aligner_fn(self._tokenizer_name)
+
         def _process_preserving_word(sent, word):
-            """ Tokenize the subsequence before the [first] instance of the word and after,
-            then concatenate everything together. This allows us to track where in the tokenized
-            sequence the marked word is located. """
-            sent_parts = sent.split(word)
-            sent_tok1 = tokenize_and_truncate(self._tokenizer_name, sent_parts[0], self.max_seq_len)
-            sent_mid = tokenize_and_truncate(self._tokenizer_name, word, self.max_seq_len)
-            sent_tok = tokenize_and_truncate(self._tokenizer_name, sent, self.max_seq_len)
-            start_idx = len(sent_tok1)
-            end_idx = start_idx + len(sent_mid)
+            """ Find out the index of the [first] instance of the word in the original sentence,
+            and project the span containing marked word to the span containing tokens created from
+            the marked word. """
+            token_aligner, sent_tok = aligner_fn(sent)
+            raw_start_idx = len(sent.split(word)[0].split(" ")) - 1
+            # after spliting, there could be three cases, 1. a tailing space, 2. characters in front
+            # of the keyword, 3. the sentence starts with the keyword
+            raw_end_idx = len(word.split()) + raw_start_idx
+            start_idx, end_idx = token_aligner.project_span(raw_start_idx, raw_end_idx)
             assert end_idx > start_idx, "Invalid marked word indices. Something is wrong."
             return sent_tok, start_idx, end_idx
 
@@ -2871,7 +3045,7 @@ class WiCTask(PairClassificationTask):
                 inp, offset1, offset2 = model_preprocessing_interface.boundary_token_fn(
                     input1, input2, get_offset=True
                 )
-                d["inputs"] = sentence_to_text_field(inp, indexers)
+                d["inputs"] = sentence_to_text_field(inp[: self.max_seq_len], indexers)
             else:
                 inp1, offset1 = model_preprocessing_interface.boundary_token_fn(
                     input1, get_offset=True
@@ -2879,13 +3053,25 @@ class WiCTask(PairClassificationTask):
                 inp2, offset2 = model_preprocessing_interface.boundary_token_fn(
                     input2, get_offset=True
                 )
-                d["input1"] = sentence_to_text_field(inp1, indexers)
-                d["input2"] = sentence_to_text_field(inp2, indexers)
+                d["input1"] = sentence_to_text_field(inp1[: self.max_seq_len], indexers)
+                d["input2"] = sentence_to_text_field(inp2[: self.max_seq_len], indexers)
             d["idx1"] = ListField(
-                [NumericField(i) for i in range(idxs1[0] + offset1, idxs1[1] + offset1)]
+                [
+                    NumericField(i)
+                    for i in range(
+                        min(idxs1[0] + offset1, self.max_seq_len - 1),
+                        min(idxs1[1] + offset1, self.max_seq_len),
+                    )
+                ]
             )
             d["idx2"] = ListField(
-                [NumericField(i) for i in range(idxs2[0] + offset2, idxs2[1] + offset2)]
+                [
+                    NumericField(i)
+                    for i in range(
+                        min(idxs2[0] + offset2, self.max_seq_len - 1),
+                        min(idxs2[1] + offset2, self.max_seq_len),
+                    )
+                ]
             )
             d["labels"] = LabelField(labels, label_namespace="labels", skip_indexing=True)
             d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
@@ -2908,10 +3094,15 @@ class MultipleChoiceTask(Task):
     where each example consists of a question and
     a (possibly variable) number of possible answers"""
 
-    pass
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = batch["label"]
+        assert len(self.get_scorers()) > 0, "Please specify a score metric"
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
 
 
-@register_task("SocialIQA", rel_path="SocialIQA/")
+@register_task("socialiqa", rel_path="SocialIQA/")
 class SocialIQATask(MultipleChoiceTask):
     """ Task class for SocialIQA.
     Paper: https://homes.cs.washington.edu/~msap/pdfs/sap2019socialIQa.pdf
@@ -2978,7 +3169,7 @@ class SocialIQATask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-        """ Process split text into a list of AlleNNLP Instances. """
+        """ Process split text into a list of AllenNLP Instances. """
 
         def _make_instance(context, choices, question, label, idx):
             d = {}
@@ -3016,12 +3207,72 @@ class SpanPredictionTask(Task):
 
     n_classes = 2
 
+    def update_metrics(self, out, batch):
+        batch_size = len(out["logits"]["span_start"])
+        logits_dict = out["logits"]
+        pred_span_start = torch.argmax(logits_dict["span_start"], dim=1).cpu().numpy()
+        pred_span_end = torch.argmax(logits_dict["span_end"], dim=1).cpu().numpy()
+
+        pred_str_list = self.get_pred_str(
+            out["logits"], batch, batch_size, pred_span_start, pred_span_end
+        )
+        gold_str_list = batch["answer_str"]
+
+        """ A batch of logits+answer strings and the questions they go with """
+        self.f1_metric(pred_str_list=pred_str_list, gold_str_list=gold_str_list)
+        self.em_metric(pred_str_list=pred_str_list, gold_str_list=gold_str_list)
+
+    def get_pred_str(self, preds, batch, batch_size, pred_span_start, pred_span_end):
+        """
+        For span prediction, we compute metrics based on span strings. This function
+        gets the span string based on start and end index predictions.
+
+        """
+        pred_str_list = []
+        for i in range(batch_size):
+
+            # Adjust for start_offset (e.g. [CLS] tokens).
+            pred_span_start_i = pred_span_start[i] - batch["start_offset"][i]
+            pred_span_end_i = pred_span_end[i] - batch["start_offset"][i]
+
+            # Ensure that predictions fit within the range of valid tokens
+            pred_span_start_i = min(
+                pred_span_start_i, len(batch["space_processed_token_map"][i]) - 1
+            )
+            pred_span_end_i = min(
+                max(pred_span_end_i, pred_span_start_i + 1),
+                len(batch["space_processed_token_map"][i]) - 1,
+            )
+
+            # space_processed_token_map is a list of tuples
+            #   (space_token, processed_token (e.g. BERT), space_token_index)
+            # The assumption is that each space_token corresponds to multiple processed_tokens.
+            # After we get the corresponding start/end space_token_indices, we can do " ".join
+            #   to get the corresponding string that is definitely within the original input.
+            # One constraint here is that our predictions can only go up to a the granularity of
+            # space_tokens. This is not so bad because SQuAD-style scripts also remove punctuation.
+            pred_char_span_start = batch["space_processed_token_map"][i][pred_span_start_i][2]
+            pred_char_span_end = batch["space_processed_token_map"][i][pred_span_end_i][2]
+            pred_str_list.append(
+                " ".join(
+                    batch["passage_str"][i].split()[pred_char_span_start:pred_char_span_end]
+                ).strip()
+            )
+        return pred_str_list
+
+    def handle_preds(self, preds, batch):
+        batch_size = len(preds["span_start"])
+        preds["span_str"] = self.get_pred_str(
+            preds, batch, batch_size, preds["span_start"], preds["span_end"]
+        )
+        return preds
+
+
 @register_task("copa", rel_path="COPA/")
 class COPATask(MultipleChoiceTask):
     """ Task class for Choice of Plausible Alternatives Task.  """
 
     def __init__(self, path, max_seq_len, name, **kw):
-        """ """
         super().__init__(name, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
@@ -3081,7 +3332,7 @@ class COPATask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-        """ Process split text into a list of AlleNNLP Instances. """
+        """ Process split text into a list of AllenNLP Instances. """
 
         def _make_instance(context, choices, question, label, idx):
             d = {}
@@ -3167,7 +3418,7 @@ class SWAGTask(MultipleChoiceTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-        """ Process split text into a list of AlleNNLP Instances. """
+        """ Process split text into a list of AllenNLP Instances. """
 
         def _make_instance(question, choices, label, idx):
             d = {}
@@ -3191,6 +3442,95 @@ class SWAGTask(MultipleChoiceTask):
         split = list(split)
         if len(split) < 4:
             split.append(itertools.count())
+        instances = map(_make_instance, *split)
+        return instances
+
+    def get_metrics(self, reset=False):
+        """Get metrics specific to the task"""
+        acc = self.scorer1.get_metric(reset)
+        return {"accuracy": acc}
+
+
+@register_task("hellaswag", rel_path="HellaSwag/")
+class HellaSwagTask(MultipleChoiceTask):
+    """ Task class for HellaSwag.  """
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+        self.scorer1 = CategoricalAccuracy()
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_accuracy" % name
+        self.val_metric_decreases = False
+        self.n_choices = 4
+
+    def load_data(self):
+        """ Process the dataset located at path.  """
+
+        def _load_split(data_file):
+            questions, choicess, targs, idxs = [], [], [], []
+            data = [json.loads(l) for l in open(data_file, encoding="utf-8")]
+            for example in data:
+                sent1 = tokenize_and_truncate(
+                    self._tokenizer_name, example["ctx_a"], self.max_seq_len
+                )
+                questions.append(sent1)
+                sent2_prefix = example["ctx_b"]
+                choices = [
+                    tokenize_and_truncate(
+                        self._tokenizer_name, sent2_prefix + " " + ending, self.max_seq_len
+                    )
+                    for ending in example["endings"]
+                ]
+                choicess.append(choices)
+                targ = example["label"] if "label" in example else 0
+                idx = example["ind"]
+                targs.append(targ)
+                idxs.append(idx)
+            return [questions, choicess, targs, idxs]
+
+        self.train_data_text = _load_split(os.path.join(self.path, "hellaswag_train.jsonl"))
+        self.val_data_text = _load_split(os.path.join(self.path, "hellaswag_val.jsonl"))
+        self.test_data_text = _load_split(os.path.join(self.path, "hellaswag_test.jsonl"))
+        self.sentences = (
+            self.train_data_text[0]
+            + self.val_data_text[0]
+            + [choice for choices in self.train_data_text[1] for choice in choices]
+            + [choice for choices in self.val_data_text[1] for choice in choices]
+        )
+        log.info("\tFinished loading HellaSwag data.")
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+
+        def _make_instance(question, choices, label, idx):
+            d = {}
+            d["question_str"] = MetadataField(" ".join(question))
+            if not model_preprocessing_interface.model_flags["uses_pair_embedding"]:
+                d["question"] = sentence_to_text_field(
+                    model_preprocessing_interface.boundary_token_fn(question), indexers
+                )
+            for choice_idx, choice in enumerate(choices):
+                inp = (
+                    model_preprocessing_interface.boundary_token_fn(question, choice)
+                    if model_preprocessing_interface.model_flags["uses_pair_embedding"]
+                    else model_preprocessing_interface.boundary_token_fn(choice)
+                )
+                d["choice%d" % choice_idx] = sentence_to_text_field(inp, indexers)
+                d["choice%d_str" % choice_idx] = MetadataField(" ".join(choice))
+            d["label"] = LabelField(label, label_namespace="labels", skip_indexing=True)
+            d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
+            return Instance(d)
+
+        split = list(split)
         instances = map(_make_instance, *split)
         return instances
 
@@ -3224,7 +3564,9 @@ class WinogradCoreferenceTask(SpanClassificationTask):
                 )
         self._iters_by_split = iters_by_split
 
-    def update_metrics(self, logits, labels, tagmask=None):
+    def update_metrics(self, out, batch):
+        logits = out["logits"]
+        labels = batch["labels"]
         logits, labels = logits.detach(), labels.detach()
         _, preds = logits.max(dim=1)
 
@@ -3289,7 +3631,7 @@ class BooleanQuestionTask(PairClassificationTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-        """ Process split text into a list of AlleNNLP Instances. """
+        """ Process split text into a list of AllenNLP Instances. """
 
         def _make_instance(d, idx):
             new_d = {}
@@ -3440,6 +3782,156 @@ class AlphaNLITask(MultipleChoiceTask):
         split = list(split)
         if len(split) < 6:
             split.append(itertools.count())
+        instances = map(_make_instance, *split)
+        return instances
+
+    def get_metrics(self, reset=False):
+        """Get metrics specific to the task"""
+        acc = self.scorer1.get_metric(reset)
+        return {"accuracy": acc}
+
+
+@register_task("scitail", rel_path="SciTailV1.1/tsv_format/")
+class SciTailTask(PairClassificationTask):
+    """ Task class for SciTail http://data.allenai.org/scitail/ """
+
+    def __init__(self, path, max_seq_len, name, **kw):
+        super().__init__(name, n_classes=2, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def load_data(self):
+        """Process and load Scitail data"""
+        targ_map = {"neutral": 0, "entails": 1}
+        self.train_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "scitail_1.0_train.tsv"),
+            max_seq_len=self.max_seq_len,
+            label_fn=targ_map.__getitem__,
+        )
+        self.val_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "scitail_1.0_dev.tsv"),
+            max_seq_len=self.max_seq_len,
+            label_fn=targ_map.__getitem__,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "scitail_1.0_test.tsv"),
+            max_seq_len=self.max_seq_len,
+            label_fn=targ_map.__getitem__,
+            return_indices=True,
+        )
+        self.sentences = (
+            self.train_data_text[0]
+            + self.train_data_text[1]
+            + self.val_data_text[0]
+            + self.val_data_text[1]
+        )
+        log.info("\tFinished loading SciTail")
+
+
+@register_task("winogrande", rel_path="Winogrande/", train_size="xl")
+# For experiment record management convenience, we use winogrande as an alias of winogrande-xl
+@register_task("winogrande-xl", rel_path="Winogrande/", train_size="xl")
+@register_task("winogrande-l", rel_path="Winogrande/", train_size="l")
+@register_task("winogrande-m", rel_path="Winogrande/", train_size="m")
+@register_task("winogrande-s", rel_path="Winogrande/", train_size="s")
+@register_task("winogrande-xs", rel_path="Winogrande/", train_size="xs")
+class WinograndeTask(MultipleChoiceTask):
+    def __init__(self, path, max_seq_len, name, train_size, **kw):
+        """
+        Task class for Winogrande dataset.
+
+        Paper: https://arxiv.org/abs/1907.10641
+        Website (data download): https://mosaic.allenai.org/projects/winogrande
+        Reference code: https://github.com/allenai/winogrande
+        """
+        super().__init__(name, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+        self.train_size = train_size
+        self.n_choices = 2
+
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+        self.scorer1 = CategoricalAccuracy()
+        self.scorers = [self.scorer1]
+        self.val_metric = "%s_accuracy" % name
+        self.val_metric_decreases = False
+
+    def load_data(self):
+        def _load_data(data_file):
+            data = [json.loads(l) for l in open(data_file, encoding="utf-8").readlines()]
+            contexts, choices, labels, idxs = [], [], [], []
+            for i, example in enumerate(data):
+                sent_part1, sent_part2 = example["sentence"].split("_")
+                sent_part1_tokens = tokenize_and_truncate(
+                    self._tokenizer_name, sent_part1, self.max_seq_len
+                )
+                choice_tokens = [
+                    tokenize_and_truncate(
+                        self._tokenizer_name, example["option1"] + sent_part2, self.max_seq_len
+                    ),
+                    tokenize_and_truncate(
+                        self._tokenizer_name, example["option2"] + sent_part2, self.max_seq_len
+                    ),
+                ]
+                contexts.append(sent_part1_tokens)
+                choices.append(choice_tokens)
+                labels.append(int(example["answer"] if "answer" in example else "1") - 1)
+                idxs.append(example["qID"])
+            return [contexts, choices, labels, idxs]
+
+        self.train_data_text = _load_data(
+            os.path.join(self.path, "train_%s.jsonl" % self.train_size)
+        )
+        self.val_data_text = _load_data(os.path.join(self.path, "dev.jsonl"))
+        self.test_data_text = _load_data(os.path.join(self.path, "test.jsonl"))
+        self.sentences = (
+            self.train_data_text[0]
+            + self.val_data_text[0]
+            + self.train_data_text[1][0]
+            + self.train_data_text[1][1]
+            + self.val_data_text[1][0]
+            + self.val_data_text[1][1]
+        )
+
+        log.info("\tFinished loading Winogrande data.")
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+
+        def _make_instance(context, choices, label, idx):
+            # because Winogrande uses MultiTaskModel._mc_forward as its forward funcion, we adapt
+            # to the keywords specified in _mc_forward, i.e. "question", "choice1" and "choice2".
+            d = {}
+            d["question_str"] = MetadataField(" ".join(context))
+            if not model_preprocessing_interface.model_flags["uses_pair_embedding"]:
+                d["question"] = sentence_to_text_field(
+                    model_preprocessing_interface.boundary_token_fn(context), indexers
+                )
+            for choice_idx, choice in enumerate(choices):
+                inp = (
+                    model_preprocessing_interface.boundary_token_fn(context, choice)
+                    if model_preprocessing_interface.model_flags["uses_pair_embedding"]
+                    else model_preprocessing_interface.boundary_token_fn(choice)
+                )
+                d["choice%d" % choice_idx] = sentence_to_text_field(inp, indexers)
+                d["choice%d_str" % choice_idx] = MetadataField(" ".join(choice))
+            d["label"] = LabelField(label, label_namespace="labels", skip_indexing=True)
+            d["idx"] = MetadataField(idx)
+            return Instance(d)
+
+        split = list(split)
         instances = map(_make_instance, *split)
         return instances
 

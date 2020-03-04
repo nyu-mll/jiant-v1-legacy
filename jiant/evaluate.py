@@ -102,13 +102,24 @@ def evaluate(
         for batch_idx, batch in enumerate(generator):
             with torch.no_grad():
                 if isinstance(cuda_device, int):
-                    batch = move_to_device(batch, cuda_device)
-                out = model.forward(task, batch, predict=True)
-            #import pdb; pdb.set_trace()
-            n_task_examples += get_output_attribute(out, "n_exs", cuda_device)
+                    batch = move_to_device(batch, cuda_device)  
+                out = model.forward(task=task, batch=batch, predict=True)
+            if task is not None:
+                task.update_metrics(out, batch)
+
+            n_exs = get_output_attribute(out, "n_exs", cuda_device)
+            # in multi-GPU mode n_exs is expected to be a tensor, w/ single-GPU an int is expected:
+            if isinstance(n_exs, torch.Tensor):
+                n_task_examples += n_exs.item()
+            elif isinstance(n_exs, int):
+                n_task_examples += n_exs
+            else:
+                raise ValueError("n_exs is type " + type(n_exs) + ", int or Tensor is expected.")
+
             # get predictions
             if "preds" not in out:
                 continue
+            out["preds"] = task.handle_preds(out["preds"], batch)
             cols = _format_preds(out["preds"])
             if task.name in IDX_REQUIRED_TASK_NAMES:
                 assert "idx" in batch, f"'idx' field missing from batches " "for task {task.name}!"

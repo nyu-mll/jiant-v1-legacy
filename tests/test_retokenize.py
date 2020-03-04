@@ -57,15 +57,15 @@ class TestRetokenize(unittest.TestCase):
         ]
 
         aligner_fn = retokenize.get_aligner_fn("transfo-xl-wt103")
-        tas, tokens = zip(*(aligner_fn(sent) for sent in self.text))
-        tas, tokens = list(tas), list(tokens)
+        token_aligners, tokens = zip(*(aligner_fn(sent) for sent in self.text))
+        token_aligners, tokens = list(token_aligners), list(tokens)
         token_index_tgt = [
-            [ta.project_tokens(idxs).tolist() for idxs in token_idxs]
-            for ta, token_idxs in zip(tas, self.token_index_src)
+            [token_aligner.project_tokens(idxs).tolist() for idxs in token_idxs]
+            for token_aligner, token_idxs in zip(token_aligners, self.token_index_src)
         ]
         span_index_tgt = [
-            [ta.project_span(start, end) for (start, end) in span_idxs]
-            for ta, span_idxs in zip(tas, self.span_index_src)
+            [token_aligner.project_span(start, end) for (start, end) in span_idxs]
+            for token_aligner, span_idxs in zip(token_aligners, self.span_index_src)
         ]
         assert self.tokens == tokens
         assert self.token_index_tgt == token_index_tgt
@@ -126,15 +126,15 @@ class TestRetokenize(unittest.TestCase):
         ]
 
         aligner_fn = retokenize.get_aligner_fn("bert-base-cased")
-        tas, tokens = zip(*(aligner_fn(sent) for sent in self.text))
-        tas, tokens = list(tas), list(tokens)
+        token_aligners, tokens = zip(*(aligner_fn(sent) for sent in self.text))
+        token_aligners, tokens = list(token_aligners), list(tokens)
         token_index_tgt = [
-            [ta.project_tokens(idxs).tolist() for idxs in token_idxs]
-            for ta, token_idxs in zip(tas, self.token_index_src)
+            [token_aligner.project_tokens(idxs).tolist() for idxs in token_idxs]
+            for token_aligner, token_idxs in zip(token_aligners, self.token_index_src)
         ]
         span_index_tgt = [
-            [ta.project_span(start, end) for (start, end) in span_idxs]
-            for ta, span_idxs in zip(tas, self.span_index_src)
+            [token_aligner.project_span(start, end) for (start, end) in span_idxs]
+            for token_aligner, span_idxs in zip(token_aligners, self.span_index_src)
         ]
         assert self.tokens == tokens
         assert self.token_index_tgt == token_index_tgt
@@ -199,15 +199,15 @@ class TestRetokenize(unittest.TestCase):
         ]
 
         aligner_fn = retokenize.get_aligner_fn("openai-gpt")
-        tas, tokens = zip(*(aligner_fn(sent) for sent in self.text))
-        tas, tokens = list(tas), list(tokens)
+        token_aligners, tokens = zip(*(aligner_fn(sent) for sent in self.text))
+        token_aligners, tokens = list(token_aligners), list(tokens)
         token_index_tgt = [
-            [ta.project_tokens(idxs).tolist() for idxs in token_idxs]
-            for ta, token_idxs in zip(tas, self.token_index_src)
+            [token_aligner.project_tokens(idxs).tolist() for idxs in token_idxs]
+            for token_aligner, token_idxs in zip(token_aligners, self.token_index_src)
         ]
         span_index_tgt = [
-            [ta.project_span(start, end) for (start, end) in span_idxs]
-            for ta, span_idxs in zip(tas, self.span_index_src)
+            [token_aligner.project_span(start, end) for (start, end) in span_idxs]
+            for token_aligner, span_idxs in zip(token_aligners, self.span_index_src)
         ]
         assert self.tokens == tokens
         assert self.token_index_tgt == token_index_tgt
@@ -282,15 +282,15 @@ class TestRetokenize(unittest.TestCase):
         ]
 
         aligner_fn = retokenize.get_aligner_fn("xlnet-base-cased")
-        tas, tokens = zip(*(aligner_fn(sent) for sent in self.text))
-        tas, tokens = list(tas), list(tokens)
+        token_aligners, tokens = zip(*(aligner_fn(sent) for sent in self.text))
+        token_aligners, tokens = list(token_aligners), list(tokens)
         token_index_tgt = [
-            [ta.project_tokens(idxs).tolist() for idxs in token_idxs]
-            for ta, token_idxs in zip(tas, self.token_index_src)
+            [token_aligner.project_tokens(idxs).tolist() for idxs in token_idxs]
+            for token_aligner, token_idxs in zip(token_aligners, self.token_index_src)
         ]
         span_index_tgt = [
-            [ta.project_span(start, end) for (start, end) in span_idxs]
-            for ta, span_idxs in zip(tas, self.span_index_src)
+            [token_aligner.project_span(start, end) for (start, end) in span_idxs]
+            for token_aligner, span_idxs in zip(token_aligners, self.span_index_src)
         ]
         assert self.tokens == tokens
         assert self.token_index_tgt == token_index_tgt
@@ -298,10 +298,10 @@ class TestRetokenize(unittest.TestCase):
 
     def test_bytebpe(self):
         self.tokens = [
-            ["ĠMembers", "Ġof", "Ġthe", "ĠHouse", "Ġcl", "apped", "Ġtheir", "Ġhands"],
-            ["ĠI", "Ġlook", "Ġat", "ĠSarah", "'s", "Ġdog", ".", "ĠIt", "Ġwas", "Ġcute", ".", "!"],
+            ["Members", "Ġof", "Ġthe", "ĠHouse", "Ġcl", "apped", "Ġtheir", "Ġhands"],
+            ["I", "Ġlook", "Ġat", "ĠSarah", "'s", "Ġdog", ".", "ĠIt", "Ġwas", "Ġcute", ".", "!"],
             [
-                "ĠMr",
+                "Mr",
                 ".",
                 "ĠImm",
                 "elt",
@@ -318,31 +318,31 @@ class TestRetokenize(unittest.TestCase):
                 "Ġrules",
                 ".",
             ],
-            ["ĠWhat", "?"],
+            ["What", "?"],
         ]
         self.token_index_tgt = [
             [[0], [1], [2], [3], [4, 5], [6], [7]],
-            [[0], [1], [2], [3, 4], [5], [6, 7], [8], [9, 10, 11]],
-            [[0], [1, 2, 3], [4], [5], [6], [7], [8], [9, 10, 11], [12], [13], [14, 15]],
+            [[0], [1], [2], [3, 4], [5, 6], [7], [8], [9, 10, 11]],
+            [[0, 1], [2, 3], [4], [5], [6], [7], [8], [9, 10, 11], [12], [13], [14, 15]],
             [[0, 1]],
         ]
         self.span_index_tgt = [
             [(0, 4), (6, 8)],
-            [(0, 1), (3, 6)],
+            [(0, 1), (3, 7)],
             [(0, 4), (8, 16), (8, 12), (9, 16)],
             [(0, 2)],
         ]
 
         aligner_fn = retokenize.get_aligner_fn("roberta-base")
-        tas, tokens = zip(*(aligner_fn(sent) for sent in self.text))
-        tas, tokens = list(tas), list(tokens)
+        token_aligners, tokens = zip(*(aligner_fn(sent) for sent in self.text))
+        token_aligners, tokens = list(token_aligners), list(tokens)
         token_index_tgt = [
-            [ta.project_tokens(idxs).tolist() for idxs in token_idxs]
-            for ta, token_idxs in zip(tas, self.token_index_src)
+            [token_aligner.project_tokens(idxs).tolist() for idxs in token_idxs]
+            for token_aligner, token_idxs in zip(token_aligners, self.token_index_src)
         ]
         span_index_tgt = [
-            [ta.project_span(start, end) for (start, end) in span_idxs]
-            for ta, span_idxs in zip(tas, self.span_index_src)
+            [token_aligner.project_span(start, end) for (start, end) in span_idxs]
+            for token_aligner, span_idxs in zip(token_aligners, self.span_index_src)
         ]
         assert self.tokens == tokens
         assert self.token_index_tgt == token_index_tgt
