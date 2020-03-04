@@ -914,7 +914,11 @@ class MultiTaskModel(nn.Module):
                 binary_preds = logits.ge(0).long()
                 task.scorer1(binary_preds, labels)
             else:
-                out["loss"] = format_output(F.cross_entropy(logits, labels, weight=torch.Tensor(task.class_weights)), self._cuda_device)
+                out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
+                curr_weights = []
+                for i in range(len(labels)):
+                    curr_weights.append(task.class_weights[labels[i]])
+                out["loss"]  = out["loss"] * torch.FloatTensor(curr_weights)
                 task.scorer1(logits, labels)
         if predict:
             if isinstance(task, RegressionTask):

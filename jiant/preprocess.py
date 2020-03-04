@@ -421,7 +421,6 @@ def _get_task(name, args, data_path, scratch_path):
             task_src_path,
             max_seq_len=args.max_seq_len,
             name=name,
-            split=args.split,
             tokenizer_name=args.tokenizer,
             **task_kw,
         )

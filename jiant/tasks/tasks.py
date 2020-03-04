@@ -222,7 +222,7 @@ class Task(object):
         - optimizer
     """
 
-    def __init__(self, name, tokenizer_name):
+    def __init__(self, name,tokenizer_name):
         self.name = name
         self._tokenizer_name = tokenizer_name
         self.scorers = []
@@ -447,25 +447,15 @@ class RankingTask(Task):
 
     pass
 
-@register_task("followups_binary", rel_path="followups_detection_i2b2")
-class FollowupsTask(SingleCLassificationTask):
+@register_task("followups_binary", rel_path="followups_binary")
+class FollowupsTask(SingleClassificationTask):
     # followups_dataset_i2b2_binary
-    def __init__(self, path, max_seq_len, name, **kw):
-        """ """
-        super(SSTTask, self).__init__(name, n_classes=2, **kw)
-        self.path = path
-        self.max_seq_len = max_seq_len
-        self.scorer2 = F1Measure(1)
-        self.scorers = [self.scorer1, self.scorer2]
-        self.train_data_text = None
-        self.val_data_text = None
-        self.test_data_text = None
 
-   def __init__(self, path, max_seq_len, name, **kw):
+    def __init__(self, path, max_seq_len, name, **kw):
         """ Load data """
         self.train_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "i2b2_binary_train.csv"),
+            os.path.join(self.path, "weak_supervision_followups_up_to403000.csv"),
             max_seq_len=self.max_seq_len,
             s1_idx=0,
             s2_idx=None,
@@ -525,7 +515,7 @@ class SSTTask(SingleClassificationTask):
         )
         self.val_data_text = load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "dev.tsv"),
+            os.path.fjoin(self.path, "dev.tsv"),
             max_seq_len=self.max_seq_len,
             s1_idx=0,
             s2_idx=None,
@@ -1284,7 +1274,6 @@ class FollowupsMultilabelTask(SingleClassificationTask):
     def process_split(
         self, split, indexers, model_preprocessing_interface
     ) -> Iterable[Type[Instance]]:
-        """ Process split text into a list of AllenNLP Instances. """
         return process_single_pair_task_split(
             split, indexers, model_preprocessing_interface, is_pair=False, multilabel=True
         )
@@ -1293,7 +1282,7 @@ class FollowupsMultilabelTask(SingleClassificationTask):
         return {"f1": self.scorer1.get_metric(reset=reset)}
 
     def get_all_labels(self):
-        non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
+        non_trivial_labels = ['Lab-related', 'Case-specific', 'Other', 'Procedure-related','Medication-related', 'Appointment-related', 'Imaging-related']
         return non_trivial_labels
 
     def load_data(self):
@@ -1304,7 +1293,7 @@ class FollowupsMultilabelTask(SingleClassificationTask):
             for label in labels:
                 res_label.append(targ_map[label])
             return res_label
-
+        import pdb; pdb.set_trace()
         self.train_data_text= load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "train_%smultilabel" % str(self.split)),
@@ -1354,10 +1343,9 @@ class FollowupsMultilabelTask(SingleClassificationTask):
         self.class_weights = compute_class_weight('balanced', np.unique(train_classes), train_classes)
 
 
-
-@register_task("followups_classification", rel_path="followups_classification")
+@register_task("followups_classification", rel_path="followups_preprocessed")
 class FollowupsClassificationTask(SingleClassificationTask):
-    def __init__(self, path, split, max_seq_len,name, **kw):
+    def __init__(self, path,  max_seq_len,name, **kw):
         # and we're going to need to do SingleCLassification
         super(FollowupsClassificationTask, self).__init__(name, n_classes=7, **kw)
          # BERTForClassifiacitonTask.
@@ -1369,36 +1357,48 @@ class FollowupsClassificationTask(SingleClassificationTask):
         self.test_data_text = None
         self.scorer1 = CategoricalAccuracy()
         self.val_metric = "%s_accuracy" % self.name
-        self.split = split
+        self.split = 1
 
     def get_all_labels(self):
-        non_trivial_labels = ['Lab', 'Case-specific', 'Other', 'Procedure','Medication', 'Appointment', 'Imaging']
+        non_trivial_labels = ['Lab-related', 'Not', 'Case-specific', 'Other', 'Procedure-related','Medication-related', 'Appointment-related', 'Imaging-related']
         return non_trivial_labels
 
     def load_data(self):
         targ_map = {x: i for i, x in enumerate(self.get_all_labels())}
         self.train_data_text= load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "train_%sclassification" % str(self.split)),
+            os.path.join(self.path, "mimic-eval-2_file_multiclass_train%s.csv" % str(self.split)),
             max_seq_len=self.max_seq_len,
             s1_idx='0',
             s2_idx=None,
             header=0,
-            label_idx='1',
+            label_idx='3',
             delimiter=',',
             quote_level=1,
             label_fn=targ_map.__getitem__,
             skip_rows=0,
         )
-        self.val_data_text = self.train_data_text
-        self.test_data_text = load_tsv(
+        self.val_data_text= load_tsv(
             self._tokenizer_name,
-            os.path.join(self.path, "test_%sclassification" % str(self.split)),
+            os.path.join(self.path, "i2b2_eval_final_multiclass_val%s.csv" % str(self.split)),
             max_seq_len=self.max_seq_len,
             s1_idx='0',
             s2_idx=None,
             header=0,
-            label_idx='1',
+            label_idx='3',
+            delimiter=',',
+            quote_level=1,
+            label_fn=targ_map.__getitem__,
+            skip_rows=0,
+        )
+        self.test_data_text = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "i2b2_eval_final_multiclass_test%s.csv" % str(self.split)),
+            max_seq_len=self.max_seq_len,
+            s1_idx='0',
+            s2_idx=None,
+            header=0,
+            label_idx='3',
             delimiter=',',
             quote_level=1,
             label_fn=targ_map.__getitem__,
@@ -2449,64 +2449,6 @@ class TaggingTask(Task):
 
 
     
-@register_task("followups", rel_path="followups")
-class FollowupsTask(TaggingTask):
-    def __init__(self, path, max_seq_len, name="followups", **kw):
-        # we want to have preprocess_tagging(),
-        self.path = path
-        super().__init__(name, 12, **kw)
-        self.num_tags = 12
-
-        self.bert_tokenization = self._tokenizer_name.startswith("bert-")
-        self.max_seq_len = max_seq_len
-        self.scorer1 = FBetaMeasure(labels=range(12), average='micro')
-        self.scorer2 = FBetaMeasure(labels=range(12))
-        self.val_metric = "%s_f1" % self.name
-        self.train_data_text = None
-        self.val_data_text = None
-        self.test_data_text = None
-
-    def get_all_labels(self):
-        labels = ['O'] 
-        non_trivial_labels = ['Lab to be ordered', 'Case-specific instructions for patient', 'Other helpful contextual information', 'Procedure needs to be ordered', 'Procedure needs to be reviewed', 'Medication to be ordered', 'Appointment to be reviewed', 'Medication followup', 'Lab result to review', 'Appointment to be ordered', 'Imaging to order']
-        labels.extend(non_trivial_labels)
-        return labels
-
-    def get_metrics(self, reset=False):
-        score = self.scorer1.get_metric(reset=reset)
-        return {'f1': score['fscore']}
-
-    def load_data(self):
-        def load_pickle(path):
-            dataset = pickle.load(open(path, "rb"))
-            data, label, metadata = dataset
-            res = [preprocess_tagging(d, l, tokenizer_name=self.tokenizer_name) for d,l in zip(data, label)]
-            data, label = list(zip(*res))
-            return data, label, metadata
-        self.train_data_text = load_pickle(os.path.join(self.path, "train_1"))
-        val_data = self.train_data_text[0][:10]
-        val_label = self.train_data_text[1][:10]
-        val_met = self.train_data_text[2][:10]
-        self.val_data_text = [val_data, val_label, val_met]
-        self.test_data_text = load_pickle(os.path.join(self.path, "test_1"))
-        self.sentences = self.train_data_text[0] + self.val_data_text[0]
-
-    def process_split(self, split, indexers, model_preprocessing_interface) -> Iterable[Type[Instance]]:
-        """ Process a tagging task """
-        split = [[model_preprocessing_interface.boundary_token_fn(sent1), ['O']+sent2+['O']] for sent1, sent2 in zip(split[0], split[1])]
-        split = list(zip(*split))
-        inputs = [TextField(list(map(Token, sent)), token_indexers=indexers) for sent in split[0]]
-        targs = []
-        for sent in zip(split[0], split[1]):
-            targs.append(SequenceLabelField(labels = sent[1], sequence_field=TextField(list(map(Token, sent[0])), token_indexers=indexers), label_namespace=self._label_namespace))
-
-        input_str = [MetadataField(" ".join(sent)) for sent in split[0]]
-        targ_str = [MetadataField(" ".join(sent)) for sent in split[1]]
-        instances = [
-            Instance({"inputs": x, "targs": t, "input_str": xs, "targ_str": ts}) for (x, t, xs, ts) in zip(inputs, targs, input_str, targ_str)
-        ]
-        return instances
-
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
     """ CCG supertagging as a task.
