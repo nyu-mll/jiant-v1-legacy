@@ -20,8 +20,9 @@ from jiant.tasks.tasks import (
     WiCTask,
     WinogradCoreferenceTask,
     GLUEDiagnosticTask,
-    FollowupsClassificationTask, 
-    FollowupsMultilabelTask
+    FollowupsClassificationTask,
+    FollowupsMultilabelTask,
+    FollowupsBinaryTask,
 )
 from jiant.tasks.qa import MultiRCTask, ReCoRDTask, QASRLTask
 from jiant.tasks.edge_probing import EdgeProbingTask
@@ -66,7 +67,7 @@ def evaluate(
 ) -> Tuple[Dict, pd.DataFrame]:
     """Evaluate on a dataset
     {par,qst,ans}_idx are used for MultiRC and other question answering dataset"""
-    FIELDS_TO_EXPORT = [    
+    FIELDS_TO_EXPORT = [
         "idx",
         "sent1_str",
         "sent2_str",
@@ -102,7 +103,7 @@ def evaluate(
         for batch_idx, batch in enumerate(generator):
             with torch.no_grad():
                 if isinstance(cuda_device, int):
-                    batch = move_to_device(batch, cuda_device)  
+                    batch = move_to_device(batch, cuda_device)
                 out = model.forward(task=task, batch=batch, predict=True)
             if task is not None:
                 task.update_metrics(out, batch)
@@ -254,7 +255,7 @@ GLUE_NAME_MAP = {
     "rte": "RTE",
     "sst": "SST-2",
     "sts-b": "STS-B",
-    "followups_classification":"followups_classification",
+    "followups_classification": "followups_classification",
     "wnli": "WNLI",
 }
 
@@ -325,6 +326,7 @@ def _write_edge_preds(
         for record in records:
             fd.write(json.dumps(record))
             fd.write("\n")
+
 
 def _write_wic_preds(
     task: str,

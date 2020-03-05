@@ -486,8 +486,8 @@ class RankingTask(Task):
 @register_task("followups_binary", rel_path="followups_binary")
 class FollowupsBinaryTask(SingleClassificationTask):
     # followups_dataset_i2b2_binary
-    
-    ## CONVERSION-RELATED CODE. One time use. 
+
+    ## CONVERSION-RELATED CODE. One time use.
     def convert_weak_supervision_to_binary(self, filename):
         rows = pd.read_csv(filename, header=0, skiprows=0)
 
@@ -519,16 +519,13 @@ class FollowupsBinaryTask(SingleClassificationTask):
             else:
                 return 1
 
-        import pdb
-
-        pdb.set_trace()
         rows["3"] = rows["3"].apply(lambda x: convert(x))
         rows.to_csv(filename)
         # i'll just have this one, adn then for this one,
         return rows
 
     def get_all_labels(self):
-        return [0, 1]
+        return ["0", "1"]
 
     def __init__(self, path, max_seq_len, name, **kw):
         """ Load data """
@@ -536,10 +533,9 @@ class FollowupsBinaryTask(SingleClassificationTask):
         self.path = path
         self.max_seq_len = max_seq_len
         self.name = name
+        self._label_namespace = "%s_tags" % name
 
-        # self.test_data_text = self.process_non_weak_data_to_binary(os.path.join(self.path,
-        #    os.path.join(self.path, "i2b2_eval_final_multiclass_test.csv"))
-        # )
+    def load_data(self):
         self.val_data_text = load_tsv(
             self._tokenizer_name,
             os.path.join(self.path, "i2b2_preprocessed/i2b2_eval_final_multiclass_val.csv"),
@@ -570,8 +566,24 @@ class FollowupsBinaryTask(SingleClassificationTask):
             label_idx="label",
         )
         self.sentences = self.train_data_text[0] + self.val_data_text[0]
-        # we use this to be
+        from sklearn.utils.class_weight import compute_class_weight
+
+        self.class_weights = compute_class_weight(
+            "balanced", np.unique(self.train_data_text[2]), self.train_data_text[2]
+        )
         log.info("\tFinished loading Followups Task data.")
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process split text into a list of AllenNLP Instances. """
+        return process_single_pair_task_split(
+            split,
+            indexers,
+            model_preprocessing_interface,
+            label_namespace=self._label_namespace,
+            is_pair=False,
+        )
 
 
 @register_task("sst", rel_path="SST-2/")
@@ -1637,10 +1649,6 @@ class FollowupsClassificationTask(SingleClassificationTask):
         self.sentences = self.train_data_text[0]
         from sklearn.utils.class_weight import compute_class_weight
         import numpy as np
-
-        self.class_weights = compute_class_weight(
-            "balanced", np.unique(self.train_data_text[2]), self.train_data_text[2]
-        )
 
 
 @register_task("mnli-ho", rel_path="MNLI/")

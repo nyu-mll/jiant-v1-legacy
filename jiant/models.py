@@ -914,17 +914,14 @@ class MultiTaskModel(nn.Module):
                 labels = batch["labels"].squeeze(-1)
             if "multilabel" in task.name:
                 class_weights = torch.FloatTensor([task.class_weights for i in range(len(labels))])
-                loss = nn.BCEWithLogitsLoss(reduction='none')
+                loss = nn.BCEWithLogitsLoss(reduction="none")
                 out["loss"] = format_output(loss(logits, labels.float()), self._cuda_device)
                 out["loss"] = (out["loss"] * torch.FloatTensor(task.class_weights)).mean()
                 binary_preds = logits.ge(0).long()
                 task.scorer1(binary_preds, labels)
             else:
-                out["loss"] = format_output(F.cross_entropy(logits, labels), self._cuda_device)
-                curr_weights = []
-                for i in range(len(labels)):
-                    curr_weights.append(task.class_weights[labels[i]])
-                out["loss"]  = out["loss"] * torch.FloatTensor(curr_weights)
+                self.criterion = nn.CrossEntropyLoss(weight=torch.Tensor(task.class_weights))
+                out["loss"] = format_output(self.criterion(logits, labels), self._cuda_device)
                 task.scorer1(logits, labels)
             out["labels"] = labels
 
@@ -938,11 +935,11 @@ class MultiTaskModel(nn.Module):
                 out["preds"] = logits
             else:
                 if "multilabel" in task.name:
-                    binary_preds = logits.ge(0).long() 
+                    binary_preds = logits.ge(0).long()
                     out["preds"] = binary_preds
                 else:
                     out["preds"] = torch.max(logits, dim=1)[1]
-        #how to get the 
+        # how to get the
         return out
 
     def _nli_diagnostic_forward(self, batch, task, predict):
