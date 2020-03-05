@@ -668,11 +668,8 @@ def build_single_sentence_module(task, d_inp: int, project_before_pooling: bool,
             (optional) a linear projection, pooling, and an MLP classifier
     """
     pooler = Pooler(
-        project=project_before_pooling,
-        d_inp=d_inp,
-        d_proj=params["d_proj"],
-        pool_type=params["pool_type"],
-    )
+        project=False, d_inp=d_inp, d_proj=params["d_proj"], pool_type=params["pool_type"]
+    )  # this projects before pooling
     d_out = params["d_proj"] if project_before_pooling else d_inp
     classifier = Classifier.from_params(d_out, task.n_classes, params)
     module = SingleClassifier(pooler, classifier)

@@ -485,7 +485,13 @@ class RankingTask(Task):
 
 @register_task("followups_binary_no_context", rel_path="followups_binary")
 class FollowupsBinaryTask(SingleClassificationTask):
-    # followups_dataset_i2b2_binary
+    def __init__(self, path, max_seq_len, name, **kw):
+        """ Load data """
+        super(FollowupsBinaryTask, self).__init__(name, n_classes=2, **kw)
+        self.path = path
+        self.max_seq_len = max_seq_len
+        self.name = name
+        self._label_namespace = "%s_tags" % name
 
     ## CONVERSION-RELATED CODE. One time use.
     def convert_weak_supervision_to_binary(self, filename):
@@ -521,50 +527,89 @@ class FollowupsBinaryTask(SingleClassificationTask):
 
         rows["3"] = rows["3"].apply(lambda x: convert(x))
         rows.to_csv(filename)
-        # i'll just have this one, adn then for this one,
         return rows
 
+    ## ACTUAL TASK LEVEL CODE ##
     def get_all_labels(self):
         return ["0", "1"]
 
-    def __init__(self, path, max_seq_len, name, **kw):
-        """ Load data """
-        super(FollowupsBinaryTask, self).__init__(name, n_classes=2, **kw)
-        self.path = path
-        self.max_seq_len = max_seq_len
-        self.name = name
-        self._label_namespace = "%s_tags" % name
+    def load_binary_tsv(
+        self,
+        header,
+        tokenizer_name,
+        data_file,
+        s1_idx,
+        label_idx,
+        docid_idx,
+        max_seq_len,
+        label_fn=None,
+    ):
+        rows = pd.read_csv(data_file, skiprows=None, header=header)[:10]
+        sent1s = rows[s1_idx].apply(lambda x: tokenize_and_truncate(tokenizer_name, x, max_seq_len))
+        if label_fn is None:
+            label_fn = lambda x: x
+        labels = rows[label_idx].apply(lambda x: label_fn(x))
+        idxs = rows.index
+        if docid_idx:
+            doc_ids = rows[docid_idx]
+        else:
+            doc_ids = np.zeros(len(rows), dtype=int)
+        return sent1s.tolist(), labels.tolist(), idxs.tolist(), doc_ids.tolist()
+
+    def process_split(self, split, indexers, model_preprocessing_interface):
+        def _make_instance(input1, labels, idx, doc_id):
+            d = {}
+            d["sent1_str"] = MetadataField(" ".join(input1))
+            d["input1"] = sentence_to_text_field(
+                model_preprocessing_interface.boundary_token_fn(input1), indexers
+            )
+            d["labels"] = LabelField(
+                labels, label_namespace=self._label_namespace, skip_indexing=True
+            )
+            d["idx"] = LabelField(idx, label_namespace="idxs_tags", skip_indexing=True)
+            d["doc_id"] = LabelField(doc_id, label_namespace="idxs_tags", skip_indexing=True)
+            return Instance(d)
+
+        split = list(split)
+        import pdb
+
+        pdb.set_trace()
+        instances = map(_make_instance, *split)
+        return instances  # lazy iterator
 
     def load_data(self):
-        self.val_data_text = load_tsv(
+        self.val_data_text = self.load_binary_tsv(
+            0,
             self._tokenizer_name,
             os.path.join(self.path, "i2b2_preprocessed/i2b2_eval_final_multiclass_val.csv"),
-            header=0,
-            max_seq_len=self.max_seq_len,
             s1_idx="0",
-            s2_idx=None,
             label_idx="3",
-        )
-        self.test_data_text = load_tsv(
-            self._tokenizer_name,
-            os.path.join(self.path, "i2b2_preprocessed/i2b2_eval_final_multiclass_test.csv"),
-            header=0,
+            docid_idx="2",
+            label_fn=int,
             max_seq_len=self.max_seq_len,
-            s1_idx="0",
-            s2_idx=None,
-            label_idx="3",
         )
 
-        self.train_data_text = load_tsv(
+        self.test_data_text = self.load_binary_tsv(
+            0,
+            self._tokenizer_name,
+            os.path.join(self.path, "i2b2_preprocessed/i2b2_eval_final_multiclass_test.csv"),
+            s1_idx="0",
+            label_idx="3",
+            docid_idx="2",
+            label_fn=int,
+            max_seq_len=self.max_seq_len,
+        )
+
+        self.train_data_text = self.load_binary_tsv(
+            0,
             self._tokenizer_name,
             os.path.join(self.path, "weak_supervision_data.csv"),
-            header=0,
-            max_seq_len=self.max_seq_len,
             s1_idx="sentence",
-            s2_idx=None,
-            label_fn=int,
             label_idx="label",
-        )
+            docid_idx=None,
+            max_seq_len=self.max_seq_len,
+        )  # no doc_id becuase never printed out for evaluation
+
         self.sentences = self.train_data_text[0] + self.val_data_text[0]
         from sklearn.utils.class_weight import compute_class_weight
 
@@ -572,18 +617,6 @@ class FollowupsBinaryTask(SingleClassificationTask):
             "balanced", np.unique(self.train_data_text[2]), self.train_data_text[2]
         )
         log.info("\tFinished loading Followups Task data.")
-
-    def process_split(
-        self, split, indexers, model_preprocessing_interface
-    ) -> Iterable[Type[Instance]]:
-        """ Process split text into a list of AllenNLP Instances. """
-        return process_single_pair_task_split(
-            split,
-            indexers,
-            model_preprocessing_interface,
-            label_namespace=self._label_namespace,
-            is_pair=False,
-        )
 
 
 @register_task("sst", rel_path="SST-2/")

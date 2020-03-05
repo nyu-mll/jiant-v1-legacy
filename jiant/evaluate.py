@@ -170,6 +170,12 @@ def evaluate(
     return all_metrics, all_preds
 
 
+def _write_followups_classification_to_document_level_tag(name, preds_df, pred_dir, split_name):
+    import pdb
+
+    pdb.set_trace()
+
+
 def write_preds(
     tasks: Iterable[tasks_module.Task], all_preds, pred_dir, split_name, strict_glue_format=False
 ) -> None:
@@ -186,8 +192,11 @@ def write_preds(
             + ["wmt"]
             + tasks_module.ALL_COLA_NPI_TASKS
         )
-
-        if task.name in glue_style_tasks or "followups" in task.name:
+        if isinstance(task, FollowupsBinaryTask):
+            _write_followups_classification_to_document_level_tag(
+                task.name, preds_df, pred_dir, split_name
+            )
+        elif task.name in glue_style_tasks or "followups" in task.name:
             # Strict mode: strict GLUE format (no extra cols)
             strict = strict_glue_format and task.name in tasks_module.ALL_GLUE_TASKS
             _write_glue_preds(task.name, preds_df, pred_dir, split_name, strict_glue_format=strict)
