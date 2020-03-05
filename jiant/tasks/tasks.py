@@ -483,7 +483,7 @@ class RankingTask(Task):
     pass
 
 
-@register_task("followups_binary", rel_path="followups_binary")
+@register_task("followups_binary_no_context", rel_path="followups_binary")
 class FollowupsBinaryTask(SingleClassificationTask):
     # followups_dataset_i2b2_binary
 
