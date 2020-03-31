@@ -135,6 +135,8 @@ def process_single_pair_task_split(
 
         return Instance(d)
 
+    # import pdb
+    # pdb.set_trace()
     split = list(split)
     if not is_pair:  # dummy iterator for input2
         split[1] = itertools.repeat(None)
@@ -1097,6 +1099,9 @@ class SNLITask(PairClassificationTask):
         log.info("\tFinished loading SNLI data.")
 
 
+@register_task("gigaword_nli", rel_path="gigaword_nli/", datasets=["baselines"])
+@register_task("gigaword_bopt", rel_path="gigaword_nli/", datasets=["bopt"])
+@register_task("gigaword_ret", rel_path="gigaword_nli/", datasets=["post-retrieve"])
 @register_task("adversarial_nli_a1", rel_path="AdversarialNLI/", datasets=["R1"])
 @register_task("adversarial_nli_a2", rel_path="AdversarialNLI/", datasets=["R2"])
 @register_task("adversarial_nli_a3", rel_path="AdversarialNLI/", datasets=["R3"])
