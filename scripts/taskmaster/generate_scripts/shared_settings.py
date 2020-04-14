@@ -32,7 +32,7 @@ def batch_size_limit_to_gpus(batch_size_limit, jiant):
 
 
 cpu_sbatch = os.path.join("scripts/taskmaster/gcp", "cpu.sbatch")
-basic_jiant_sbatch = batch_size_limit_to_gpus(numpy.inf, jiant=True)
+basic_jiant_sbatch = batch_size_limit_to_gpus(numpy.inf, jiant=True)[1]
 
 
 def batch_size_to_accumulation(batch_size_limit, batch_size, gpu_available):
