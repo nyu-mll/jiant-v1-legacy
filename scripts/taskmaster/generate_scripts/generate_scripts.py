@@ -43,7 +43,7 @@ def run_exp_init(input_module):
     for exp_name in exp_names:
         target_tasks = ",".join(task_names)
         override = f'exp_name={exp_name}, run_name=preprocess, target_tasks=\\"{target_tasks}\\"'
-        outputs.append(f'JIANT_OVERRIDES="{override}" sbatch jp40.sbatch')
+        outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {basic_jiant_sbatch}')
     return outputs
 
 
