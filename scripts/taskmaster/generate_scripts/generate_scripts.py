@@ -3,7 +3,7 @@ from shared_settings import (
     batch_size_to_accumulation,
     batch_size_limit_to_gpus,
     JIANT_PROJECT_PREFIX,
-    DATA_DIR,
+    JIANT_DATA_DIR,
     RANDOM_SEEDS,
     load_metadata,
     save_metadata,
@@ -18,17 +18,17 @@ task_metadata = load_metadata()
 
 def preprocess_tasks(input_module):
     outputs = [
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/spr1/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/spr2/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/dpr/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/dep_ewt/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/const/pos/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/const/nonterminal/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/srl/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/ner/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/coref/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/semeval/*.json")}" sbatch {cpu_sbatch}',
-        f'PROG="scripts/ccg/align_tags_to_bert" ARGS="-t {input_module} -d {os.path.join(DATA_DIR, "ccg")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/spr1/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/spr2/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/dpr/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/dep_ewt/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/ontonotes/const/pos/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/ontonotes/const/nonterminal/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/ontonotes/srl/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/ontonotes/ner/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/ontonotes/coref/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/semeval/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="scripts/ccg/align_tags_to_bert" ARGS="-t {input_module} -d {os.path.join(JIANT_DATA_DIR, "ccg")}" sbatch {cpu_sbatch}',
     ]
     return outputs
 
