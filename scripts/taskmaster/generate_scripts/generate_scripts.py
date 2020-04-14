@@ -7,6 +7,8 @@ from shared_settings import (
     RANDOM_SEEDS,
     load_metadata,
     save_metadata,
+    cpu_sbatch,
+    basic_jiant_sbatch,
 )
 from collect_trials import collect_trials
 
@@ -16,17 +18,17 @@ task_metadata = load_metadata()
 
 def preprocess_tasks(input_module):
     outputs = [
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/spr1/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/spr2/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/dpr/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/dep_ewt/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/const/pos/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/const/nonterminal/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/srl/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/ner/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/coref/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/semeval/*.json")}" sbatch ~/cpu.sbatch',
-        f'PROG="scripts/ccg/align_tags_to_bert" ARGS="-t {input_module} -d {os.path.join(DATA_DIR, "ccg")}" sbatch ~/cpu.sbatch',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/spr1/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/spr2/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/dpr/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/dep_ewt/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/const/pos/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/const/nonterminal/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/srl/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/ner/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/ontonotes/coref/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(DATA_DIR, "edges/semeval/*.json")}" sbatch {cpu_sbatch}',
+        f'PROG="scripts/ccg/align_tags_to_bert" ARGS="-t {input_module} -d {os.path.join(DATA_DIR, "ccg")}" sbatch {cpu_sbatch}',
     ]
     return outputs
 
@@ -41,7 +43,7 @@ def run_exp_init(input_module):
     for exp_name in exp_names:
         target_tasks = ",".join(task_names)
         override = f'exp_name={exp_name}, run_name=preprocess, target_tasks=\\"{target_tasks}\\"'
-        outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/jp40.sbatch')
+        outputs.append(f'JIANT_OVERRIDES="{override}" sbatch jp40.sbatch')
     return outputs
 
 
@@ -58,7 +60,7 @@ def run_batch_size_check(input_module):
                 f"max_epochs=1, val_interval={val_interval}, "
                 f"delete_checkpoints_when_done=1"
             )
-            outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/jp40.sbatch')
+            outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {basic_jiant_sbatch}')
     return outputs
 
 
@@ -126,7 +128,7 @@ def run_main_optuna_trials(input_module):
             outputs.append(
                 f'PROG="scripts/taskmaster/optuna_hp_search/run_trials" ARGS="'
                 f"--study-name {full_task_name} --gpu-available {gpu_available} "
-                f'--n-trials {num_trials} --input-module {input_module}" sbatch ~/{sbatch}'
+                f'--n-trials {num_trials} --input-module {input_module}" sbatch {sbatch}'
             )
     return outputs
 
@@ -150,7 +152,7 @@ def run_additional_optuna_trials(input_module):
                     f'PROG="scripts/taskmaster/optuna_hp_search/run_trials" ARGS="'
                     f"--study-name {full_task_name} --gpu-available {gpu_available} "
                     f'--max-epochs {int(df_grouped["max_epochs"][rank])} --lr {float(df_grouped["lr"][rank])} --batch-size {int(df_grouped["batch_size"][rank])} '
-                    f'--n-trials {num_trials} --input-module {input_module}" sbatch ~/{sbatch}'
+                    f'--n-trials {num_trials} --input-module {input_module}" sbatch {sbatch}'
                 )
         else:
             task_metadata[full_task_name][f'{input_module.split("-")[0]}_hp'] = {
@@ -210,7 +212,7 @@ def run_pretrain(
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={val_interval}, pretrain_data_fraction={data_fraction}"
                 )
-                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch')
+                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
                 checkponts[run_name][exp_name] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
@@ -236,7 +238,7 @@ def run_pretrain(
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={mlm_val_interval}, pretrain_data_fraction={data_fraction}"
                 )
-                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch')
+                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
                 checkponts[run_name][exp_name] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
@@ -294,12 +296,13 @@ def run_target_train(
                     f"val_interval={val_interval}, target_train_data_fraction={data_fraction}"
                     f"load_target_train_checkpoint={pretrain_checkponts[pretrain_run_name][exp_name]}"
                 )
-                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch')
+                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
 
     return outputs
 
 
 def write_script_file(script_name, outputs):
+    script_name = os.path.join("scripts/taskmaster/submit_sbatch", script_name)
     with open(script_name, "w") as f:
         for line in outputs:
             f.write(line + "\n")
