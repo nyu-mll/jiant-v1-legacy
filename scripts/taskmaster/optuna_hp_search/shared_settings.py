@@ -1,10 +1,31 @@
+import os
+import json
+
+JIANT_PROJECT_PREFIX = os.getenv("JIANT_PROJECT_PREFIX")
+JIANT_DATA_DIR = os.getenv("JIANT_DATA_DIR")
+RANDOM_SEEDS = [432, 5287, 98235, 8915, 2894]
+metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
+
+
+def load_metadata():
+    with open(metadata_file, "r") as f:
+        task_metadata = json.loads(f.read())
+    return task_metadata
+
+
+def save_metadata(task_metadata):
+    with open(metadata_file, "w") as f:
+        f.write(json.dumps(task_metadata))
+
+
+# TODO: rename 4p40, 2p40, p40
 def batch_size_limit_to_gpus(batch_size_limit, jiant):
     if batch_size_limit <= 4:
-        gpu_available, sbatch = 4, ("4jp40.sbatch" if jiant else "4p40.sbatch")
+        gpu_available, sbatch = 4, ("jiant_gpu1.sbatch" if jiant else "4p40.sbatch")
     elif batch_size_limit == 8:
-        gpu_available, sbatch = 2, ("2jp40.sbatch" if jiant else "2p40.sbatch")
+        gpu_available, sbatch = 2, ("jiant_gpu2.sbatch" if jiant else "2p40.sbatch")
     else:
-        gpu_available, sbatch = 1, ("jp40.sbatch" if jiant else "p40.sbatch")
+        gpu_available, sbatch = 1, ("jiant_gpu4.sbatch" if jiant else "p40.sbatch")
     return gpu_available, sbatch
 
 

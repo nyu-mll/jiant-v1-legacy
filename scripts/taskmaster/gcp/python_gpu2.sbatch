@@ -1,7 +1,7 @@
-#SBATCH --gres=gpu:3
+#SBATCH --gres=gpu:2
 #SBATCH --mem=32000
-#SBATCH --time=48:00:00
-#SBATCH --job-name="jiant_job"
+#SBATCH --time=96:00:00
+#SBATCH --job-name="nonjiant_job"
 
 # Environment
 export JIANT_DATA_DIR=/home/${USER}/data
@@ -15,9 +15,7 @@ echo JIANT_PROJECT_PREFIX="${JIANT_PROJECT_PREFIX}"
 echo JIANT_OVERRIDES="${JIANT_OVERRIDES}"
 echo "==================="
 
+
 # Run
 cd /home/zp489/jiant
-python \
-    main.py \
-    --config jiant/config/taskmaster/base_roberta.conf \
-    --overrides "${JIANT_OVERRIDES}"
+python $PROG.py $ARGS

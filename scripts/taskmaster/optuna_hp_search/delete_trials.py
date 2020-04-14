@@ -14,7 +14,7 @@ def delete_trials(full_task_name, input_module):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Delete Optuna trials")
-    parser.add_argument("--full-task-name", type=str)
+    parser.add_argument("--study-name", type=str)
     parser.add_argument(
         "--input-module",
         type=str,

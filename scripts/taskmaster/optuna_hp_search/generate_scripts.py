@@ -1,16 +1,17 @@
-import json
 import os
-from shared_settings import batch_size_to_accumulation, batch_size_limit_to_gpus
+from shared_settings import (
+    batch_size_to_accumulation,
+    batch_size_limit_to_gpus,
+    JIANT_PROJECT_PREFIX,
+    DATA_DIR,
+    RANDOM_SEEDS,
+    load_metadata,
+    save_metadata,
+)
 from collect_trials import collect_trials
 
-# TODO: clean up, move these decision-related variables to shared_settings
-RESULT_DIR = ""
-DATA_DIR = ""
-RANDOM_SEEDS = [432, 5287, 98235, 8915, 2894]
 
-metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
-with open(metadata_file, "r") as f:
-    task_metadata = json.loads(f.read())
+task_metadata = load_metadata()
 
 
 def preprocess_tasks(input_module):
@@ -40,10 +41,7 @@ def run_exp_init(input_module):
     for exp_name in exp_names:
         target_tasks = ",".join(task_names)
         override = f'exp_name={exp_name}, run_name=preprocess, target_tasks=\\"{target_tasks}\\"'
-        outputs.append(
-            f'JIANT_CONF="jiant/config/taskmaster/clean_roberta.conf" '
-            f'JIANT_OVERRIDES="{override}" sbatch ~/jp40.sbatch'
-        )
+        outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/jp40.sbatch')
     return outputs
 
 
@@ -60,10 +58,7 @@ def run_batch_size_check(input_module):
                 f"max_epochs=1, val_interval={val_interval}, "
                 f"delete_checkpoints_when_done=1"
             )
-            outputs.append(
-                f'JIANT_CONF="jiant/config/taskmaster/clean_roberta.conf" '
-                f'JIANT_OVERRIDES="{override}" sbatch ~/jp40.sbatch'
-            )
+            outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/jp40.sbatch')
     return outputs
 
 
@@ -74,7 +69,7 @@ def update_batch_size_check(input_module):
         for task_name in task_names:
             exp_name = f"batch_size_{input_module}"
             run_name = f"{task_name}_{batch_size}"
-            results_tsv = os.path.join(RESULT_DIR, exp_name, "results.tsv")
+            results_tsv = os.path.join(JIANT_PROJECT_PREFIX, exp_name, "results.tsv")
             if os.path.exists(results_tsv):
                 with open(results_tsv, "r") as f:
                     results = dict([line.split("\t") for line in f.read().split("\n") if line])
@@ -89,8 +84,7 @@ def update_batch_size_check(input_module):
             batch_size_limit = task_batch_size_limit[task["task_name"]]
             task[f'{input_module.split("-")[0]}_batch_size_limit'] = batch_size_limit
 
-    with open(metadata_file, "w") as f:
-        f.write(json.dumps(task_metadata))
+    save_metadata(task_metadata)
 
 
 def run_main_optuna_trials(input_module):
@@ -164,8 +158,8 @@ def run_additional_optuna_trials(input_module):
                 "lr": float(df_grouped["lr"][0]),
                 "batch_size": int(df_grouped["batch_size"][0]),
             }
-    with open(metadata_file, "w") as f:
-        f.write(json.dumps(task_metadata))
+
+    save_metadata(task_metadata)
 
     return outputs
 
@@ -216,12 +210,9 @@ def run_pretrain(
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={val_interval}, pretrain_data_fraction={data_fraction}"
                 )
-                outputs.append(
-                    f'JIANT_CONF="jiant/config/taskmaster/clean_roberta.conf" '
-                    f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch'
-                )
+                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch')
                 checkponts[run_name][exp_name] = os.path.join(
-                    RESULT_DIR, exp_name, run_name, "model_*.best.th"
+                    JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
         if include_mlm:
@@ -245,12 +236,9 @@ def run_pretrain(
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={mlm_val_interval}, pretrain_data_fraction={data_fraction}"
                 )
-                outputs.append(
-                    f'JIANT_CONF="jiant/config/taskmaster/clean_roberta.conf" '
-                    f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch'
-                )
+                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch')
                 checkponts[run_name][exp_name] = os.path.join(
-                    RESULT_DIR, exp_name, run_name, "model_*.best.th"
+                    JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
     for rid, seed in enumerate(RANDOM_SEEDS):
@@ -306,10 +294,7 @@ def run_target_train(
                     f"val_interval={val_interval}, target_train_data_fraction={data_fraction}"
                     f"load_target_train_checkpoint={pretrain_checkponts[pretrain_run_name][exp_name]}"
                 )
-                outputs.append(
-                    f'JIANT_CONF="jiant/config/taskmaster/clean_roberta.conf" '
-                    f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch'
-                )
+                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch ~/{sbatch}.sbatch')
 
     return outputs
 

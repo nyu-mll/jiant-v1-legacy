@@ -1,11 +1,9 @@
 import optuna
 import argparse
 import os
-import json
 import pandas
 import numpy
-
-RESULT_DIR = "/scratch/hl3236/jiant_results"
+from shared_settings import JIANT_PROJECT_PREFIX, load_metadata
 
 
 def collect_trials(full_task_name, input_module):
@@ -48,7 +46,7 @@ def collect_trials(full_task_name, input_module):
     )
     df = df.dropna()
     df = df.sort_values(["batch_size", "lr", "max_epochs"])
-    csv_file = os.path.join(RESULT_DIR, "optuna_csv", f"optuna_{study_name}_full.csv")
+    csv_file = os.path.join(JIANT_PROJECT_PREFIX, "optuna_csv", f"optuna_{study_name}_full.csv")
     df.to_csv(csv_file, index=False)
     if len(df) == 0:
         return output, None
@@ -60,7 +58,7 @@ def collect_trials(full_task_name, input_module):
     df_grouped = df_grouped.sort_values(["median", "count"], ascending=False)
     df_grouped.reset_index(drop=True, inplace=True)
     print(df_grouped)
-    csv_file = os.path.join(RESULT_DIR, "optuna_csv", f"optuna_{study_name}_agg.csv")
+    csv_file = os.path.join(JIANT_PROJECT_PREFIX, "optuna_csv", f"optuna_{study_name}_agg.csv")
     df_grouped.to_csv(csv_file, index=False)
     output = pandas.DataFrame(
         {
@@ -78,9 +76,7 @@ def collect_trials(full_task_name, input_module):
 
 
 def collect_all_trials(input_module):
-    metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
-    with open(metadata_file, "r") as f:
-        task_metadata = json.loads(f.read())
+    task_metadata = load_metadata()
 
     results = pandas.concat(
         [
@@ -88,14 +84,16 @@ def collect_all_trials(input_module):
             for full_task_name, task in task_metadata.items()
         ]
     )
-    csv_file = os.path.join(RESULT_DIR, "optuna_csv", f"optuna_{input_module}_integrated.csv")
+    csv_file = os.path.join(
+        JIANT_PROJECT_PREFIX, "optuna_csv", f"optuna_{input_module}_integrated.csv"
+    )
     results.to_csv(csv_file, index=False)
     return results
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect Optuna trials")
-    parser.add_argument("--full-task-name", type=str)
+    parser.add_argument("--study-name", type=str)
     parser.add_argument(
         "--input-module",
         type=str,

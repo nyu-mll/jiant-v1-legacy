@@ -1,14 +1,9 @@
 import optuna
-import json
 import subprocess
 import os
 import argparse
 
-from shared_settings import batch_size_to_accumulation
-
-
-RESULT_DIR = "/scratch/hl3236/jiant_results/"
-FAILED_RUN_DEFAULT = None
+from shared_settings import batch_size_to_accumulation, load_metadata, JIANT_PROJECT_PREFIX
 
 
 def run_trials(
@@ -34,8 +29,7 @@ def run_trials(
         sampler=sampler,
         load_if_exists=True,
     )
-    with open("scripts/taskmaster/optuna_hp_search/task_metadata.json", "r") as f:
-        task_metadata = json.loads(f.read())
+    task_metadata = load_metadata()
 
     def run_one_trial(trial):
         task = task_metadata[full_task_name]
@@ -118,8 +112,8 @@ def run_trials(
         process = subprocess.Popen(command, stdout=subprocess.PIPE)
         process.wait()
 
-        performance = FAILED_RUN_DEFAULT
-        results_tsv = os.path.join(RESULT_DIR, exp_name, "results.tsv")
+        performance = None
+        results_tsv = os.path.join(JIANT_PROJECT_PREFIX, exp_name, "results.tsv")
         if os.path.exists(results_tsv):
             with open(results_tsv, "r") as f:
                 results = dict([line.split("\t") for line in f.read().split("\n") if line])

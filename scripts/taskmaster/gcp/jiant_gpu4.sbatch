@@ -1,6 +1,6 @@
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:3
 #SBATCH --mem=32000
-#SBATCH --time=48:00:00
+#SBATCH --time=96:00:00
 #SBATCH --job-name="jiant_job"
 
 # Environment
@@ -19,5 +19,5 @@ echo "==================="
 cd /home/zp489/jiant
 python \
     main.py \
-    --config jiant/config/taskmaster/base_roberta.conf \
+    --config jiant/config/taskmaster/clean_roberta.conf \
     --overrides "${JIANT_OVERRIDES}"
