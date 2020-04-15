@@ -9,6 +9,7 @@ from shared_settings import JIANT_PROJECT_PREFIX, load_metadata
 def collect_trials(full_task_name, input_module):
     storage = "sqlite:///example.db"
     study_name = f"{full_task_name}_{input_module}"
+    print(study_name)
     # temporary code to cope with an early code design
     if input_module == "roberta-large":
         study_name = full_task_name
