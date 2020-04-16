@@ -92,6 +92,8 @@ def update_batch_size_check(input_module):
 def run_main_optuna_trials(input_module):
     outputs = []
     for full_task_name, task in task_metadata.items():
+        if task["role"] == "":
+            continue
         print(input_module, full_task_name)
         df_grouped = collect_trials(full_task_name, input_module)[1]
         batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
@@ -136,6 +138,8 @@ def run_main_optuna_trials(input_module):
 def run_additional_optuna_trials(input_module):
     outputs = []
     for full_task_name, task in task_metadata.items():
+        if task["role"] == "":
+            continue
         df_grouped = collect_trials(full_task_name, input_module)[1]
         if df_grouped is None or sum(df_grouped["count"]) < 10:
             print(f"{full_task_name} has not finished main optuna run.")
@@ -162,7 +166,6 @@ def run_additional_optuna_trials(input_module):
             }
 
     save_metadata(task_metadata)
-
     return outputs
 
 
@@ -174,15 +177,15 @@ def run_pretrain(
     include_20k_size=True,
 ):
     outputs = []
-    checkponts = {}
+    checkpoints = {}
 
     for full_task_name, task in task_metadata.items():
-        batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
-        gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
+        if "I" not in task["role"]:
+            continue
         hp = task[f'{input_module.split("-")[0]}_hp']
-        real_batch_size, accumulation_steps = batch_size_to_accumulation(
-            batch_size_limit, hp["batch_size"], gpu_available
-        )
+        if hp == "":
+            print(f"{full_task_name} {input_module} hp not available. skip task.")
+            continue
         training_size = task["training_size"]
         if full_task_name.endswith("-5k"):
             data_fraction = 5000 / training_size
@@ -192,17 +195,20 @@ def run_pretrain(
             training_size = 20000
         else:
             data_fraction = 1.0
-        val_interval = max(training_size // hp["batch_size"], 5000)
-        if (
-            "I" not in task["role"]
-            or (not include_20k_size and "20k" in full_task_name)
-            or (not include_full_size and training_size > 20000)
+        if (not include_20k_size and "20k" in full_task_name) or (
+            not include_full_size and training_size > 20000
         ):
             continue
+        val_interval = max(training_size // hp["batch_size"], 5000)
+        batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
 
         if include_single_task:
+            gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
+            real_batch_size, accumulation_steps = batch_size_to_accumulation(
+                batch_size_limit, hp["batch_size"], gpu_available
+            )
             run_name = f"interm_{full_task_name}"
-            checkponts[run_name] = {}
+            checkpoints[run_name] = {}
             for rid, seed in enumerate(RANDOM_SEEDS):
                 exp_name = f"exp_round{rid}_seed{seed}"
                 override = (
@@ -213,23 +219,42 @@ def run_pretrain(
                     f"val_interval={val_interval}, pretrain_data_fraction={data_fraction}"
                 )
                 outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
-                checkponts[run_name][exp_name] = os.path.join(
+                checkpoints[run_name][exp_name] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
         if include_mlm:
-            run_name = f"interm_{full_task_name}_mlm"
-            checkponts[run_name] = {}
+            if input_module.split("-")[0] == "roberta":
+                mlm_val_interval = val_interval * 2
+                mlm_pretrain_tasks = f'\\"{task["task_name"]},wikipedia_corpus_mlm\\"'
+                batch_size_limit = min(
+                    batch_size_limit,
+                    task_metadata["wikipedia_corpus_mlm"][
+                        f'{input_module.split("-")[0]}_batch_size_limit'
+                    ],
+                )
+            elif input_module.split("-")[0] == "albert":
+                mlm_val_interval = val_interval * 3
+                mlm_pretrain_tasks = (
+                    f'\\"{task["task_name"]},wikipedia_corpus_mlm,wikipedia_corpus_sop\\"'
+                )
+                batch_size_limit = min(
+                    batch_size_limit,
+                    task_metadata["wikipedia_corpus_mlm"][
+                        f'{input_module.split("-")[0]}_batch_size_limit'
+                    ],
+                    task_metadata["wikipedia_corpus_sop"][
+                        f'{input_module.split("-")[0]}_batch_size_limit'
+                    ],
+                )
+            gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
+            real_batch_size, accumulation_steps = batch_size_to_accumulation(
+                batch_size_limit, hp["batch_size"], gpu_available
+            )
+            run_name = f"interm_{full_task_name}_continue"
+            checkpoints[run_name] = {}
             for rid, seed in enumerate(RANDOM_SEEDS):
                 exp_name = f"exp_round{rid}_seed{seed}"
-                if input_module.split("-")[0] == "roberta":
-                    mlm_val_interval = val_interval * 2
-                    mlm_pretrain_tasks = '\\"{task["task_name"]},wikipedia_corpus_mlm\\"'
-                elif input_module.split("-")[0] == "albert":
-                    mlm_val_interval = val_interval * 3
-                    mlm_pretrain_tasks = (
-                        '\\"{task["task_name"]},wikipedia_corpus_mlm,wikipedia_corpus_sop\\"'
-                    )
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
                     f"do_pretrain=1, pretrain_tasks={mlm_pretrain_tasks}, "
@@ -238,21 +263,23 @@ def run_pretrain(
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={mlm_val_interval}, pretrain_data_fraction={data_fraction}"
                 )
+                # TODO: check what's the optimal K
                 outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
-                checkponts[run_name][exp_name] = os.path.join(
+                checkpoints[run_name][exp_name] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
+    checkpoints["baseline"] = {}
     for rid, seed in enumerate(RANDOM_SEEDS):
         exp_name = f"exp_round{rid}_seed{seed}"
-        checkponts["baseline"][exp_name] = "none"
+        checkpoints["baseline"][exp_name] = "none"
 
-    return outputs, checkponts
+    return outputs, checkpoints
 
 
 def run_target_train(
     input_module,
-    pretrain_checkponts,
+    pretrain_checkpoints,
     include_target=True,
     include_full_probing=True,
     include_5k_proibng=True,
@@ -260,7 +287,7 @@ def run_target_train(
     outputs = []
 
     for full_task_name, task in task_metadata.items():
-        for pretrain_run_name in pretrain_checkponts:
+        for pretrain_run_name in pretrain_checkpoints:
             batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
             gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
             hp = task[f'{input_module.split("-")[0]}_hp']
@@ -294,7 +321,7 @@ def run_target_train(
                     f'max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={val_interval}, target_train_data_fraction={data_fraction}"
-                    f"load_target_train_checkpoint={pretrain_checkponts[pretrain_run_name][exp_name]}"
+                    f"load_target_train_checkpoint={pretrain_checkpoints[pretrain_run_name][exp_name]}"
                 )
                 outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
 

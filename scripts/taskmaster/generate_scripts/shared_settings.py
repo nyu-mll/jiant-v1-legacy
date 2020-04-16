@@ -4,7 +4,7 @@ import numpy
 
 JIANT_PROJECT_PREFIX = os.getenv("JIANT_PROJECT_PREFIX")
 JIANT_DATA_DIR = os.getenv("JIANT_DATA_DIR")
-RANDOM_SEEDS = [432, 5287, 98235, 8915, 2894]
+RANDOM_SEEDS = [432, 5287, 98235]
 metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
 
 

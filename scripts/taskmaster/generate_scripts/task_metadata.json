@@ -968,5 +968,17 @@
         "role": "P",
         "albert_hp": "",
         "roberta_hp": ""
+    },
+    "wikipedia_corpus_mlm": {
+        "task_name": "wikipedia_corpus_mlm",
+        "albert_batch_size_limit": -1,
+        "roberta_batch_size_limit": -1,
+        "role": ""
+    },
+    "wikipedia_corpus_sop": {
+        "task_name": "wikipedia_corpus_sop",
+        "albert_batch_size_limit": -1,
+        "roberta_batch_size_limit": -1,
+        "role": ""
     }
 }

@@ -86,7 +86,7 @@ def collect_all_trials(input_module):
         ]
     )
     csv_file = os.path.join(
-        JIANT_PROJECT_PREFIX, "optuna_csv", f"optuna_{input_module}_integrated.csv"
+        JIANT_PROJECT_PREFIX, "optuna_csv", f"integrated_optuna_{input_module}.csv"
     )
     results.to_csv(csv_file, index=False)
     return results
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    if args.full_task_name == "ALL":
+    if args.study_name == "ALL":
         collect_all_trials(args.input_module)
     else:
-        collect_trials(args.full_task_name, args.input_module)
+        collect_trials(args.study_name, args.input_module)
