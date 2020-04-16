@@ -216,10 +216,6 @@ def run_pretrain(
     for full_task_name, task in task_metadata.items():
         if "I" not in task["role"]:
             continue
-        hp = task[f'{input_module.split("-")[0]}_hp']
-        if hp == "":
-            print(f"{full_task_name} {input_module} hp not available. skip task.")
-            continue
         training_size = task["training_size"]
         if full_task_name.endswith("-5k"):
             data_fraction = 5000 / training_size
@@ -232,6 +228,10 @@ def run_pretrain(
         if (not include_20k_size and "20k" in full_task_name) or (
             not include_full_size and training_size > 20000
         ):
+            continue
+        hp = task[f'{input_module.split("-")[0]}_hp']
+        if hp == "":
+            print(f"{full_task_name} {input_module} hp not available. skip task.")
             continue
         val_interval = max(training_size // hp["batch_size"], 5000)
         batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
