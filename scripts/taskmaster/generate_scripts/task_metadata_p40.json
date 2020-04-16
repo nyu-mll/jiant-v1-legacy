@@ -1,7 +1,7 @@
 {
     "sst": {
         "task_name": "sst",
-        "albert_batch_size_limit": 16,
+        "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 67349,
         "role": "I",
@@ -31,8 +31,8 @@
     },
     "ccg": {
         "task_name": "ccg",
-        "albert_batch_size_limit": 4,
-        "roberta_batch_size_limit": 8,
+        "albert_batch_size_limit": 8,
+        "roberta_batch_size_limit": 32,
         "training_size": 38015,
         "role": "I",
         "albert_hp": {
@@ -104,7 +104,7 @@
     },
     "qamr": {
         "task_name": "qamr",
-        "albert_batch_size_limit": 8,
+        "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 16,
         "training_size": 50615,
         "role": "I",
@@ -121,8 +121,8 @@
     },
     "cosmosqa": {
         "task_name": "cosmosqa",
-        "albert_batch_size_limit": 1,
-        "roberta_batch_size_limit": 2,
+        "albert_batch_size_limit": 2,
+        "roberta_batch_size_limit": 4,
         "training_size": 25262,
         "role": "I",
         "albert_hp": "",
@@ -186,7 +186,7 @@
     },
     "sst-20k": {
         "task_name": "sst",
-        "albert_batch_size_limit": 16,
+        "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 67349,
         "role": "I",
@@ -216,8 +216,8 @@
     },
     "ccg-20k": {
         "task_name": "ccg",
-        "albert_batch_size_limit": 4,
-        "roberta_batch_size_limit": 8,
+        "albert_batch_size_limit": 8,
+        "roberta_batch_size_limit": 32,
         "training_size": 38015,
         "role": "I",
         "albert_hp": {
@@ -289,7 +289,7 @@
     },
     "qamr-20k": {
         "task_name": "qamr",
-        "albert_batch_size_limit": 8,
+        "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 16,
         "training_size": 50615,
         "role": "I",
@@ -306,8 +306,8 @@
     },
     "cosmosqa-20k": {
         "task_name": "cosmosqa",
-        "albert_batch_size_limit": 1,
-        "roberta_batch_size_limit": 2,
+        "albert_batch_size_limit": 2,
+        "roberta_batch_size_limit": 4,
         "training_size": 25262,
         "role": "I",
         "albert_hp": "",
@@ -358,8 +358,8 @@
     },
     "rte": {
         "task_name": "rte",
-        "albert_batch_size_limit": 4,
-        "roberta_batch_size_limit": 8,
+        "albert_batch_size_limit": 8,
+        "roberta_batch_size_limit": 16,
         "training_size": 2490,
         "role": "T",
         "albert_hp": "",
@@ -380,8 +380,8 @@
     },
     "commitbank": {
         "task_name": "commitbank",
-        "albert_batch_size_limit": 4,
-        "roberta_batch_size_limit": 8,
+        "albert_batch_size_limit": 8,
+        "roberta_batch_size_limit": 16,
         "training_size": 250,
         "role": "T",
         "albert_hp": "",
@@ -393,7 +393,7 @@
     },
     "copa": {
         "task_name": "copa",
-        "albert_batch_size_limit": 16,
+        "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 400,
         "role": "T",
@@ -406,8 +406,8 @@
     },
     "multirc": {
         "task_name": "multirc",
-        "albert_batch_size_limit": 2,
-        "roberta_batch_size_limit": 4,
+        "albert_batch_size_limit": 4,
+        "roberta_batch_size_limit": 8,
         "training_size": 27243,
         "role": "T",
         "albert_hp": "",
@@ -436,8 +436,8 @@
     },
     "winograd-coreference": {
         "task_name": "winograd-coreference",
-        "albert_batch_size_limit": 8,
-        "roberta_batch_size_limit": 16,
+        "albert_batch_size_limit": 16,
+        "roberta_batch_size_limit": 32,
         "training_size": 554,
         "role": "T",
         "albert_hp": {

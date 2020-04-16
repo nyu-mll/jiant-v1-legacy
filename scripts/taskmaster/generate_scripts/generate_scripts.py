@@ -18,6 +18,37 @@ from collect_trials import collect_trials
 task_metadata = load_metadata()
 
 
+def p100_batch_size():
+    for full_task_name, task in task_metadata.items():
+        if task["task_name"] == "ccg":
+            task["roberta_batch_size_limit"] = 8
+            task["albert_batch_size_limit"] = 4
+        elif task["task_name"] == "cosmosqa":
+            task["roberta_batch_size_limit"] = 2
+            task["albert_batch_size_limit"] = 1
+        elif task["task_name"] == "hellaswag":
+            task["roberta_batch_size_limit"] = 4
+        elif task["task_name"] == "commitbank":
+            task["roberta_batch_size_limit"] = 8
+            task["albert_batch_size_limit"] = 4
+        elif task["task_name"] == "multirc":
+            task["roberta_batch_size_limit"] = 4
+            task["albert_batch_size_limit"] = 2
+        elif task["task_name"] == "rte":
+            task["roberta_batch_size_limit"] = 8
+            task["albert_batch_size_limit"] = 4
+        elif task["task_name"] == "winograd-coreference":
+            task["roberta_batch_size_limit"] = 16
+            task["albert_batch_size_limit"] = 8
+        elif task["task_name"] == "sst":
+            task["albert_batch_size_limit"] = 16
+        elif task["task_name"] == "copa":
+            task["albert_batch_size_limit"] = 16
+        elif task["task_name"] == "qamr":
+            task["albert_batch_size_limit"] = 8
+    save_metadata(task_metadata)
+
+
 def preprocess_tasks(input_module):
     outputs = [
         f'PROG="probing/retokenize_edge_data" ARGS="-t {input_module} {os.path.join(JIANT_DATA_DIR, "edges/spr1/*.json")}" sbatch {cpu_sbatch}',

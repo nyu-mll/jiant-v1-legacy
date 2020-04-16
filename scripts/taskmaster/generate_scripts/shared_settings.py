@@ -6,8 +6,8 @@ JIANT_PROJECT_PREFIX = os.getenv("JIANT_PROJECT_PREFIX")
 JIANT_DATA_DIR = os.getenv("JIANT_DATA_DIR")
 RANDOM_SEEDS = [432, 5287, 98235]
 metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
-num_main_trials = 8
-num_addi_trials = 2
+num_main_trials = 10
+num_addi_trials = 3
 
 
 def load_metadata():

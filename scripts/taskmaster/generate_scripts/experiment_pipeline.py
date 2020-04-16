@@ -33,16 +33,16 @@ from generate_scripts import (
 # update_batch_size_check("albert-xxlarge-v2")
 
 
-# step 2.a
-# main hp search
-write_script_file("main_hp_search_roberta.sh", run_main_optuna_trials("roberta-large"))
-write_script_file("main_hp_search_albert.sh", run_main_optuna_trials("albert-xxlarge-v2"))
+# # step 2.a
+# # main hp search
+# write_script_file("main_hp_search_roberta.sh", run_main_optuna_trials("roberta-large"))
+# write_script_file("main_hp_search_albert.sh", run_main_optuna_trials("albert-xxlarge-v2"))
 
 
-# step 2.b
-# finalize hp search
-write_script_file("finalize_hp_search_roberta.sh", run_additional_optuna_trials("roberta-large"))
-write_script_file("finalize_hp_search_albert.sh", run_additional_optuna_trials("albert-xxlarge-v2"))
+# # step 2.b
+# # finalize hp search
+# write_script_file("finalize_hp_search_roberta.sh", run_additional_optuna_trials("roberta-large"))
+# write_script_file("finalize_hp_search_albert.sh", run_additional_optuna_trials("albert-xxlarge-v2"))
 
 
 # step 3
