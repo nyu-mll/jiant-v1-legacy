@@ -71,7 +71,7 @@ def run_exp_init(input_module):
 
     task_names = list(set([task["task_name"] for task in task_metadata.values()]))
     exp_names = [f"batch_size_{input_module}"] + [
-        f"exp_round{rid}_seed{seed}" for rid, seed in enumerate(RANDOM_SEEDS)
+        f"{input_module}_exp_round{rid}_seed{seed}" for rid, seed in enumerate(RANDOM_SEEDS)
     ]
     for exp_name in exp_names:
         target_tasks = ",".join(task_names)
@@ -102,7 +102,7 @@ def update_batch_size_check(input_module):
     for batch_size in [32, 16, 8, 4, 2, 1]:
         task_names = list(set([task["task_name"] for task in task_metadata.values()]))
         for task_name in task_names:
-            exp_name = f"batch_size_{input_module}"
+            exp_name = f"{input_module}_batch_size"
             run_name = f"{task_name}_{batch_size}"
             results_tsv = os.path.join(JIANT_PROJECT_PREFIX, exp_name, "results.tsv")
             if os.path.exists(results_tsv):
@@ -244,7 +244,7 @@ def run_pretrain(
             run_name = f"interm_{full_task_name}"
             checkpoints[run_name] = {}
             for rid, seed in enumerate(RANDOM_SEEDS):
-                exp_name = f"exp_round{rid}_seed{seed}"
+                exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
                     f'do_pretrain=1, pretrain_tasks={task["task_name"]}, input_module={input_module}, '
@@ -288,7 +288,7 @@ def run_pretrain(
             run_name = f"interm_{full_task_name}_continue"
             checkpoints[run_name] = {}
             for rid, seed in enumerate(RANDOM_SEEDS):
-                exp_name = f"exp_round{rid}_seed{seed}"
+                exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
                     f"do_pretrain=1, pretrain_tasks={mlm_pretrain_tasks}, "
@@ -305,7 +305,7 @@ def run_pretrain(
 
     checkpoints["baseline"] = {}
     for rid, seed in enumerate(RANDOM_SEEDS):
-        exp_name = f"exp_round{rid}_seed{seed}"
+        exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
         checkpoints["baseline"][exp_name] = "none"
 
     return outputs, checkpoints
@@ -348,7 +348,7 @@ def run_target_train(
 
             run_name = f"{full_task_name}_from_{pretrain_run_name}"
             for rid, seed in enumerate(RANDOM_SEEDS):
-                exp_name = f"exp_round{rid}_seed{seed}"
+                exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
                     f'do_target_task_training=1, target_tasks={task["task_name"]}, input_module={input_module}, '
