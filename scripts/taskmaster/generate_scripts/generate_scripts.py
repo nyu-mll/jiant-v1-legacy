@@ -9,6 +9,8 @@ from shared_settings import (
     save_metadata,
     cpu_sbatch,
     basic_jiant_sbatch,
+    num_main_trials,
+    num_addi_trials,
 )
 from collect_trials import collect_trials
 
@@ -111,9 +113,9 @@ def run_main_optuna_trials(input_module):
             print("previous trials not found")
         else:
             previous_trials = sum(df_grouped["count"])
-            print(f"previous trials found: {previous_trials} / 10")
+            print(f"previous trials found: {previous_trials} / {num_main_trials}")
 
-        remaining_trials = 10 - previous_trials
+        remaining_trials = num_main_trials - previous_trials
         if remaining_trials <= 0:
             continue
 
@@ -142,15 +144,15 @@ def run_additional_optuna_trials(input_module):
         if task["role"] == "":
             continue
         df_grouped = collect_trials(full_task_name, input_module)[1]
-        if df_grouped is None or sum(df_grouped["count"]) < 10:
+        if df_grouped is None or sum(df_grouped["count"]) < num_main_trials:
             print(f"{full_task_name} has not finished main optuna run.")
             continue
         batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
         gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=False)
 
-        if df_grouped["count"][0] < 3:
+        if df_grouped["count"][0] < num_addi_trials:
             for rank in range(3):
-                num_trials = max(0, 3 - df_grouped["count"][rank])
+                num_trials = max(0, num_addi_trials - df_grouped["count"][rank])
                 if num_trials == 0:
                     continue
                 outputs.append(
