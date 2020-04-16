@@ -106,13 +106,6 @@ def run_main_optuna_trials(input_module):
         else:
             training_size = task["training_size"]
 
-        if training_size >= 100000:
-            parallel = 4
-        elif training_size >= 20000:
-            parallel = 2
-        else:
-            parallel = 1
-
         if df_grouped is None:
             previous_trials = 0
             print("previous trials not found")
@@ -123,6 +116,14 @@ def run_main_optuna_trials(input_module):
         remaining_trials = 10 - previous_trials
         if remaining_trials <= 0:
             continue
+
+        if training_size >= 100000 or remaining_trials > 6:
+            parallel = 5
+        elif training_size >= 20000 or remaining_trials > 4:
+            parallel = 3
+        else:
+            parallel = 2
+
         for i in range(parallel):
             num_trials = (remaining_trials // parallel) + (i < (remaining_trials % parallel))
             if num_trials == 0:
