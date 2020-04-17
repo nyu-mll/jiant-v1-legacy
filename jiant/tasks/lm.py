@@ -182,6 +182,7 @@ class WikiText103LMTask(WikiTextLMTask):
         }
 
 
+@register_task("crosslingual_mlm", rel_path="crosslingual_combine_wiki") 
 @register_task("wikipedia_corpus_mlm", rel_path="wikipedia_corpus_small/")
 class MaskedLanguageModelingTask(Task):
     """

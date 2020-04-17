@@ -751,6 +751,7 @@ class XLMRobertaEmbedderModule(HuggingfaceTransformersEmbedderModule):
         self._cls_id = self.tokenizer.convert_tokens_to_ids("<s>")
         self._unk_id = self.tokenizer.convert_tokens_to_ids("<unk>")
         self._pad_id = self.tokenizer.convert_tokens_to_ids("<pad>")
+        self._mask_id = self.tokenizer.convert_tokens_to_ids("<mask>")
 
         self.parameter_setup(args)
 
@@ -778,9 +779,9 @@ class XLMRobertaEmbedderModule(HuggingfaceTransformersEmbedderModule):
         return self.prepare_output(lex_seq, hidden_states, input_mask)
 
     def get_pretrained_lm_head(self):
-        model_with_lm_head = transformers.RobertaForMaskedLM.from_pretrained(
+        model_with_lm_head = transformers.XLMRobertaForMaskedLM.from_pretrained(
             self.input_module, cache_dir=self.cache_dir
         )
         lm_head = model_with_lm_head.lm_head
-        lm_head.predictions.decoder.weight = self.model.embeddings.word_embeddings.weight
-        return lm_head, nn.LogSoftmax(dim=-1)
+        lm_head.decoder.weight = self.model.embeddings.word_embeddings.weight
+        return lm_head
