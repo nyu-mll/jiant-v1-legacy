@@ -1,5 +1,5 @@
 #SBATCH --gres=gpu:2
-#SBATCH --mem=26000
+#SBATCH --mem=24000
 #SBATCH --time=96:00:00
 #SBATCH --job-name="jiant_job"
 
