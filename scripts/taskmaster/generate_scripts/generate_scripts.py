@@ -217,14 +217,6 @@ def run_pretrain(
         if "I" not in task["role"]:
             continue
         training_size = task["training_size"]
-        if full_task_name.endswith("-5k"):
-            data_fraction = 5000 / training_size
-            training_size = 5000
-        elif full_task_name.endswith("-20k"):
-            data_fraction = 20000 / training_size
-            training_size = 20000
-        else:
-            data_fraction = 1.0
         if (not include_20k_size and "20k" in full_task_name) or (
             not include_full_size and training_size > 20000
         ):
@@ -250,7 +242,7 @@ def run_pretrain(
                     f'do_pretrain=1, pretrain_tasks={task["task_name"]}, input_module={input_module}, '
                     f'max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
-                    f"val_interval={val_interval}, pretrain_data_fraction={data_fraction}"
+                    f"val_interval={val_interval}"
                 )
                 outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
                 checkpoints[run_name][exp_name] = os.path.join(
@@ -295,7 +287,7 @@ def run_pretrain(
                     f'weighting_method=examples_proportional_mixingK=16384, early_stopping={task["task_name"]}'
                     f'input_module={input_module}, max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
-                    f"val_interval={mlm_val_interval}, pretrain_data_fraction={data_fraction}"
+                    f"val_interval={mlm_val_interval}"
                 )
                 # TODO: check what's the optimal K
                 outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')

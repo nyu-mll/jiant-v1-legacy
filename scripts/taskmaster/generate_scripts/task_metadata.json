@@ -221,10 +221,10 @@
         }
     },
     "sst-20k": {
-        "task_name": "sst",
+        "task_name": "sst-20k",
         "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 32,
-        "training_size": 67349,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -238,10 +238,10 @@
         }
     },
     "socialiqa-20k": {
-        "task_name": "socialiqa",
+        "task_name": "socialiqa-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 33410,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -255,10 +255,10 @@
         }
     },
     "ccg-20k": {
-        "task_name": "ccg",
+        "task_name": "ccg-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 38015,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -272,10 +272,10 @@
         }
     },
     "qqp-20k": {
-        "task_name": "qqp",
+        "task_name": "qqp-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 363846,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -289,10 +289,10 @@
         }
     },
     "mnli-20k": {
-        "task_name": "mnli",
+        "task_name": "mnli-20k",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 8,
-        "training_size": 392702,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -306,10 +306,10 @@
         }
     },
     "scitail-20k": {
-        "task_name": "scitail",
+        "task_name": "scitail-20k",
         "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 32,
-        "training_size": 23596,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -323,10 +323,10 @@
         }
     },
     "qasrl-20k": {
-        "task_name": "qasrl",
+        "task_name": "qasrl-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 637989,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -340,10 +340,10 @@
         }
     },
     "qamr-20k": {
-        "task_name": "qamr",
+        "task_name": "qamr-20k",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 16,
-        "training_size": 50615,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -357,10 +357,10 @@
         }
     },
     "cosmosqa-20k": {
-        "task_name": "cosmosqa",
+        "task_name": "cosmosqa-20k",
         "albert_batch_size_limit": 1,
         "roberta_batch_size_limit": 2,
-        "training_size": 25262,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -374,10 +374,10 @@
         }
     },
     "hellaswag-20k": {
-        "task_name": "hellaswag",
+        "task_name": "hellaswag-20k",
         "albert_batch_size_limit": 2,
         "roberta_batch_size_limit": 4,
-        "training_size": 39905,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -391,10 +391,10 @@
         }
     },
     "record-20k": {
-        "task_name": "record",
+        "task_name": "record-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 4,
-        "training_size": 1796856,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -408,10 +408,10 @@
         }
     },
     "winogrande-20k": {
-        "task_name": "winogrande",
+        "task_name": "winogrande-20k",
         "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 32,
-        "training_size": 40398,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
