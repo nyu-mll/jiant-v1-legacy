@@ -389,6 +389,7 @@ class ReCoRDTask(Task):
         return {"f1": f1, "em": em, "avg": (f1 + em) / 2}
 
 
+@register_task("qasrl-20k", rel_path="QASRL-20k/")
 @register_task("qasrl", rel_path="QASRL/")
 class QASRLTask(SpanPredictionTask):
     def __init__(self, path, max_seq_len, name, **kw):
@@ -571,6 +572,7 @@ class QASRLTask(SpanPredictionTask):
         }
 
 
+@register_task("qamr-20k", rel_path="QAMR-20k/")
 @register_task("qamr", rel_path="QAMR/")
 class QAMRTask(SpanPredictionTask):
     """ Question-Answer Meaning Representation (QAMR)
@@ -813,6 +815,7 @@ def remap_ptb_passage_and_answer_spans(ptb_tokens, answer_span, moses, tokenizer
     }
 
 
+@register_task("commonsenseqa-20k", rel_path="CommonsenseQA-20k/")
 @register_task("commonsenseqa", rel_path="CommonsenseQA/")
 @register_task("commonsenseqa-easy", rel_path="CommonsenseQA/", easy=True)
 class CommonsenseQATask(MultipleChoiceTask):
@@ -909,6 +912,7 @@ class CommonsenseQATask(MultipleChoiceTask):
         return {"accuracy": acc}
 
 
+@register_task("cosmosqa-20k", rel_path="cosmosqa-20k/")
 @register_task("cosmosqa", rel_path="cosmosqa/")
 class CosmosQATask(MultipleChoiceTask):
     """ Task class for CosmosQA Task.

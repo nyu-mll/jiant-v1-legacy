@@ -470,6 +470,7 @@ class RankingTask(Task):
     pass
 
 
+@register_task("sst-20k", rel_path="SST-2-20k/")
 @register_task("sst", rel_path="SST-2/")
 class SSTTask(SingleClassificationTask):
     """ Task class for Stanford Sentiment Treebank.  """
@@ -830,6 +831,7 @@ class CoLAAnalysisTask(SingleClassificationTask):
         return collected_metrics
 
 
+@register_task("qqp-20k", rel_path="QQP-20k/")
 @register_task("qqp", rel_path="QQP/")
 @register_task("qqp-alt", rel_path="QQP/")  # second copy for different params
 class QQPTask(PairClassificationTask):
@@ -1226,6 +1228,7 @@ class AdversarialNLITask(PairClassificationTask):
         log.info("\tFinished loading ANLI data: " + self.name)
 
 
+@register_task("mnli-20k", rel_path="MNLI-20k/")
 @register_task("mnli", rel_path="MNLI/")
 # Alternate version with a modified evaluation metric. For use in transfer evaluations on
 # two-class test sets like RTE. Example config override:
@@ -2402,6 +2405,7 @@ class TaggingTask(Task):
             scorer(logits, labels)
 
 
+@register_task("ccg-20k", rel_path="CCG-20k/")
 @register_task("ccg", rel_path="CCG/")
 class CCGTaggingTask(TaggingTask):
     """ CCG supertagging as a task.
@@ -2895,6 +2899,7 @@ class MultipleChoiceTask(Task):
             scorer(logits, labels)
 
 
+@register_task("socialiqa-20k", rel_path="SocialIQA-20k/")
 @register_task("socialiqa", rel_path="SocialIQA/")
 class SocialIQATask(MultipleChoiceTask):
     """ Task class for SocialIQA.
@@ -3244,6 +3249,7 @@ class SWAGTask(MultipleChoiceTask):
         return {"accuracy": acc}
 
 
+@register_task("hellaswag-20k", rel_path="HellaSwag-20k/")
 @register_task("hellaswag", rel_path="HellaSwag/")
 class HellaSwagTask(MultipleChoiceTask):
     """ Task class for HellaSwag.  """
@@ -3584,6 +3590,7 @@ class AlphaNLITask(MultipleChoiceTask):
         return {"accuracy": acc}
 
 
+@register_task("scitail-20k", rel_path="SciTailV1.1-20k/tsv_format/")
 @register_task("scitail", rel_path="SciTailV1.1/tsv_format/")
 class SciTailTask(PairClassificationTask):
     """ Task class for SciTail http://data.allenai.org/scitail/ """
@@ -3780,7 +3787,7 @@ class SentenceOrderTask(PairClassificationTask):
                 -90% of the time, this target_seq_length is equal to max_seq_length,  and
                 10% of the time, it is set to a random number of tokens between 2 and max_seq_length.
                 -Given the sampled sentences, randomly sample N such that the first N sentences in the
-                sampled go to the first segment, and the rest go to the second. 
+                sampled go to the first segment, and the rest go to the second.
                 -50% of the time, the first and second segments are switched.
         Args:
             path: (str) data file path
