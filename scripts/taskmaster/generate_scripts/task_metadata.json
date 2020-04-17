@@ -22,7 +22,11 @@
         "roberta_batch_size_limit": 8,
         "training_size": 33410,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 1e-05,
@@ -38,7 +42,7 @@
         "albert_hp": {
             "max_epochs": 15,
             "lr": 3e-05,
-            "batch_size": 16
+            "batch_size": 32
         },
         "roberta_hp": {
             "max_epochs": 15,
@@ -52,7 +56,11 @@
         "roberta_batch_size_limit": 8,
         "training_size": 363846,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 5,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 5,
             "lr": 1e-05,
@@ -82,7 +90,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 23596,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 1e-05,
@@ -95,7 +107,11 @@
         "roberta_batch_size_limit": 8,
         "training_size": 637989,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 5,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 5,
             "lr": 1e-05,
@@ -124,8 +140,12 @@
         "albert_batch_size_limit": 1,
         "roberta_batch_size_limit": 2,
         "training_size": 25262,
-        "role": "I",
-        "albert_hp": "",
+        "role": "IT",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -138,8 +158,16 @@
         "roberta_batch_size_limit": 4,
         "training_size": 39905,
         "role": "IT",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        }
     },
     "commonsenseqa": {
         "task_name": "commonsenseqa",
@@ -147,7 +175,11 @@
         "roberta_batch_size_limit": 8,
         "training_size": 9741,
         "role": "IT",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -159,8 +191,12 @@
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 4,
         "training_size": 1796856,
-        "role": "IT",
-        "albert_hp": "",
+        "role": "I",
+        "albert_hp": {
+            "max_epochs": 5,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 2,
             "lr": 1e-05,
@@ -185,10 +221,10 @@
         }
     },
     "sst-20k": {
-        "task_name": "sst",
+        "task_name": "sst-20k",
         "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 32,
-        "training_size": 67349,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -202,12 +238,16 @@
         }
     },
     "socialiqa-20k": {
-        "task_name": "socialiqa",
+        "task_name": "socialiqa-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 33410,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -215,10 +255,10 @@
         }
     },
     "ccg-20k": {
-        "task_name": "ccg",
+        "task_name": "ccg-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 38015,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -232,12 +272,16 @@
         }
     },
     "qqp-20k": {
-        "task_name": "qqp",
+        "task_name": "qqp-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 363846,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -245,12 +289,16 @@
         }
     },
     "mnli-20k": {
-        "task_name": "mnli",
+        "task_name": "mnli-20k",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 8,
-        "training_size": 392702,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 2e-05,
@@ -258,10 +306,10 @@
         }
     },
     "scitail-20k": {
-        "task_name": "scitail",
+        "task_name": "scitail-20k",
         "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 32,
-        "training_size": 23596,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 15,
@@ -275,12 +323,16 @@
         }
     },
     "qasrl-20k": {
-        "task_name": "qasrl",
+        "task_name": "qasrl-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 8,
-        "training_size": 637989,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 3e-05,
@@ -288,10 +340,10 @@
         }
     },
     "qamr-20k": {
-        "task_name": "qamr",
+        "task_name": "qamr-20k",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 16,
-        "training_size": 50615,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -305,12 +357,16 @@
         }
     },
     "cosmosqa-20k": {
-        "task_name": "cosmosqa",
+        "task_name": "cosmosqa-20k",
         "albert_batch_size_limit": 1,
         "roberta_batch_size_limit": 2,
-        "training_size": 25262,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -318,21 +374,33 @@
         }
     },
     "hellaswag-20k": {
-        "task_name": "hellaswag",
+        "task_name": "hellaswag-20k",
         "albert_batch_size_limit": 2,
         "roberta_batch_size_limit": 4,
-        "training_size": 39905,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        }
     },
     "record-20k": {
-        "task_name": "record",
+        "task_name": "record-20k",
         "albert_batch_size_limit": 4,
         "roberta_batch_size_limit": 4,
-        "training_size": 1796856,
+        "training_size": 20000,
         "role": "I",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -340,10 +408,10 @@
         }
     },
     "winogrande-20k": {
-        "task_name": "winogrande",
+        "task_name": "winogrande-20k",
         "albert_batch_size_limit": 16,
         "roberta_batch_size_limit": 32,
-        "training_size": 40398,
+        "training_size": 20000,
         "role": "I",
         "albert_hp": {
             "max_epochs": 7,
@@ -362,7 +430,11 @@
         "roberta_batch_size_limit": 8,
         "training_size": 2490,
         "role": "T",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 50,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 50,
             "lr": 1e-05,
@@ -375,8 +447,16 @@
         "roberta_batch_size_limit": 8,
         "training_size": 9427,
         "role": "T",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 16
+        }
     },
     "commitbank": {
         "task_name": "commitbank",
@@ -384,7 +464,11 @@
         "roberta_batch_size_limit": 8,
         "training_size": 250,
         "role": "T",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 50,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 50,
             "lr": 1e-05,
@@ -402,7 +486,11 @@
             "lr": 5e-06,
             "batch_size": 16
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 50,
+            "lr": 5e-06,
+            "batch_size": 8
+        }
     },
     "multirc": {
         "task_name": "multirc",
@@ -410,7 +498,11 @@
         "roberta_batch_size_limit": 4,
         "training_size": 27243,
         "role": "T",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 1e-05,
@@ -457,8 +549,16 @@
         "roberta_batch_size_limit": 16,
         "training_size": 49706,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 16
+        },
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 16
+        }
     },
     "edges-srl-ontonotes": {
         "task_name": "edges-srl-ontonotes",
@@ -466,8 +566,16 @@
         "roberta_batch_size_limit": 16,
         "training_size": 231480,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        }
     },
     "edges-coref-ontonotes": {
         "task_name": "edges-coref-ontonotes",
@@ -475,8 +583,16 @@
         "roberta_batch_size_limit": 16,
         "training_size": 41777,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 16
+        },
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 16
+        }
     },
     "edges-spr1": {
         "task_name": "edges-spr1",
@@ -501,7 +617,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 2226,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 25,
+            "lr": 2e-05,
+            "batch_size": 8
+        },
         "roberta_hp": {
             "max_epochs": 25,
             "lr": 2e-05,
@@ -519,7 +639,11 @@
             "lr": 5e-06,
             "batch_size": 8
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 50,
+            "lr": 1e-05,
+            "batch_size": 16
+        }
     },
     "edges-rel-semeval": {
         "task_name": "edges-rel-semeval",
@@ -532,7 +656,11 @@
             "lr": 2e-05,
             "batch_size": 16
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 2e-05,
+            "batch_size": 16
+        }
     },
     "edges-pos-ontonotes": {
         "task_name": "edges-pos-ontonotes",
@@ -540,8 +668,16 @@
         "roberta_batch_size_limit": 32,
         "training_size": 81035,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        }
     },
     "edges-nonterminal-ontonotes": {
         "task_name": "edges-nonterminal-ontonotes",
@@ -549,8 +685,16 @@
         "roberta_batch_size_limit": 32,
         "training_size": 110513,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        }
     },
     "edges-dep-ud-ewt": {
         "task_name": "edges-dep-ud-ewt",
@@ -558,7 +702,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 12496,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 3e-05,
@@ -573,8 +721,8 @@
         "role": "P",
         "albert_hp": {
             "max_epochs": 7,
-            "lr": 2e-05,
-            "batch_size": 16
+            "lr": 1e-05,
+            "batch_size": 32
         },
         "roberta_hp": {
             "max_epochs": 7,
@@ -661,7 +809,11 @@
             "lr": 1e-05,
             "batch_size": 16
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        }
     },
     "se-probing-obj-number": {
         "task_name": "se-probing-obj-number",
@@ -742,7 +894,11 @@
             "lr": 5e-06,
             "batch_size": 16
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 50,
+            "lr": 1e-05,
+            "batch_size": 8
+        }
     },
     "acceptability-def": {
         "task_name": "acceptability-def",
@@ -835,7 +991,11 @@
         "roberta_batch_size_limit": 16,
         "training_size": 231480,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 3e-05,
@@ -848,8 +1008,16 @@
         "roberta_batch_size_limit": 16,
         "training_size": 41777,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 2e-05,
+            "batch_size": 16
+        },
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 2e-05,
+            "batch_size": 16
+        }
     },
     "edges-pos-ontonotes-5k": {
         "task_name": "edges-pos-ontonotes",
@@ -857,8 +1025,16 @@
         "roberta_batch_size_limit": 32,
         "training_size": 81035,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        }
     },
     "edges-nonterminal-ontonotes-5k": {
         "task_name": "edges-nonterminal-ontonotes",
@@ -866,8 +1042,16 @@
         "roberta_batch_size_limit": 32,
         "training_size": 110513,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 1e-05,
+            "batch_size": 32
+        }
     },
     "edges-dep-ud-ewt-5k": {
         "task_name": "edges-dep-ud-ewt",
@@ -875,7 +1059,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 12496,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 3e-05,
@@ -888,7 +1076,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 100000,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 3e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 3e-05,
@@ -906,7 +1098,11 @@
             "lr": 3e-05,
             "batch_size": 16
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        }
     },
     "se-probing-top-constituents-5k": {
         "task_name": "se-probing-top-constituents",
@@ -914,7 +1110,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 100000,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 32
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 2e-05,
@@ -927,7 +1127,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 100000,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 2e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 7,
             "lr": 1e-05,
@@ -962,7 +1166,11 @@
             "lr": 3e-05,
             "batch_size": 16
         },
-        "roberta_hp": ""
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 3e-05,
+            "batch_size": 16
+        }
     },
     "se-probing-obj-number-5k": {
         "task_name": "se-probing-obj-number",
@@ -1021,7 +1229,11 @@
         "roberta_batch_size_limit": 32,
         "training_size": 99996,
         "role": "P",
-        "albert_hp": "",
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 16
+        },
         "roberta_hp": {
             "max_epochs": 15,
             "lr": 2e-05,
@@ -1034,8 +1246,16 @@
         "roberta_batch_size_limit": 32,
         "training_size": 8551,
         "role": "P",
-        "albert_hp": "",
-        "roberta_hp": ""
+        "albert_hp": {
+            "max_epochs": 7,
+            "lr": 1e-05,
+            "batch_size": 32
+        },
+        "roberta_hp": {
+            "max_epochs": 15,
+            "lr": 2e-05,
+            "batch_size": 32
+        }
     },
     "wikipedia_corpus_mlm": {
         "task_name": "wikipedia_corpus_mlm",
