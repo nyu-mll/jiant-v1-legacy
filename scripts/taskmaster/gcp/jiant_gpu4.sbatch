@@ -4,6 +4,7 @@
 #SBATCH --mem=24000
 #SBATCH --time=96:00:00
 #SBATCH --job-name="jiant_job"
+#SBATCH -o /home/zp489/runlogs/jobs/s%A.out
 
 # Environment
 export JIANT_DATA_DIR=/home/${USER}/data
