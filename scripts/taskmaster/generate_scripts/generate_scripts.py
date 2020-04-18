@@ -231,7 +231,7 @@ def run_pretrain(
                     f"val_interval={val_interval}"
                 )
                 outputs.append(
-                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}.sbatch'
+                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}'
                 )
                 checkpoints[f"round{rid}"][f"{full_task_name}"] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
@@ -270,7 +270,7 @@ def run_pretrain(
                     f"val_interval={mlm_val_interval}"
                 )
                 outputs.append(
-                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}.sbatch'
+                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}'
                 )
                 checkpoints[f"round{rid}"][f"{full_task_name}_mtl"] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
