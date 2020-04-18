@@ -332,3 +332,18 @@ def write_script_file(script_name, outputs):
     with open(script_name, "w") as f:
         for line in outputs:
             f.write(line + "\n")
+
+
+def sort_metadata():
+    task_metadata = load_metadata()
+    tm_tuple = list(task_metadata.items())
+
+    def key_func(task_kv):
+        if "training_size" in task_kv[1]:
+            return task_kv[1]["training_size"]
+        else:
+            return -1
+
+    tm_tuple.sort(reverse=True, key=key_func)
+    task_metadata = dict(tm_tuple)
+    save_metadata(task_metadata)
