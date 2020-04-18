@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #SBATCH --nodes=1
 #SBATCH --mem=8000
 #SBATCH --time=96:00:00
