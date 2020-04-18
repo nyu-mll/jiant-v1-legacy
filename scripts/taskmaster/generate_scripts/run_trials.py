@@ -3,7 +3,12 @@ import subprocess
 import os
 import argparse
 
-from shared_settings import batch_size_to_accumulation, load_metadata, JIANT_PROJECT_PREFIX
+from shared_settings import (
+    batch_size_to_accumulation,
+    load_metadata,
+    JIANT_PROJECT_PREFIX,
+    get_batch_size_limit,
+)
 
 
 def run_trials(
@@ -32,12 +37,12 @@ def run_trials(
     task_metadata = load_metadata()
 
     def run_one_trial(trial):
-        task = task_metadata[full_task_name]
-        task_name = task["task_name"]
+        task_info = task_metadata[full_task_name]
+        task_name = task_info["task_name"]
         exp_name = f"optuna_{study_name}"
         run_name = f"trial_{trial.number}"
 
-        training_size = task["training_size"]
+        training_size = task_info["training_size"]
         if full_task_name.endswith("-5k"):
             target_train_data_fraction = 5000 / training_size
             training_size = 5000
@@ -72,7 +77,7 @@ def run_trials(
             batch_size = trial.suggest_categorical("bs", batch_size_candidate)
         else:
             batch_size = batch_size_override
-        batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
+        batch_size_limit = get_batch_size_limit(task_info, input_module)
         real_batch_size, accumulation_steps = batch_size_to_accumulation(
             batch_size_limit, batch_size, gpu_available
         )

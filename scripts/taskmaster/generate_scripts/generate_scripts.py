@@ -11,42 +11,12 @@ from shared_settings import (
     basic_jiant_sbatch,
     num_main_trials,
     num_addi_trials,
+    get_batch_size_limit,
 )
 from collect_trials import collect_trials
 
 
 task_metadata = load_metadata()
-
-
-def p100_batch_size():
-    for full_task_name, task in task_metadata.items():
-        if task["task_name"] == "ccg":
-            task["roberta_batch_size_limit"] = 8
-            task["albert_batch_size_limit"] = 4
-        elif task["task_name"] == "cosmosqa":
-            task["roberta_batch_size_limit"] = 2
-            task["albert_batch_size_limit"] = 1
-        elif task["task_name"] == "hellaswag":
-            task["roberta_batch_size_limit"] = 4
-        elif task["task_name"] == "commitbank":
-            task["roberta_batch_size_limit"] = 8
-            task["albert_batch_size_limit"] = 4
-        elif task["task_name"] == "multirc":
-            task["roberta_batch_size_limit"] = 4
-            task["albert_batch_size_limit"] = 2
-        elif task["task_name"] == "rte":
-            task["roberta_batch_size_limit"] = 8
-            task["albert_batch_size_limit"] = 4
-        elif task["task_name"] == "winograd-coreference":
-            task["roberta_batch_size_limit"] = 16
-            task["albert_batch_size_limit"] = 8
-        elif task["task_name"] == "sst":
-            task["albert_batch_size_limit"] = 16
-        elif task["task_name"] == "copa":
-            task["albert_batch_size_limit"] = 16
-        elif task["task_name"] == "qamr":
-            task["albert_batch_size_limit"] = 8
-    save_metadata(task_metadata)
 
 
 def preprocess_tasks(input_module):
@@ -69,21 +39,44 @@ def preprocess_tasks(input_module):
 def run_exp_init(input_module):
     outputs = []
 
-    task_names = list(set([task["task_name"] for task in task_metadata.values()]))
-    exp_names = [f"batch_size_{input_module}"] + [
-        f"{input_module}_exp_round{rid}_seed{seed}" for rid, seed in enumerate(RANDOM_SEEDS)
-    ]
-    for exp_name in exp_names:
-        target_tasks = ",".join(task_names)
-        override = f'exp_name={exp_name}, run_name=preprocess, target_tasks=\\"{target_tasks}\\"'
-        outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {basic_jiant_sbatch}')
+    pretrain_tasks = ",".join(
+        list(
+            set(
+                [
+                    task_info["task_name"]
+                    for task_info in task_metadata.values()
+                    if ("I" in task_info["role"] or "M" in task_info["role"])
+                ]
+            )
+        )
+    )
+    target_tasks = ",".join(
+        list(
+            set(
+                [
+                    task_info["task_name"]
+                    for task_info in task_metadata.values()
+                    if ("T" in task_info["role"] or "P" in task_info["role"])
+                ]
+            )
+        )
+    )
+
+    run_name = "preprocess"
+
+    for tasks, phase in zip([pretrain_tasks, target_tasks], ["pretrain", "target"]):
+        exp_name = f"phase_{phase}_{input_module}"
+        override = f'exp_name={exp_name}, run_name={run_name}, target_tasks=\\"{tasks}\\"'
+        outputs.append(
+            f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {basic_jiant_sbatch}'
+        )
     return outputs
 
 
 def run_batch_size_check(input_module):
     outputs = []
     for batch_size in [32, 16, 8, 4, 2, 1]:
-        task_names = list(set([task["task_name"] for task in task_metadata.values()]))
+        task_names = list(set([task_info["task_name"] for task_info in task_metadata.values()]))
         for task_name in task_names:
             val_interval = task_metadata[task_name]["training_size"] // batch_size
             override = (
@@ -98,11 +91,11 @@ def run_batch_size_check(input_module):
 
 
 def update_batch_size_check(input_module):
+    exp_name = f"{input_module}_batch_size"
     task_batch_size_limit = {}
     for batch_size in [32, 16, 8, 4, 2, 1]:
-        task_names = list(set([task["task_name"] for task in task_metadata.values()]))
+        task_names = list(set([task_info["task_name"] for task_info in task_metadata.values()]))
         for task_name in task_names:
-            exp_name = f"{input_module}_batch_size"
             run_name = f"{task_name}_{batch_size}"
             results_tsv = os.path.join(JIANT_PROJECT_PREFIX, exp_name, "results.tsv")
             if os.path.exists(results_tsv):
@@ -114,30 +107,24 @@ def update_batch_size_check(input_module):
                         or batch_size > task_batch_size_limit[task_name]
                     ):
                         task_batch_size_limit[task_name] = batch_size
-    for full_task_name, task in task_metadata.items():
-        if task["task_name"] in task_batch_size_limit:
-            batch_size_limit = task_batch_size_limit[task["task_name"]]
-            task[f'{input_module.split("-")[0]}_batch_size_limit'] = batch_size_limit
+    for full_task_name, task_info in task_metadata.items():
+        if task_info["task_name"] in task_batch_size_limit:
+            batch_size_limit = task_batch_size_limit[task_info["task_name"]]
+            task_info[f'{input_module.split("-")[0]}_batch_size_limit'] = batch_size_limit
 
     save_metadata(task_metadata)
 
 
 def run_main_optuna_trials(input_module):
     outputs = []
-    for full_task_name, task in task_metadata.items():
-        if task["role"] == "":
+    for full_task_name, task_info in task_metadata.items():
+        if task_info["role"] == "M":
             continue
         print(input_module, full_task_name)
         df_grouped = collect_trials(full_task_name, input_module)[1]
-        batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
+        batch_size_limit = get_batch_size_limit(task_info, input_module)
         gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=False)
-
-        if full_task_name.endswith("20k"):
-            training_size = 20000
-        elif full_task_name.endswith("5k"):
-            training_size = 5000
-        else:
-            training_size = task["training_size"]
+        training_size = task_info["training_size"]
 
         if df_grouped is None:
             previous_trials = 0
@@ -171,14 +158,14 @@ def run_main_optuna_trials(input_module):
 
 def run_additional_optuna_trials(input_module):
     outputs = []
-    for full_task_name, task in task_metadata.items():
-        if task["role"] == "":
+    for full_task_name, task_info in task_metadata.items():
+        if task_info["role"] == "M":
             continue
         df_grouped = collect_trials(full_task_name, input_module)[1]
         if df_grouped is None or sum(df_grouped["count"]) < num_main_trials:
             print(f"{full_task_name} has not finished main optuna run.")
             continue
-        batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
+        batch_size_limit = get_batch_size_limit(task_info, input_module)
         gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=False)
 
         if df_grouped["count"][0] < num_addi_trials:
@@ -210,95 +197,87 @@ def run_pretrain(
     include_full_size=True,
     include_20k_size=True,
 ):
+    exp_name = f"phase_pretrain_{input_module}"
     outputs = []
-    checkpoints = {}
+    checkpoints = {f"round{rid}": {} for rid, seed in enumerate(RANDOM_SEEDS)}
 
-    for full_task_name, task in task_metadata.items():
-        if "I" not in task["role"]:
+    for full_task_name, task_info in task_metadata.items():
+        if "I" not in task_info["role"]:
             continue
-        training_size = task["training_size"]
+        training_size = task_info["training_size"]
         if (not include_20k_size and "20k" in full_task_name) or (
             not include_full_size and training_size > 20000
         ):
             continue
-        hp = task[f'{input_module.split("-")[0]}_hp']
+        hp = task_info[f'{input_module.split("-")[0]}_hp']
         if hp == "":
             print(f"{full_task_name} {input_module} hp not available. skip task.")
             continue
         val_interval = max(training_size // hp["batch_size"], 5000)
-        batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
+        batch_size_limit = get_batch_size_limit(task_info, input_module)
 
         if include_single_task:
             gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
             real_batch_size, accumulation_steps = batch_size_to_accumulation(
                 batch_size_limit, hp["batch_size"], gpu_available
             )
-            run_name = f"interm_{full_task_name}"
-            checkpoints[run_name] = {}
             for rid, seed in enumerate(RANDOM_SEEDS):
-                exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
+                run_name = f"{full_task_name}_round{rid}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
-                    f'do_pretrain=1, pretrain_tasks={task["task_name"]}, input_module={input_module}, '
+                    f'do_pretrain=1, pretrain_tasks={task_info["task_name"]}, input_module={input_module}, '
                     f'max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={val_interval}"
                 )
-                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
-                checkpoints[run_name][exp_name] = os.path.join(
+                outputs.append(
+                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}.sbatch'
+                )
+                checkpoints[f"round{rid}"][f"{full_task_name}"] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
         if include_mlm:
             if input_module.split("-")[0] == "roberta":
                 mlm_val_interval = val_interval * 2
-                mlm_pretrain_tasks = f'\\"{task["task_name"]},wikipedia_corpus_mlm\\"'
+                mlm_pretrain_tasks = f'\\"{task_info["task_name"]},wikipedia_corpus_mlm\\"'
                 batch_size_limit = min(
                     batch_size_limit,
-                    task_metadata["wikipedia_corpus_mlm"][
-                        f'{input_module.split("-")[0]}_batch_size_limit'
-                    ],
+                    get_batch_size_limit(task_metadata["wikipedia_corpus_mlm"], input_module),
                 )
             elif input_module.split("-")[0] == "albert":
                 mlm_val_interval = val_interval * 3
                 mlm_pretrain_tasks = (
-                    f'\\"{task["task_name"]},wikipedia_corpus_mlm,wikipedia_corpus_sop\\"'
+                    f'\\"{task_info["task_name"]},wikipedia_corpus_mlm,wikipedia_corpus_sop\\"'
                 )
                 batch_size_limit = min(
                     batch_size_limit,
-                    task_metadata["wikipedia_corpus_mlm"][
-                        f'{input_module.split("-")[0]}_batch_size_limit'
-                    ],
-                    task_metadata["wikipedia_corpus_sop"][
-                        f'{input_module.split("-")[0]}_batch_size_limit'
-                    ],
+                    get_batch_size_limit(task_metadata["wikipedia_corpus_mlm"], input_module),
+                    get_batch_size_limit(task_metadata["wikipedia_corpus_sop"], input_module),
                 )
             gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
             real_batch_size, accumulation_steps = batch_size_to_accumulation(
                 batch_size_limit, hp["batch_size"], gpu_available
             )
-            run_name = f"interm_{full_task_name}_continue"
-            checkpoints[run_name] = {}
             for rid, seed in enumerate(RANDOM_SEEDS):
-                exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
+                run_name = f"{full_task_name}_mtl_round{rid}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
                     f"do_pretrain=1, pretrain_tasks={mlm_pretrain_tasks}, "
-                    f'weighting_method=examples_proportional_mixingK=16384, early_stopping={task["task_name"]}'
+                    f'weighting_method=examples_proportional_mixingK=16384, early_stopping={task_info["task_name"]}'
                     f'input_module={input_module}, max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={mlm_val_interval}"
                 )
-                # TODO: check what's the optimal K
-                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
-                checkpoints[run_name][exp_name] = os.path.join(
+                outputs.append(
+                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}.sbatch'
+                )
+                checkpoints[f"round{rid}"][f"{full_task_name}_mtl"] = os.path.join(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
-    checkpoints["baseline"] = {}
     for rid, seed in enumerate(RANDOM_SEEDS):
-        exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
-        checkpoints["baseline"][exp_name] = "none"
+        checkpoints[f"round{rid}"]["baseline"] = "none"
 
     return outputs, checkpoints
 
@@ -310,46 +289,40 @@ def run_target_train(
     include_full_probing=True,
     include_5k_proibng=True,
 ):
+    exp_name = f"phase_target_{input_module}"
     outputs = []
 
-    for full_task_name, task in task_metadata.items():
-        for pretrain_run_name in pretrain_checkpoints:
-            batch_size_limit = task[f'{input_module.split("-")[0]}_batch_size_limit']
-            gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
-            hp = task[f'{input_module.split("-")[0]}_hp']
-            real_batch_size, accumulation_steps = batch_size_to_accumulation(
-                batch_size_limit, hp["batch_size"], gpu_available
-            )
-            training_size = task["training_size"]
-            if full_task_name.endswith("-5k"):
-                data_fraction = 5000 / training_size
-                training_size = 5000
-            elif full_task_name.endswith("-20k"):
-                data_fraction = 20000 / training_size
-                training_size = 20000
-            else:
-                data_fraction = 1.0
-            val_interval = max(training_size // hp["batch_size"], 5000)
-            if (include_target and "T" in task["role"]) or (
-                (include_full_probing and "P" in task["role"] and "5k" not in full_task_name)
-                or (include_5k_proibng and "P" in task["role"] and training_size <= 5000)
-            ):
-                pass
-            else:
-                continue
+    for full_task_name, task_info in task_metadata.items():
+        batch_size_limit = get_batch_size_limit(task_info, input_module)
+        gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
+        hp = task_info[f'{input_module.split("-")[0]}_hp']
+        real_batch_size, accumulation_steps = batch_size_to_accumulation(
+            batch_size_limit, hp["batch_size"], gpu_available
+        )
+        training_size = task_info["training_size"]
+        val_interval = max(training_size // hp["batch_size"], 5000)
+        if (include_target and "T" in task_info["role"]) or (
+            (include_full_probing and "P" in task_info["role"] and "5k" not in full_task_name)
+            or (include_5k_proibng and "P" in task_info["role"] and training_size <= 5000)
+        ):
+            pass
+        else:
+            continue
 
-            run_name = f"{full_task_name}_from_{pretrain_run_name}"
+        for pretrain_run_name in pretrain_checkpoints["round0"]:
             for rid, seed in enumerate(RANDOM_SEEDS):
-                exp_name = f"{input_module}_exp_round{rid}_seed{seed}"
+                run_name = f"{full_task_name}_from_{pretrain_run_name}_round{rid}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
-                    f'do_target_task_training=1, target_tasks={task["task_name"]}, input_module={input_module}, '
+                    f'do_target_task_training=1, target_tasks={task_info["task_name"]}, input_module={input_module}, '
                     f'max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
-                    f"val_interval={val_interval}, target_train_data_fraction={data_fraction}"
-                    f"load_target_train_checkpoint={pretrain_checkpoints[pretrain_run_name][exp_name]}"
+                    f"val_interval={val_interval}, "
+                    f'load_target_train_checkpoint={pretrain_checkpoints[f"round{rid}"][pretrain_run_name]}'
                 )
-                outputs.append(f'JIANT_OVERRIDES="{override}" sbatch {sbatch}.sbatch')
+                outputs.append(
+                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}.sbatch'
+                )
 
     return outputs
 

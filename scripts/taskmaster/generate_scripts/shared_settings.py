@@ -5,6 +5,7 @@ import numpy
 JIANT_PROJECT_PREFIX = os.getenv("JIANT_PROJECT_PREFIX")
 JIANT_DATA_DIR = os.getenv("JIANT_DATA_DIR")
 RANDOM_SEEDS = [432, 5287, 98235]
+DEVICE = "p100"
 metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
 num_main_trials = 10
 num_addi_trials = 3
@@ -21,14 +22,21 @@ def save_metadata(task_metadata):
         f.write(json.dumps(task_metadata))
 
 
-# TODO: rename 4p40, 2p40, p40 after prince jobs are all finished
+def get_batch_size_limit(task_info, input_module):
+    batch_size_limit = task_info[f'{input_module.split("-")[0]}_batch_size_limit']
+    if isinstance(batch_size_limit, int):
+        return batch_size_limit
+    else:
+        return batch_size_limit[DEVICE]
+
+
 def batch_size_limit_to_gpus(batch_size_limit, jiant):
     if batch_size_limit <= 4:
-        gpu_available, sbatch = 4, ("jiant_gpu1.sbatch" if jiant else "4p40.sbatch")
+        gpu_available, sbatch = 4, ("jiant_gpu1.sbatch" if jiant else "python_gpu1.sbatch")
     elif batch_size_limit == 8:
-        gpu_available, sbatch = 2, ("jiant_gpu2.sbatch" if jiant else "2p40.sbatch")
+        gpu_available, sbatch = 2, ("jiant_gpu2.sbatch" if jiant else "python_gpu2.sbatch")
     else:
-        gpu_available, sbatch = 1, ("jiant_gpu4.sbatch" if jiant else "p40.sbatch")
+        gpu_available, sbatch = 1, ("jiant_gpu4.sbatch" if jiant else "python_gpu4.sbatch")
     sbatch = os.path.join("scripts/taskmaster/gcp", sbatch)
     return gpu_available, sbatch
 

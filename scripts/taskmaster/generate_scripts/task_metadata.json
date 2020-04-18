@@ -1320,13 +1320,13 @@
     "wikipedia_corpus_mlm": {
         "task_name": "wikipedia_corpus_mlm",
         "albert_batch_size_limit": -1,
-        "roberta_batch_size_limit": -1,
-        "role": ""
+        "roberta_batch_size_limit": 8,
+        "role": "M"
     },
     "wikipedia_corpus_sop": {
         "task_name": "wikipedia_corpus_sop",
         "albert_batch_size_limit": -1,
         "roberta_batch_size_limit": -1,
-        "role": ""
+        "role": "M"
     }
 }

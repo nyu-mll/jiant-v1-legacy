@@ -82,7 +82,7 @@ def collect_all_trials(input_module):
     results = pandas.concat(
         [
             collect_trials(full_task_name, input_module)[0]
-            for full_task_name, task in task_metadata.items()
+            for full_task_name, task_info in task_metadata.items()
         ]
     )
     csv_file = os.path.join(
