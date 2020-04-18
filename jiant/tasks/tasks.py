@@ -3635,6 +3635,7 @@ class SciTailTask(PairClassificationTask):
         log.info("\tFinished loading SciTail")
 
 
+@register_task("winogrande-20k", rel_path="Winogrande-20k/", train_size="xl")
 @register_task("winogrande", rel_path="Winogrande/", train_size="xl")
 # For experiment record management convenience, we use winogrande as an alias of winogrande-xl
 @register_task("winogrande-xl", rel_path="Winogrande/", train_size="xl")
