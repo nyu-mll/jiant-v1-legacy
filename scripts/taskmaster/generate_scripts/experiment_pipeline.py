@@ -17,10 +17,10 @@ from generate_scripts import (
 # write_script_file("preprocess_albert.sh", preprocess_tasks("albert-xxlarge-v2"))
 
 
-# Step 0.b
-# create exps, this allow us to avoid reload_vocab related bugs.
-write_script_file("create_exps_roberta.sh", run_exp_init("roberta-large"))
-write_script_file("create_exps_albert.sh", run_exp_init("albert-xxlarge-v2"))
+# # Step 0.b
+# # create exps, this allow us to avoid reload_vocab related bugs.
+# write_script_file("create_exps_roberta.sh", run_exp_init("roberta-large"))
+# write_script_file("create_exps_albert.sh", run_exp_init("albert-xxlarge-v2"))
 
 
 # # step 1.a
