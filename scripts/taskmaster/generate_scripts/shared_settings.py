@@ -32,11 +32,11 @@ def get_batch_size_limit(task_info, input_module):
 
 def batch_size_limit_to_gpus(batch_size_limit, jiant):
     if batch_size_limit <= 4:
-        gpu_available, sbatch = 4, ("jiant_gpu1.sbatch" if jiant else "python_gpu1.sbatch")
+        gpu_available, sbatch = 4, ("jiant_gpu4.sbatch" if jiant else "python_gpu4.sbatch")
     elif batch_size_limit == 8:
         gpu_available, sbatch = 2, ("jiant_gpu2.sbatch" if jiant else "python_gpu2.sbatch")
     else:
-        gpu_available, sbatch = 1, ("jiant_gpu4.sbatch" if jiant else "python_gpu4.sbatch")
+        gpu_available, sbatch = 1, ("jiant_gpu1.sbatch" if jiant else "python_gpu1.sbatch")
     sbatch = os.path.join("scripts/taskmaster/gcp", sbatch)
     return gpu_available, sbatch
 

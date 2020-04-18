@@ -10,15 +10,17 @@ from generate_scripts import (
     write_script_file,
 )
 
+
 # # Step 0.a
 # # preprocess edgeprobing, ccg tasks
 # write_script_file("preprocess_roberta.sh", preprocess_tasks("roberta-large"))
 # write_script_file("preprocess_albert.sh", preprocess_tasks("albert-xxlarge-v2"))
 
-# # Step 0.b
-# # create exps, this allow us to avoid reload_vocab related bugs.
-# write_script_file("create_exps_roberta.sh", run_exp_init("roberta-large"))
-# write_script_file("create_exps_albert.sh", run_exp_init("albert-xxlarge-v2"))
+
+# Step 0.b
+# create exps, this allow us to avoid reload_vocab related bugs.
+write_script_file("create_exps_roberta.sh", run_exp_init("roberta-large"))
+write_script_file("create_exps_albert.sh", run_exp_init("albert-xxlarge-v2"))
 
 
 # # step 1.a
@@ -48,11 +50,19 @@ from generate_scripts import (
 # step 3
 # interm training, w/ w/o MLM
 commands, roberta_checkpoints = run_pretrain(
-    "roberta-large", include_mlm=False, include_full_size=False
+    "roberta-large",
+    include_mlm=True,
+    include_single_task=False,
+    include_full_size=True,
+    include_20k_size=True,
 )
 write_script_file("pretrain_roberta.sh", commands)
 commands, albert_checkpoints = run_pretrain(
-    "albert-xxlarge-v2", include_mlm=False, include_full_size=False
+    "albert-xxlarge-v2",
+    include_mlm=True,
+    include_single_task=False,
+    include_full_size=True,
+    include_20k_size=True,
 )
 write_script_file("pretrain_albert.sh", commands)
 
