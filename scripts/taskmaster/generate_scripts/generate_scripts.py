@@ -66,7 +66,7 @@ def run_exp_init(input_module):
 
     for tasks, phase in zip([pretrain_tasks, target_tasks], ["pretrain", "target"]):
         exp_name = f"phase_{phase}_{input_module}"
-        override = f'exp_name={exp_name}, run_name={run_name}, target_tasks=\\"{tasks}\\"'
+        override = f'exp_name={exp_name}, run_name={run_name}, target_tasks=\\"{tasks}\\", input_module={input_module}'
         outputs.append(
             f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {basic_jiant_sbatch}'
         )
@@ -321,7 +321,7 @@ def run_target_train(
                     f'load_target_train_checkpoint={pretrain_checkpoints[f"round{rid}"][pretrain_run_name]}'
                 )
                 outputs.append(
-                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}.sbatch'
+                    f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}'
                 )
 
     return outputs
