@@ -2518,6 +2518,123 @@ class CCGTaggingTask(TaggingTask):
         log.info("\tFinished loading CCGTagging data.")
 
 
+@register_task("upos", rel_path="UD/ud-treebanks-preprocessed/UD_English-EWT")
+class UPOSTaggingTask(TaggingTask):
+    """ UD POS Tagging as a task.
+        Using the POS tags from Universal Dependencies. """
+
+    def __init__(self, path, max_seq_len, name, tokenizer_name, **kw):
+        """ There are 17 POS tags in UD without introduced token. """
+        from jiant.huggingface_transformers_interface import input_module_uses_transformers
+
+        subword_tokenization = input_module_uses_transformers(tokenizer_name)
+        super().__init__(
+            name, 17 + int(subword_tokenization), tokenizer_name=tokenizer_name, **kw
+        )
+        self.path = path
+        self.INTRODUCED_TOKEN = "17"
+        self.subword_tokenization = subword_tokenization
+        self.max_seq_len = max_seq_len
+        self.train_data_text = None
+        self.val_data_text = None
+        self.test_data_text = None
+
+    def update_metrics(self, out, batch):
+        logits, labels = out["logits"], out["labels"]
+        for scorer in self.get_scorers():
+            scorer(logits, labels)
+
+    def process_split(
+        self, split, indexers, model_preprocessing_interface
+    ) -> Iterable[Type[Instance]]:
+        """ Process a POS tagging task """
+
+        def _make_instance(input1, input2, target, mask):
+            d = {}
+            d["inputs"] = sentence_to_text_field(
+                model_preprocessing_interface.boundary_token_fn(input1), indexers
+            )
+            d["sent1_str"] = MetadataField(" ".join(input1))
+            d["targs"] = sentence_to_text_field(target, self.target_indexer)
+            d["mask"] = MultiLabelField(
+                mask, label_namespace="idx_tags", skip_indexing=True, num_labels=511
+            )
+            return Instance(d)
+
+        split = list(split)
+        split[1] = itertools.repeat(None)
+
+        instances = map(_make_instance, *split)
+        return instances
+
+    def load_data(self):
+
+        tr_data = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "en_ewt-ud-train.conllu"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=0,
+            s2_idx=None,
+            label_idx=1,
+            delimiter="\t",
+            label_fn=lambda t: t.split(" "),
+        )
+        val_data = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "en_ewt-ud-dev.conllu"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=0,
+            s2_idx=None,
+            label_idx=1,
+            delimiter="\t",
+            label_fn=lambda t: t.split(" "),
+        )
+        te_data = load_tsv(
+            self._tokenizer_name,
+            os.path.join(self.path, "en_ewt-ud-test.conllu"),
+            max_seq_len=self.max_seq_len,
+            s1_idx=0,
+            s2_idx=None,
+            label_idx=1,
+            delimiter="\t",
+            label_fn=lambda t: t.split(" "),
+        )
+
+        # Get the mask for each sentence, where the mask is whether or not
+        # the token was split off by tokenization. We want to only count the first
+        # sub-piece in the BERT tokenization in the loss and score, following Devlin's NER
+        # experiment
+        # [BERT: Pretraining of Deep Bidirectional Transformers for Language Understanding]
+        # (https://arxiv.org/abs/1810.04805)
+        if self.subword_tokenization:
+            import numpy.ma as ma
+
+            masks = []
+            for dataset in [tr_data, val_data]:
+                dataset_mask = []
+                for i in range(len(dataset[2])):
+                    mask = ma.getmask(
+                        ma.masked_where(
+                            np.array(dataset[2][i]) != self.INTRODUCED_TOKEN,
+                            np.array(dataset[2][i]),
+                        )
+                    )
+                    mask_indices = np.where(mask)[0].tolist()
+                    dataset_mask.append(mask_indices)
+                masks.append(dataset_mask)
+
+        # mock labels for test data (tagging)
+        te_targs = [["0"] * len(x) for x in te_data[0]]
+        te_mask = [list(range(len(x))) for x in te_data[0]]
+
+        self.train_data_text = list(tr_data) + [masks[0]]
+        self.val_data_text = list(val_data) + [masks[1]]
+        self.test_data_text = list(te_data[:2]) + [te_targs] + [te_mask]
+        self.sentences = self.train_data_text[0] + self.val_data_text[0]
+
+        log.info("\tFinished loading UD Parsing data.")
+
+
 class SpanClassificationTask(Task):
     """
     Generic class for span tasks.
