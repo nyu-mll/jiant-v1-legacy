@@ -270,7 +270,7 @@ def run_pretrain(
                     f'weighting_method=\\"examples_proportional_mixingK={mixing_K}\\", early_stopping={task_info["task_name"]}, '
                     f'input_module={input_module}, max_epochs=0, max_vals={max_vals}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
-                    f"val_interval={mlm_val_interval}"
+                    f"val_interval={val_interval}"
                 )
                 outputs.append(
                     f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}'

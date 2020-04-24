@@ -6,6 +6,7 @@ JIANT_PROJECT_PREFIX = os.getenv("JIANT_PROJECT_PREFIX")
 JIANT_DATA_DIR = os.getenv("JIANT_DATA_DIR")
 RANDOM_SEEDS = [432, 5287, 98235]
 DEVICE = "p40"
+mixing_K = 16384
 metadata_file = os.path.join(os.path.dirname(__file__), "task_metadata.json")
 num_main_trials = 10
 num_addi_trials = 3
