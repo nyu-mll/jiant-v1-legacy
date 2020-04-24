@@ -12,6 +12,7 @@ from shared_settings import (
     num_main_trials,
     num_addi_trials,
     get_batch_size_limit,
+    mixing_K,
 )
 from collect_trials import collect_trials
 
@@ -213,7 +214,7 @@ def run_pretrain(
         if hp == "":
             print(f"{full_task_name} {input_module} hp not available. skip task.")
             continue
-        val_interval = max(training_size // hp["batch_size"], 5000)
+        val_interval = min(training_size // hp["batch_size"], 5000)
         batch_size_limit = get_batch_size_limit(task_info, input_module)
 
         if include_single_task:
@@ -239,14 +240,14 @@ def run_pretrain(
 
         if include_mlm:
             if input_module.split("-")[0] == "roberta":
-                mlm_val_interval = val_interval * 2
+                steps_pers_epoch = (training_size + mixing_K) // hp["batch_size"]
                 mlm_pretrain_tasks = f'\\"{task_info["task_name"]},wikipedia_corpus_mlm\\"'
                 batch_size_limit = min(
                     batch_size_limit,
                     get_batch_size_limit(task_metadata["wikipedia_corpus_mlm"], input_module),
                 )
             elif input_module.split("-")[0] == "albert":
-                mlm_val_interval = val_interval * 3
+                steps_pers_epoch = (training_size + 2 * mixing_K) // hp["batch_size"]
                 mlm_pretrain_tasks = (
                     f'\\"{task_info["task_name"]},wikipedia_corpus_mlm,wikipedia_corpus_sop\\"'
                 )
@@ -255,6 +256,8 @@ def run_pretrain(
                     get_batch_size_limit(task_metadata["wikipedia_corpus_mlm"], input_module),
                     get_batch_size_limit(task_metadata["wikipedia_corpus_sop"], input_module),
                 )
+            val_interval = min(steps_pers_epoch, 5000)
+            max_vals = (steps_pers_epoch * hp["max_epochs"]) // val_interval
             gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
             real_batch_size, accumulation_steps = batch_size_to_accumulation(
                 batch_size_limit, hp["batch_size"], gpu_available
@@ -264,8 +267,8 @@ def run_pretrain(
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
                     f'do_pretrain=1, pretrain_tasks={mlm_pretrain_tasks}, target_tasks={task_info["task_name"]}, '
-                    f'weighting_method=\\"examples_proportional_mixingK=16384\\", early_stopping={task_info["task_name"]}, '
-                    f'input_module={input_module}, max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
+                    f'weighting_method=\\"examples_proportional_mixingK={mixing_K}\\", early_stopping={task_info["task_name"]}, '
+                    f'input_module={input_module}, max_epochs=0, max_vals={max_vals}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={mlm_val_interval}"
                 )
@@ -300,7 +303,7 @@ def run_target_train(
             batch_size_limit, hp["batch_size"], gpu_available
         )
         training_size = task_info["training_size"]
-        val_interval = max(training_size // hp["batch_size"], 5000)
+        val_interval = min(training_size // hp["batch_size"], 5000)
         if (include_target and "T" in task_info["role"]) or (
             (include_full_probing and "P" in task_info["role"] and "5k" not in full_task_name)
             or (include_5k_proibng and "P" in task_info["role"] and training_size <= 5000)
