@@ -14,6 +14,7 @@ from shared_settings import (
     get_batch_size_limit,
     mixing_K,
 )
+import numpy
 from collect_trials import collect_trials
 
 
@@ -257,7 +258,7 @@ def run_pretrain(
                     get_batch_size_limit(task_metadata["wikipedia_corpus_sop"], input_module),
                 )
             val_interval = min(steps_pers_epoch, 5000)
-            max_vals = (steps_pers_epoch * hp["max_epochs"]) // val_interval
+            max_vals = int(numpy.ceil(steps_pers_epoch * hp["max_epochs"] / val_interval))
             gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
             real_batch_size, accumulation_steps = batch_size_to_accumulation(
                 batch_size_limit, hp["batch_size"], gpu_available
