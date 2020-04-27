@@ -1319,13 +1319,22 @@
     },
     "wikipedia_corpus_mlm": {
         "task_name": "wikipedia_corpus_mlm",
-        "albert_batch_size_limit": 4,
-        "roberta_batch_size_limit": 4,
+        "albert_batch_size_limit": {
+            "p100": 2,
+            "p40": 4
+        },
+        "roberta_batch_size_limit": {
+            "p100": 2,
+            "p40": 4
+        },
         "role": "M"
     },
     "wikipedia_corpus_sop": {
         "task_name": "wikipedia_corpus_sop",
-        "albert_batch_size_limit": 4,
+        "albert_batch_size_limit": {
+            "p100": 2,
+            "p40": 4
+        },
         "roberta_batch_size_limit": -1,
         "role": "M"
     }
