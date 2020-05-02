@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --gres=gpu:3
+#SBATCH --gres=gpu:4
 #SBATCH --mem=24000
 #SBATCH --time=96:00:00
 #SBATCH --job-name="jiant_job"
