@@ -198,6 +198,7 @@ class MultiRCTask(Task):
         return {"ans_f1": ans_f1, "qst_f1": qst_f1, "em": em, "avg": (ans_f1 + em) / 2}
 
 
+@register_task("record-20k", rel_path="ReCoRD-20k/")
 @register_task("record", rel_path="ReCoRD/")
 class ReCoRDTask(Task):
     """Reading Comprehension with commonsense Reasoning Dataset
