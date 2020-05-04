@@ -29,8 +29,6 @@ ALL_GLUE_TASKS = [
     "mnli",
     "qnli",
     "gigaword_nli",
-    "gigaword_bopt",
-    "gigaword_ret",
     "rte",
     "wnli",
     "glue-diagnostic",

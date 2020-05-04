@@ -1100,8 +1100,6 @@ class SNLITask(PairClassificationTask):
 
 
 @register_task("gigaword_nli", rel_path="gigaword_nli/", datasets=["baselines"])
-@register_task("gigaword_bopt", rel_path="gigaword_nli/", datasets=["bopt"])
-@register_task("gigaword_ret", rel_path="gigaword_nli/", datasets=["post-retrieve"])
 @register_task("adversarial_nli_a1", rel_path="AdversarialNLI/", datasets=["R1"])
 @register_task("adversarial_nli_a2", rel_path="AdversarialNLI/", datasets=["R2"])
 @register_task("adversarial_nli_a3", rel_path="AdversarialNLI/", datasets=["R3"])
