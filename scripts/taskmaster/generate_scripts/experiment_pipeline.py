@@ -53,21 +53,23 @@ commands, roberta_checkpoints = run_pretrain(
     "roberta-large",
     include_mlm=True,
     include_single_task=False,
-    include_full_size=True,
-    include_20k_size=True,
+    include_baseline=True,
+    include_full_size=False,
+    include_20k_size=False,
 )
 write_script_file("pretrain_roberta.sh", commands)
 commands, albert_checkpoints = run_pretrain(
     "albert-xxlarge-v2",
     include_mlm=True,
     include_single_task=False,
-    include_full_size=True,
-    include_20k_size=True,
+    include_baseline=True,
+    include_full_size=False,
+    include_20k_size=False,
 )
 write_script_file("pretrain_albert.sh", commands)
 
 
 # # step 4
 # # finetune target & probing & finite size probing
-# write_script_file("pretrain_roberta.sh", run_target_train("roberta-large", roberta_checkpoints))
-# write_script_file("pretrain_albert.sh", run_target_train("albert-xxlarge-v2", albert_checkpoints))
+write_script_file("target_roberta.sh", run_target_train("roberta-large", roberta_checkpoints))
+write_script_file("target_albert.sh", run_target_train("albert-xxlarge-v2", albert_checkpoints))

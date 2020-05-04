@@ -196,18 +196,22 @@ def run_pretrain(
     input_module,
     include_mlm=True,
     include_single_task=True,
+    include_baseline=True,
     include_full_size=True,
     include_20k_size=True,
 ):
     exp_name = f"phase_pretrain_{input_module}"
     outputs = []
     checkpoints = {f"round{rid}": {} for rid, seed in enumerate(RANDOM_SEEDS)}
+    if include_baseline:
+        for rid, seed in enumerate(RANDOM_SEEDS):
+            checkpoints[f"round{rid}"]["baseline"] = "none"
 
     for full_task_name, task_info in task_metadata.items():
         if "I" not in task_info["role"]:
             continue
         training_size = task_info["training_size"]
-        if (not include_20k_size and "20k" in full_task_name) or (
+        if (not include_20k_size and training_size <= 20000) or (
             not include_full_size and training_size > 20000
         ):
             continue
@@ -280,9 +284,6 @@ def run_pretrain(
                     JIANT_PROJECT_PREFIX, exp_name, run_name, "model_*.best.th"
                 )
 
-    for rid, seed in enumerate(RANDOM_SEEDS):
-        checkpoints[f"round{rid}"]["baseline"] = "none"
-
     return outputs, checkpoints
 
 
@@ -297,21 +298,26 @@ def run_target_train(
     outputs = []
 
     for full_task_name, task_info in task_metadata.items():
+        if (
+            (include_target and "T" in task_info["role"])
+            or (include_full_probing and "P" in task_info["role"] and "5k" not in full_task_name)
+            or (include_5k_proibng and "P" in task_info["role"] and "5k" in full_task_name)
+        ):
+            pass
+        else:
+            continue
+        training_size = task_info["training_size"]
         batch_size_limit = get_batch_size_limit(task_info, input_module)
         gpu_available, sbatch = batch_size_limit_to_gpus(batch_size_limit, jiant=True)
         hp = task_info[f'{input_module.split("-")[0]}_hp']
         real_batch_size, accumulation_steps = batch_size_to_accumulation(
             batch_size_limit, hp["batch_size"], gpu_available
         )
-        training_size = task_info["training_size"]
         val_interval = min(training_size // hp["batch_size"], 5000)
-        if (include_target and "T" in task_info["role"]) or (
-            (include_full_probing and "P" in task_info["role"] and "5k" not in full_task_name)
-            or (include_5k_proibng and "P" in task_info["role"] and training_size <= 5000)
-        ):
-            pass
-        else:
-            continue
+        if "5k" in full_task_name:
+            data_frac = (
+                training_size / task_metadata[full_task_name.replace("-5k", "")]["training_size"]
+            )
 
         for pretrain_run_name in pretrain_checkpoints["round0"]:
             for rid, seed in enumerate(RANDOM_SEEDS):
@@ -322,7 +328,8 @@ def run_target_train(
                     f'max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={val_interval}, "
-                    f'load_target_train_checkpoint={pretrain_checkpoints[f"round{rid}"][pretrain_run_name]}'
+                    f'load_target_train_checkpoint={pretrain_checkpoints[f"round{rid}"][pretrain_run_name]}, '
+                    f'target_train_data_fraction={data_frac if "5k" in full_task_name else 1}'
                 )
                 outputs.append(
                     f'JIANT_OVERRIDES="{override}" sbatch --job-name={exp_name}.{run_name} {sbatch}'
