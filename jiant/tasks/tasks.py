@@ -1296,7 +1296,7 @@ class AutomaticNLITask(PairClassificationTask):
             name (str): task name, specified in @register_task
             datasets (list[str]): list of AutomaticNLI sub-datasets used in task
         """
-        super(AutoNLITask, self).__init__(name, n_classes=3, **kw)
+        super(AutomaticNLITask, self).__init__(name, n_classes=3, **kw)
         self.path = path
         self.max_seq_len = max_seq_len
         self.train_data_text = None
@@ -1307,12 +1307,16 @@ class AutomaticNLITask(PairClassificationTask):
     def _read_data(self, path: str) -> pd.core.frame.DataFrame:
         """Read json, tokenize text, encode labels as int, return dataframe."""
         df = pd.read_json(path_or_buf=path, encoding="UTF-8", lines=True)
-        # for AutoNLI datasets n=neutral, e=entailment, c=contradiction
-        df["target"] = df["label"].map({"n": 0, "e": 1, "c": 2})
+
+        # for AutomaticNLI datasets n=neutral, e=entailment, c=contradiction
+        if "label" in df.columns:
+            df["label"] = df["label"].map({"n": 0, "e": 1, "c": 2})
+        else:
+            df["label"] = df["gold_label"].map({"n": 0, "e": 1, "c": 2})
         tokenizer = get_tokenizer(self._tokenizer_name)
         df["premise"] = df["premise"].apply(tokenizer.tokenize)
         df["hypothesis"] = df["hypothesis"].apply(tokenizer.tokenize)
-        return df[["premise", "hypothesis", "target"]]
+        return df[["premise", "hypothesis", "label"]]
 
     def load_data(self):
         """Read, preprocess and load data into an AutomaticNLITask.
@@ -1333,23 +1337,23 @@ class AutomaticNLITask(PairClassificationTask):
         self.train_data_text = [
             train_df["premise"].tolist(),
             train_df["hypothesis"].tolist(),
-            train_df["target"].tolist(),
+            train_df["label"].tolist(),
         ]
         self.val_data_text = [
             val_df["premise"].tolist(),
             val_df["hypothesis"].tolist(),
-            val_df["target"].tolist(),
+            val_df["label"].tolist(),
         ]
         self.test_data_text = [
             test_df["premise"].tolist(),
             test_df["hypothesis"].tolist(),
-            test_df["target"].tolist(),
+            test_df["label"].tolist(),
         ]
 
         self.sentences = (
             train_df["premise"].tolist()
             + train_df["hypothesis"].tolist()
-            + val_df["context"].tolist()
+            + val_df["premise"].tolist()
             + val_df["hypothesis"].tolist()
         )
 
