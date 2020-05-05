@@ -821,7 +821,7 @@
         }
     },
     "edges-srl-ontonotes-5k": {
-        "task_name": "edges-srl-ontonotes-5k",
+        "task_name": "edges-srl-ontonotes",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 16,
         "training_size": 5000,
@@ -838,7 +838,7 @@
         }
     },
     "edges-nonterminal-ontonotes-5k": {
-        "task_name": "edges-nonterminal-ontonotes-5k",
+        "task_name": "edges-nonterminal-ontonotes",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -855,7 +855,7 @@
         }
     },
     "se-probing-word-content-5k": {
-        "task_name": "se-probing-word-content-5k",
+        "task_name": "se-probing-word-content",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -872,7 +872,7 @@
         }
     },
     "se-probing-tree-depth-5k": {
-        "task_name": "se-probing-tree-depth-5k",
+        "task_name": "se-probing-tree-depth",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -889,7 +889,7 @@
         }
     },
     "se-probing-top-constituents-5k": {
-        "task_name": "se-probing-top-constituents-5k",
+        "task_name": "se-probing-top-constituents",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -906,7 +906,7 @@
         }
     },
     "se-probing-bigram-shift-5k": {
-        "task_name": "se-probing-bigram-shift-5k",
+        "task_name": "se-probing-bigram-shift",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -923,7 +923,7 @@
         }
     },
     "se-probing-past-present-5k": {
-        "task_name": "se-probing-past-present-5k",
+        "task_name": "se-probing-past-present",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -940,7 +940,7 @@
         }
     },
     "se-probing-subj-number-5k": {
-        "task_name": "se-probing-subj-number-5k",
+        "task_name": "se-probing-subj-number",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -957,7 +957,7 @@
         }
     },
     "se-probing-obj-number-5k": {
-        "task_name": "se-probing-obj-number-5k",
+        "task_name": "se-probing-obj-number",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -974,7 +974,7 @@
         }
     },
     "se-probing-odd-man-out-5k": {
-        "task_name": "se-probing-odd-man-out-5k",
+        "task_name": "se-probing-odd-man-out",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -991,7 +991,7 @@
         }
     },
     "se-probing-coordination-inversion-5k": {
-        "task_name": "se-probing-coordination-inversion-5k",
+        "task_name": "se-probing-coordination-inversion",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -1008,7 +1008,7 @@
         }
     },
     "se-probing-sentence-length-5k": {
-        "task_name": "se-probing-sentence-length-5k",
+        "task_name": "se-probing-sentence-length",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -1025,7 +1025,7 @@
         }
     },
     "edges-pos-ontonotes-5k": {
-        "task_name": "edges-pos-ontonotes-5k",
+        "task_name": "edges-pos-ontonotes",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -1042,7 +1042,7 @@
         }
     },
     "edges-ner-ontonotes-5k": {
-        "task_name": "edges-ner-ontonotes-5k",
+        "task_name": "edges-ner-ontonotes",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 16,
         "training_size": 5000,
@@ -1059,7 +1059,7 @@
         }
     },
     "edges-coref-ontonotes-5k": {
-        "task_name": "edges-coref-ontonotes-5k",
+        "task_name": "edges-coref-ontonotes",
         "albert_batch_size_limit": 8,
         "roberta_batch_size_limit": 16,
         "training_size": 5000,
@@ -1076,7 +1076,7 @@
         }
     },
     "edges-dep-ud-ewt-5k": {
-        "task_name": "edges-dep-ud-ewt-5k",
+        "task_name": "edges-dep-ud-ewt",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
@@ -1093,7 +1093,7 @@
         }
     },
     "cola-5k": {
-        "task_name": "cola-5k",
+        "task_name": "cola",
         "albert_batch_size_limit": 32,
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
