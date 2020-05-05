@@ -71,5 +71,23 @@ write_script_file("pretrain_albert.sh", commands)
 
 # # step 4
 # # finetune target & probing & finite size probing
-write_script_file("target_roberta.sh", run_target_train("roberta-large", roberta_checkpoints))
-write_script_file("target_albert.sh", run_target_train("albert-xxlarge-v2", albert_checkpoints))
+write_script_file(
+    "target_roberta.sh",
+    run_target_train(
+        "roberta-large",
+        roberta_checkpoints,
+        include_target=True,
+        include_full_probing=False,
+        include_5k_proibng=False,
+    ),
+)
+write_script_file(
+    "target_albert.sh",
+    run_target_train(
+        "albert-xxlarge-v2",
+        albert_checkpoints,
+        include_target=True,
+        include_full_probing=False,
+        include_5k_proibng=False,
+    ),
+)
