@@ -86,7 +86,10 @@
     },
     "edges-nonterminal-ontonotes": {
         "task_name": "edges-nonterminal-ontonotes",
-        "albert_batch_size_limit": 32,
+        "albert_batch_size_limit": {
+            "p100": 8,
+            "p40": 16
+        },
         "roberta_batch_size_limit": 32,
         "training_size": 110513,
         "role": "P",
@@ -273,7 +276,10 @@
     },
     "edges-pos-ontonotes": {
         "task_name": "edges-pos-ontonotes",
-        "albert_batch_size_limit": 32,
+        "albert_batch_size_limit": {
+            "p100": 8,
+            "p40": 16
+        },
         "roberta_batch_size_limit": 32,
         "training_size": 81035,
         "role": "P",
@@ -720,7 +726,10 @@
     },
     "edges-dep-ud-ewt": {
         "task_name": "edges-dep-ud-ewt",
-        "albert_batch_size_limit": 32,
+        "albert_batch_size_limit": {
+            "p100": 8,
+            "p40": 16
+        },
         "roberta_batch_size_limit": 32,
         "training_size": 12496,
         "role": "P",
@@ -839,7 +848,10 @@
     },
     "edges-nonterminal-ontonotes-5k": {
         "task_name": "edges-nonterminal-ontonotes",
-        "albert_batch_size_limit": 32,
+        "albert_batch_size_limit": {
+            "p100": 8,
+            "p40": 16
+        },
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
         "role": "P",
@@ -1026,7 +1038,10 @@
     },
     "edges-pos-ontonotes-5k": {
         "task_name": "edges-pos-ontonotes",
-        "albert_batch_size_limit": 32,
+        "albert_batch_size_limit": {
+            "p100": 8,
+            "p40": 16
+        },
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
         "role": "P",
@@ -1077,7 +1092,10 @@
     },
     "edges-dep-ud-ewt-5k": {
         "task_name": "edges-dep-ud-ewt",
-        "albert_batch_size_limit": 32,
+        "albert_batch_size_limit": {
+            "p100": 8,
+            "p40": 16
+        },
         "roberta_batch_size_limit": 32,
         "training_size": 5000,
         "role": "P",

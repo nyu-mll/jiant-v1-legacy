@@ -55,7 +55,7 @@ commands, roberta_checkpoints = run_pretrain(
     include_single_task=False,
     include_baseline=True,
     include_full_size=False,
-    include_20k_size=False,
+    include_20k_size=True,
 )
 write_script_file("pretrain_roberta.sh", commands)
 commands, albert_checkpoints = run_pretrain(
@@ -64,7 +64,7 @@ commands, albert_checkpoints = run_pretrain(
     include_single_task=False,
     include_baseline=True,
     include_full_size=False,
-    include_20k_size=False,
+    include_20k_size=True,
 )
 write_script_file("pretrain_albert.sh", commands)
 
