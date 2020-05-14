@@ -390,7 +390,7 @@ def _write_automatic_nli_preds(
     preds_df: pd.DataFrame,
     pred_dir: str,
     split_name: str,
-    strict_glue_format: bool = False,
+    strict_glue_format: bool = True,
 ):
     """ Write predictions for Automatic NLI task.  """
     pred_map = {0: "n", 1: "e", 2: "c"}
