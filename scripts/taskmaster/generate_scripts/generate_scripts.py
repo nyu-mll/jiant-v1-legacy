@@ -231,8 +231,8 @@ def run_pretrain(
                 run_name = f"{full_task_name}_round{rid}"
                 override = (
                     f"exp_name={exp_name}, run_name={run_name}, random_seed={seed}, load_model=1, "
-                    f'do_pretrain=1, pretrain_tasks={task_info["task_name"]}, input_module={input_module}, '
-                    f'max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
+                    f'do_pretrain=1, pretrain_tasks={task_info["task_name"]}, target_tasks={task_info["task_name"]}, '
+                    f'input_module={input_module}, max_epochs={hp["max_epochs"]}, lr={hp["lr"]}, '
                     f"batch_size={real_batch_size}, accumulation_steps={accumulation_steps}, "
                     f"val_interval={val_interval}"
                 )

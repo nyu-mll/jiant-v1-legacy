@@ -390,7 +390,7 @@
         "albert_batch_size_limit": 2,
         "roberta_batch_size_limit": 4,
         "training_size": 39905,
-        "role": "IT",
+        "role": "I",
         "albert_hp": {
             "max_epochs": 7,
             "lr": 1e-05,
