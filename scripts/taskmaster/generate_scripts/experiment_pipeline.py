@@ -49,26 +49,46 @@ write_script_file("create_exps_albert.sh", run_exp_init("albert-xxlarge-v2"))
 
 # step 3
 # interm training, w/ w/o MLM
-commands, roberta_checkpoints = run_pretrain(
-    "roberta-large",
-    include_mlm=True,
-    include_single_task=False,
-    include_baseline=True,
-    include_full_size=False,
-    include_20k_size=True,
-)
-write_script_file("pretrain_roberta.sh", commands)
-commands, albert_checkpoints = run_pretrain(
-    "albert-xxlarge-v2",
-    include_mlm=True,
-    include_single_task=False,
-    include_baseline=True,
-    include_full_size=False,
-    include_20k_size=True,
-)
-write_script_file("pretrain_albert.sh", commands)
+# commands, roberta_checkpoints = run_pretrain(
+#     "roberta-large",
+#     include_mlm=True,
+#     include_single_task=False,
+#     include_baseline=True,
+#     include_full_size=False,
+#     include_20k_size=True,
+# )
+# write_script_file("pretrain_roberta.sh", commands)
+# commands, albert_checkpoints = run_pretrain(
+#     "albert-xxlarge-v2",
+#     include_mlm=True,
+#     include_single_task=False,
+#     include_baseline=True,
+#     include_full_size=False,
+#     include_20k_size=True,
+# )
+# write_script_file("pretrain_albert.sh", commands)
 
 
+roberta_checkpoints = {
+    "round0": {
+        "baseline": "none",
+        "lbmlm": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/lbmlm_round0/model_*.best.th",
+        "mlm": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/mlm_round0/model_*.best.th",
+        "mlme": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/mlm_round0/model_23.th",
+        },
+    "round1": {
+        "baseline": "none",
+        "lbmlm": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/lbmlm_round1/model_*.best.th",
+        "mlm": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/mlm_round1/model_*.best.th",
+        "mlme": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/mlm_round1/model_22.th",
+        },
+    "round2": {
+        "baseline": "none",
+        "lbmlm": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/lbmlm_round2/model_*.best.th",
+        "mlm": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/mlm_round2/model_*.best.th",
+        "mlme": "/scratch/hl3236/jiant_results/phase_pretrain_roberta-large/mlm_round2/model_22.th",
+        },
+    }
 # # step 4
 # # finetune target & probing & finite size probing
 write_script_file(
@@ -81,13 +101,13 @@ write_script_file(
         include_5k_proibng=False,
     ),
 )
-write_script_file(
-    "target_albert.sh",
-    run_target_train(
-        "albert-xxlarge-v2",
-        albert_checkpoints,
-        include_target=True,
-        include_full_probing=False,
-        include_5k_proibng=False,
-    ),
-)
+# write_script_file(
+#     "target_albert.sh",
+#     run_target_train(
+#         "albert-xxlarge-v2",
+#         albert_checkpoints,
+#         include_target=True,
+#         include_full_probing=False,
+#         include_5k_proibng=False,
+#     ),
+# )
