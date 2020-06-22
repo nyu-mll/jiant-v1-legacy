@@ -1,7 +1,7 @@
 """ Different model components to use in building the overall model.
 
 The main component of interest is SentenceEncoder, which all the models use. """
-
+import copy
 import torch
 import torch.utils.data
 import torch.utils.data.distributed
@@ -45,6 +45,7 @@ class SentenceEncoder(Model):
             d_emb = 0
             self._highway_layer = lambda x: x
         else:
+            self._orig_field_embedder = copy.deepcopy(text_field_embedder)
             self._text_field_embedder = text_field_embedder
             d_emb = text_field_embedder.get_output_dim()
             self._highway_layer = TimeDistributed(Highway(d_emb, num_highway_layers))

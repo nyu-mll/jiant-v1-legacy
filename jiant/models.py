@@ -3,6 +3,7 @@ import copy
 import json
 import logging as log
 import os
+import copy
 from typing import Dict, List
 
 import numpy as np
@@ -545,7 +546,9 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
         setattr(model, "%s_mdl" % task.name, module)
     elif isinstance(task, (PairClassificationTask, PairRegressionTask, PairOrdinalRegressionTask)):
         module = build_pair_sentence_module(task, d_sent, model=model, params=task_params)
+        orig_module = build_pair_sentence_module(task, d_sent, model=model, params=copy.deepcopy(task_params))
         setattr(model, "%s_mdl" % task.name, module)
+        setattr(model, "%s_orig_mdl" % task.name, orig_module)
     elif isinstance(task, SpanPredictionTask):
         module = TokenMultiProjectionEncoder(
             projection_names=["span_start", "span_end"], d_inp=d_sent
@@ -944,7 +947,7 @@ class MultiTaskModel(nn.Module):
     def _get_classifier(self, task):
         """ Get task-specific classifier, as set in build_module(). """
         # TODO: replace this logic with task._classifier_name?
-        task_params = self._get_task_params(task.name)
+        task_params = self.get_task_params_(task.name)
         use_clf = task_params["use_classifier"]
         if use_clf in [None, "", "none"]:
             use_clf = task.name  # default if not set
@@ -1042,10 +1045,29 @@ class MultiTaskModel(nn.Module):
         if predict:
             out["preds"] = {"span_start": pred_span_start, "span_end": pred_span_end}
         return out
+"""
+    def compute_smoothing_loss(self, batch):
+        x_bar = batch.add(self.model.eps)
+        similarity_diff = SmoothingRegularizer(x_bar)
+        eta = self.model.eta
+        for num_refine in self.model.S:
+            # We calculate and then do backward
+            similarity_diff.forward(x_bar)
+            grad = similarity_diff.backward()
+            x_bar *- eta * grad # selement wise
+        # Return infinitey norm
+        return torch.max(self.model(batch) - self.model(x_bar), dim=2)
+"""
+    def compute_bregman_loss(self, batch,curr_logits,task):
+        prev_sent_encoder = self.sent_encoder._orig_field_embedder
+        prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
+        sent, mask = prev_sent_encoder(batch["inputs"], task)
+        prev_logits = prev_classifier(sent, mask)
+        return torch.avg(torch.max(prev_logits - curr_logits), dim=2)
 
     def _pair_sentence_forward(self, batch, task, predict):
         out = {}
-        classifier = self._get_classifier(task)
+        classifier = getattr(self, "%s_mdl" % task.name)
         if isinstance(task, (MRPCTask, STSBTask, QQPTask)) and self.uses_mirrored_pair:
             # Mirrored pair is a trick used by GPT-like models in similarity tasks
             # TODO: Wic also falls into this type, although GPT paper didn't experiment
@@ -1079,8 +1101,9 @@ class MultiTaskModel(nn.Module):
             else:
                 out["loss"] = F.cross_entropy(logits, labels)
             out["labels"] = labels
-
-        out["loss"] = format_output(out["loss"], self._cuda_device)
+        #out["smoothing_loss"] = self.compute_smoothing_loss(batch)
+        out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task)
+        out["loss"] = format_output(out["loss"], self._cuda_device)+ format_output(out["bregman_loss", self._cuda_device])
         out["logits"] = logits
         if predict:
             if isinstance(task, RegressionTask):
@@ -1381,7 +1404,7 @@ def input_module_uses_pair_embedding(input_module):
     """
     from jiant.huggingface_transformers_interface import input_module_uses_transformers
 
-    return input_module_uses_transformers(input_module)
+    return input_module_uses_transfofrmers(input_module)
 
 
 def input_module_uses_mirrored_pair(input_module):
