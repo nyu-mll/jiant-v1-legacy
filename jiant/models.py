@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 from allennlp.common import Params
 from allennlp.modules.seq2seq_encoders import Seq2SeqEncoder as s2s_e
@@ -546,7 +547,9 @@ def build_task_specific_modules(task, model, d_sent, d_emb, vocab, embedder, arg
         setattr(model, "%s_mdl" % task.name, module)
     elif isinstance(task, (PairClassificationTask, PairRegressionTask, PairOrdinalRegressionTask)):
         module = build_pair_sentence_module(task, d_sent, model=model, params=task_params)
-        orig_module = build_pair_sentence_module(task, d_sent, model=model, params=copy.deepcopy(task_params))
+        orig_module = build_pair_sentence_module(
+            task, d_sent, model=model, params=copy.deepcopy(task_params)
+        )
         setattr(model, "%s_mdl" % task.name, module)
         setattr(model, "%s_orig_mdl" % task.name, orig_module)
     elif isinstance(task, SpanPredictionTask):
@@ -867,6 +870,12 @@ class MultiTaskModel(nn.Module):
         self.sent_encoder = sent_encoder
         self._cuda_device = cuda_devices
         self.vocab = vocab
+        ## SMART-related hyperpraetmers
+        sd = 0.1
+        self.eps = np.random.normal(0, sd, 1)
+        self.regularization_weight = 0.3
+        self.eta = 0.01
+        self.S = 10
         self.utilization = Average() if args.track_batch_utilization else None
         self.elmo = args.input_module == "elmo"
         self.uses_pair_embedding = input_module_uses_pair_embedding(args.input_module)
@@ -1045,25 +1054,28 @@ class MultiTaskModel(nn.Module):
         if predict:
             out["preds"] = {"span_start": pred_span_start, "span_end": pred_span_end}
         return out
-"""
-    def compute_smoothing_loss(self, batch):
-        x_bar = batch.add(self.model.eps)
-        similarity_diff = SmoothingRegularizer(x_bar)
-        eta = self.model.eta
-        for num_refine in self.model.S:
+
+    def compute_smoothing_loss(self, batch, classifier, sent_encoder, task):
+        x_bar = Variable(batch["inputs"].add(self.eps))
+        eta = self.eta
+        for num_refine in self.S:
             # We calculate and then do backward
-            similarity_diff.forward(x_bar)
-            grad = similarity_diff.backward()
-            x_bar *- eta * grad # selement wise
-        # Return infinitey norm
-        return torch.max(self.model(batch) - self.model(x_bar), dim=2)
-"""
-    def compute_bregman_loss(self, batch,curr_logits,task):
+            f_x_sent, mask_f_x = sent_encoder(batch["inputs"], task)
+            f_x_bar_sent, mask_f_x_bar = sent_encoder(x_bar, task)
+            f_x = classifier(f_x_sent, mask_f_x)
+            f_x_bar = classifier(f_x_bar_sent, mask_f_x_bar)
+            criterion = torch.nn.KLDivLoss(f_x, f_x_bar)
+            criterion.backward()
+            x_bar * -eta * x_bar.grad
+        return torch.nn.KLDivLoss(f_x, f_x_bar)
+
+    def compute_bregman_loss(self, batch, curr_logits, task):
         prev_sent_encoder = self.sent_encoder._orig_field_embedder
         prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
         sent, mask = prev_sent_encoder(batch["inputs"], task)
         prev_logits = prev_classifier(sent, mask)
-        return torch.avg(torch.max(prev_logits - curr_logits), dim=2)
+        # MAKE THE KL DIVERGENCE HERE NOT THE INFINITE NORM.
+        return torch.nn.KLDivLoss(prev_logits, curr_logits)
 
     def _pair_sentence_forward(self, batch, task, predict):
         out = {}
@@ -1101,9 +1113,15 @@ class MultiTaskModel(nn.Module):
             else:
                 out["loss"] = F.cross_entropy(logits, labels)
             out["labels"] = labels
-        #out["smoothing_loss"] = self.compute_smoothing_loss(batch)
+        import pdb; pdb.set_trace()
+        lambda_s = self.regularization_weight
+        out["smoothing_loss"] = self.compute_smoothing_loss(batch)
         out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task)
-        out["loss"] = format_output(out["loss"], self._cuda_device)+ format_output(out["bregman_loss", self._cuda_device])
+        out["loss"] = (
+            format_output(out["loss"], self._cuda_device)
+            + format_output(out["bregman_loss", self._cuda_device])
+            + format_output(lambda_s * out["smoothing_loss"])
+        )
         out["logits"] = logits
         if predict:
             if isinstance(task, RegressionTask):
