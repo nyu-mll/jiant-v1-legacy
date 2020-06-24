@@ -868,6 +868,7 @@ class MultiTaskModel(nn.Module):
         """ Args: sentence encoder """
         super(MultiTaskModel, self).__init__()
         self.sent_encoder = sent_encoder
+        self.prev_sent_encoder = copy.deepcopy(sent_encoder)
         self._cuda_device = cuda_devices
         self.vocab = vocab
         ## SMART-related hyperpraetmers
@@ -1056,7 +1057,6 @@ class MultiTaskModel(nn.Module):
         return out
 
     def compute_smoothing_loss(self, batch, classifier, sent_encoder, task):
-        import pdb; pdb.set_trace()
         f_x_sent, mask_f_x = sent_encoder(batch["inputs"], task) # get only the embeddinglayer of this sente encoder here
         f_x = classifier(f_x_sent, mask_f_x) 
         noise = torch.Tensor(self.eps).expand(batch["inputs"]["roberta"].shape).cuda()
@@ -1075,11 +1075,13 @@ class MultiTaskModel(nn.Module):
         return criterion(f_x, f_x_bar)
 
     def compute_bregman_loss(self, batch, curr_logits, task):
-        prev_sent_encoder = self.sent_encoder._orig_field_embedder
+        prev_sent_encoder = self.prev_sent_encoder
         prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
         sent, mask = prev_sent_encoder(batch["inputs"], task)
         prev_logits = prev_classifier(sent, mask)
-        # MAKE THE KL DIVERGENCE HERE NOT THE INFINITE NORM.
+        sm = nn.Softmax(dim=1)
+        prev_logits = sm(prev_logits)
+        curr_logits = sm(curr_logits)
         criterion = torch.nn.KLDivLoss()
         return criterion(prev_logits, curr_logits)
 
@@ -1119,14 +1121,14 @@ class MultiTaskModel(nn.Module):
             else:
                 out["loss"] = F.cross_entropy(logits, labels)
             out["labels"] = labels
-        import pdb; pdb.set_trace()
         lambda_s = self.regularization_weight
-        out["smoothing_loss"] = self.compute_smoothing_loss(batch,  classifier, self.sent_encoder, task)
+        #out["smoothing_loss"] = self.compute_smoothing_loss(batch,  classifier, self.sent_encoder, task)
         out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task)
+        self.prev_sent_encoder = copy.deepcopy(self.sent_encoder)
+        self.prev_sent_encoder.requires_grad = False
         out["loss"] = (
             format_output(out["loss"], self._cuda_device)
-            + format_output(out["bregman_loss", self._cuda_device])
-            + format_output(lambda_s * out["smoothing_loss"])
+            + format_output(out["bregman_loss"], self._cuda_device)
         )
         out["logits"] = logits
         if predict:
