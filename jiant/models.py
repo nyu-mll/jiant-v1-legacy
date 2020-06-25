@@ -35,6 +35,7 @@ from jiant.modules.simple_modules import (
     TokenMultiProjectionEncoder,
     SOPClassifier,
 )
+from jiant import evaluate
 from jiant.modules.attn_pair_encoder import AttnPairEncoder
 from jiant.modules.sentence_encoder import SentenceEncoder
 from jiant.modules.bilm_encoder import BiLMEncoder
@@ -1075,6 +1076,11 @@ class MultiTaskModel(nn.Module):
         return criterion(f_x, f_x_bar)
 
     def compute_bregman_loss(self, batch, curr_logits, task):
+        _, preds = evaluate.evaluate(
+            self.model, [task], self.batch_size, self._cuda_device, split = "val"
+        )
+        self.prev_preds = preds
+        # find the indices.
         prev_sent_encoder = self.prev_sent_encoder
         prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
         sent, mask = prev_sent_encoder(batch["inputs"], task)
