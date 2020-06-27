@@ -869,7 +869,10 @@ class MultiTaskModel(nn.Module):
         """ Args: sentence encoder """
         super(MultiTaskModel, self).__init__()
         self.sent_encoder = sent_encoder
-        self.prev_sent_encoder = copy.deepcopy(sent_encoder)
+        _, preds = evaluate.evaluate(
+            self.model, ["mnli"], self.batch_size, self._cuda_device, split="val"
+        )
+        self.prev_preds = preds
         self._cuda_device = cuda_devices
         self.vocab = vocab
         ## SMART-related hyperpraetmers
@@ -1076,19 +1079,17 @@ class MultiTaskModel(nn.Module):
         return criterion(f_x, f_x_bar)
 
     def compute_bregman_loss(self, batch, curr_logits, task):
-        _, preds = evaluate.evaluate(
-            self.model, [task], self.batch_size, self._cuda_device, split = "val"
-        )
-        self.prev_preds = preds
-        # find the indices.
-        prev_sent_encoder = self.prev_sent_encoder
-        prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
-        sent, mask = prev_sent_encoder(batch["inputs"], task)
-        prev_logits = prev_classifier(sent, mask)
+        pred_logits = self.prev_preds["idx"] == batch["idx"]
+        prev_logits = pred_logits["preds"]
         sm = nn.Softmax(dim=1)
         prev_logits = sm(prev_logits)
         curr_logits = sm(curr_logits)
         criterion = torch.nn.KLDivLoss()
+        import pdb; pdb.set_trace()
+        _, preds = evaluate.evaluate(
+            self.model, [task], self.batch_size, self._cuda_device, split="val"
+        )
+        self.prev_preds = preds[task.name] # you need the simplex
         return criterion(prev_logits, curr_logits)
 
     def _pair_sentence_forward(self, batch, task, predict):
