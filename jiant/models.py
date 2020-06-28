@@ -869,10 +869,6 @@ class MultiTaskModel(nn.Module):
         """ Args: sentence encoder """
         super(MultiTaskModel, self).__init__()
         self.sent_encoder = sent_encoder
-        _, preds = evaluate.evaluate(
-            self.model, ["mnli"], self.batch_size, self._cuda_device, split="val"
-        )
-        self.prev_preds = preds
         self._cuda_device = cuda_devices
         self.vocab = vocab
         ## SMART-related hyperpraetmers
@@ -889,8 +885,7 @@ class MultiTaskModel(nn.Module):
             input_module_uses_transformers(args.input_module)
             and args.transfer_paradigm == "finetune"
         )  # Rough heuristic. TODO: Make this directly user-controllable.
-        self.sep_embs_for_skip = args.sep_embs_for_skip
-
+        self.prev_preds = None
     def forward(self, task, batch, predict=False):
         """
         Pass inputs to correct forward pass
@@ -1079,17 +1074,18 @@ class MultiTaskModel(nn.Module):
         return criterion(f_x, f_x_bar)
 
     def compute_bregman_loss(self, batch, curr_logits, task):
-        pred_logits = self.prev_preds["idx"] == batch["idx"]
-        prev_logits = pred_logits["preds"]
+        batch["idx"] = torch.Tensor([299, 306])
+        pred_logits = [self.prev_preds["mnli"][self.prev_preds["mnli"]["idx"] == x.item()] for x in batch["idx"]]
+        prev_logits = [x["preds"].iloc[0] for x in pred_logits]
+        prev_logits = torch.Tensor(prev_logits).cuda()
         sm = nn.Softmax(dim=1)
         prev_logits = sm(prev_logits)
         curr_logits = sm(curr_logits)
         criterion = torch.nn.KLDivLoss()
-        import pdb; pdb.set_trace()
         _, preds = evaluate.evaluate(
-            self.model, [task], self.batch_size, self._cuda_device, split="val"
+            self, [task], len(batch), self._cuda_device, split="train"
         )
-        self.prev_preds = preds[task.name] # you need the simplex
+        self.prev_preds = preds
         return criterion(prev_logits, curr_logits)
 
     def _pair_sentence_forward(self, batch, task, predict):
@@ -1130,24 +1126,19 @@ class MultiTaskModel(nn.Module):
             out["labels"] = labels
         lambda_s = self.regularization_weight
         #out["smoothing_loss"] = self.compute_smoothing_loss(batch,  classifier, self.sent_encoder, task)
-        out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task)
-        self.prev_sent_encoder = copy.deepcopy(self.sent_encoder)
-        self.prev_sent_encoder.requires_grad = False
-        out["loss"] = (
+        if not predict:
+            out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task)
+            out["loss"] = (
             format_output(out["loss"], self._cuda_device)
             + format_output(out["bregman_loss"], self._cuda_device)
-        )
+            )
+        else:
+            out["loss"] = (
+               format_output(out["loss"], self._cuda_device)
+            )
         out["logits"] = logits
         if predict:
-            if isinstance(task, RegressionTask):
-                if logits.ndimension() > 1:
-                    assert (
-                        logits.ndimension() == 2 and logits[-1] == 1
-                    ), "Invalid regression prediction dimensions!"
-                    logits = logits.squeeze(-1)
-                out["preds"] = logits
-            else:
-                _, out["preds"] = logits.max(dim=1)
+            out["preds"] = logits
         return out
 
     def _seq_gen_forward(self, batch, task, predict):

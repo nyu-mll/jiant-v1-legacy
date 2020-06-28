@@ -100,7 +100,7 @@ def evaluate(
             with torch.no_grad():
                 if isinstance(cuda_device, int):
                     batch = move_to_device(batch, cuda_device)
-                out = model.forward(task=task, batch=batch)
+                out = model.forward(task=task, batch=batch, predict=True)
             if task is not None:
                 task.update_metrics(out, batch)
 

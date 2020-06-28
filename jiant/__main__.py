@@ -582,6 +582,10 @@ def main(cl_arguments):
     log.info("Building model...")
     start_time = time.time()
     model = build_model(args, vocab, word_embs, tasks, cuda_device)
+    _, preds = evaluate.evaluate(
+        model, target_tasks, 2, cuda_device, split="train"
+    )
+    model.prev_preds = preds
     log.info("Finished building model in %.3fs", time.time() - start_time)
 
     # Start Tensorboard if requested

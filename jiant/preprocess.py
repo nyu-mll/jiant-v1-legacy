@@ -424,6 +424,11 @@ def build_tasks(
             split_name="test",
             instance_iterable=_get_instance_generator(task.name, "test", preproc_dir),
         )
+        task.set_instance_iterable(
+                split_name="train",
+                instance_iterable=_get_instance_generator(
+                    task.name, "train", preproc_dir,)
+        )
         # When using pretrain_data_fraction, we need modified iterators for use
         # only on training datasets at pretraining time.
         if task.name in pretrain_task_names:

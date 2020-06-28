@@ -327,8 +327,6 @@ class Task(object):
         """
         if not self._instance_iterables:
             raise ValueError("set_instance_iterable must be called before get_instance_iterable")
-        if split_name == "train" and phase is None:
-            raise ValueError("phase must be specified to get relevant training data")
         return self._instance_iterables[(split_name, phase)]
 
 
