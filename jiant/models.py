@@ -1074,8 +1074,7 @@ class MultiTaskModel(nn.Module):
             x_bar * x_bar + ( eta * x_bar.grad)
         return criterion(f_x, f_x_bar)
 
-    def compute_bregman_loss(self, batch, curr_logits, task):
-        prev_sent_encoder = self.prev_sent_encoder
+    def compute_bregman_loss(self, batch, curr_logits, task, prev_sent_encoder):
         prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
         sent, mask = prev_sent_encoder(batch["inputs"], task)
         prev_logits = prev_classifier(sent, mask)
@@ -1123,8 +1122,10 @@ class MultiTaskModel(nn.Module):
             out["labels"] = labels
         lambda_s = self.regularization_weight
         #out["smoothing_loss"] = self.compute_smoothing_loss(batch,  classifier, self.sent_encoder, task)
-        out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task)
-        self.prev_sent_encoder = copy.deepcopy(self.sent_encoder)
+        out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task, self.prev_sent_encoder)
+        del self.prev_sent_encoder
+        torch.cuda.empty_cache()
+        self.prev_sent_encoder = self.sent_encoder
         self.prev_sent_encoder.requires_grad = False
         out["loss"] = (
             format_output(out["loss"], self._cuda_device)
