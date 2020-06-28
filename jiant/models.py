@@ -962,6 +962,16 @@ class MultiTaskModel(nn.Module):
         if use_clf in [None, "", "none"]:
             use_clf = task.name  # default if not set
         return getattr(self, "%s_mdl" % use_clf)
+    
+    def compute_bregman_loss(self, batch, curr_logits, task, prev_sent_encoder):
+        prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
+        sent, mask = prev_sent_encoder(batch["inputs"], task)
+        prev_logits = prev_classifier(sent, mask)
+        sm = nn.Softmax(dim=1)
+        prev_logits = sm(prev_logits)
+        curr_logits = sm(curr_logits)
+        criterion = torch.nn.KLDivLoss()
+        return criterion(prev_logits, curr_logits)
 
     def _single_sentence_forward(self, batch, task, predict):
         out = {}
@@ -1056,33 +1066,6 @@ class MultiTaskModel(nn.Module):
             out["preds"] = {"span_start": pred_span_start, "span_end": pred_span_end}
         return out
 
-    def compute_smoothing_loss(self, batch, classifier, sent_encoder, task):
-        f_x_sent, mask_f_x = sent_encoder(batch["inputs"], task) # get only the embeddinglayer of this sente encoder here
-        f_x = classifier(f_x_sent, mask_f_x) 
-        noise = torch.Tensor(self.eps).expand(batch["inputs"]["roberta"].shape).cuda()
-        x_bar = {"inputs":{"roberta":None}}
-        x_bar["inputs"]["roberta"] = Variable(batch["inputs"]["roberta"].float() + noise )
-        #x_bar["inputs"]["roberta"] =  x_bar["inputs"]["roberta"].long()
-        x_bar["inputs"]["roberta"].requires_grad = True
-        eta = self.eta
-        for num_refine in range(self.S):
-            # We calculate and then do backward
-            f_x_bar_sent, mask_f_x_bar = sent_encoder(x_bar["inputs"], task)
-            criterion = torch.nn.KLDivLoss()
-            loss = criterion(f_x, f_x_bar)
-            loss.backward()
-            x_bar * x_bar + ( eta * x_bar.grad)
-        return criterion(f_x, f_x_bar)
-
-    def compute_bregman_loss(self, batch, curr_logits, task, prev_sent_encoder):
-        prev_classifier = getattr(self, "%s_orig_mdl" % task.name)
-        sent, mask = prev_sent_encoder(batch["inputs"], task)
-        prev_logits = prev_classifier(sent, mask)
-        sm = nn.Softmax(dim=1)
-        prev_logits = sm(prev_logits)
-        curr_logits = sm(curr_logits)
-        criterion = torch.nn.KLDivLoss()
-        return criterion(prev_logits, curr_logits)
 
     def _pair_sentence_forward(self, batch, task, predict):
         out = {}
@@ -1122,15 +1105,9 @@ class MultiTaskModel(nn.Module):
             out["labels"] = labels
         lambda_s = self.regularization_weight
         #out["smoothing_loss"] = self.compute_smoothing_loss(batch,  classifier, self.sent_encoder, task)
-        out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task, self.prev_sent_encoder)
-        del self.prev_sent_encoder
-        torch.cuda.empty_cache()
-        self.prev_sent_encoder = self.sent_encoder
-        self.prev_sent_encoder.requires_grad = False
-        out["loss"] = (
-            format_output(out["loss"], self._cuda_device)
-            + format_output(out["bregman_loss"], self._cuda_device)
-        )
+
+        out["loss"] = format_output(out["loss"], self._cuda_device)
+
         out["logits"] = logits
         if predict:
             if isinstance(task, RegressionTask):
@@ -1142,6 +1119,13 @@ class MultiTaskModel(nn.Module):
                 out["preds"] = logits
             else:
                 _, out["preds"] = logits.max(dim=1)
+        else:
+            out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task, self.prev_sent_encoder)
+            del self.prev_sent_encoder
+            torch.cuda.empty_cache()
+            self.prev_sent_encoder = self.sent_encoder
+            self.prev_sent_encoder.requires_grad = False
+            out["loss"] += format_output(out["bregman_loss"], self._cuda_device)
         return out
 
     def _seq_gen_forward(self, batch, task, predict):
@@ -1200,6 +1184,13 @@ class MultiTaskModel(nn.Module):
             out["labels"] = targs
             out["logits"] = logits
         out["loss"] = format_output(F.cross_entropy(logits, targs), self._cuda_device)
+        if not predict:
+            out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task, self.prev_sent_encoder)
+            del self.prev_sent_encoder
+            torch.cuda.empty_cache()
+            self.prev_sent_encoder = self.sent_encoder
+            self.prev_sent_encoder.requires_grad = False
+            out["loss"] += format_output(out["bregman_loss"], self._cuda_device)
         return out
 
     def _lm_forward(self, batch, task, predict):
@@ -1314,6 +1305,13 @@ class MultiTaskModel(nn.Module):
 
         if predict:
             out["preds"] = logits.argmax(dim=-1)
+        else:
+            out["bregman_loss"] = self.compute_bregman_loss(batch, logits, task, self.prev_sent_encoder)
+            del self.prev_sent_encoder
+            torch.cuda.empty_cache()
+            self.prev_sent_encoder = self.sent_encoder
+            self.prev_sent_encoder.requires_grad = False
+            out["loss"] += format_output(out["bregman_loss"], self._cuda_device)
         return out
 
     def _lm_only_lr_forward(self, batch, task):
